@@ -1,0 +1,36 @@
+﻿@model Bangaliyana.Models.ProductTypes
+
+@{
+    ViewData["Title"] = "Edit Product Type";
+}
+
+<div class="p-4 border border-info rounded-2 w-75 mx-auto shadow">
+    <h3 class="text-center text-info">Update Product Type</h3><br />
+
+    <form asp-action="Edit" method="post">
+        <input type="hidden" asp-for="Id" />
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="form-group row">
+            <div class="col-2 text-end">
+                <label asp-for="ProductType"></label>
+            </div>
+            <div class="col-10">
+                <input asp-for="ProductType" class="form-control" />
+                <span asp-validation-for="ProductType" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-2"></div>
+            <div class="col-10">
+                <input type="submit" value="Update" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-success">Back to List</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
