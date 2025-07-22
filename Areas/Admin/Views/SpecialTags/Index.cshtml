@@ -1,35 +1,36 @@
-﻿@using Bangaliyana.Models;
-@model IEnumerable<ProductTypes>
+﻿@using Bangaliyana.Models
+@model IEnumerable<SpecialTags>
 
 @{
-    ViewData["Title"] = "Product Types";
+    ViewData["Title"] = "Special Tags";
 }
 
 <div class="row">
     <div class="col-6">
-        <h2 class="text-info">Product Type List</h2>
+        <h2 class="text-info">Special Tag List</h2>
     </div>
     <div class="col-6 text-end">
-        <a asp-action="Create" class="btn btn-outline-info"><i class="fa-solid fa-square-plus"></i> Add New Type</a>
+        <a asp-action="Create" class="btn btn-outline-info"><i class="fa-solid fa-square-plus"></i> Add New Tag</a>
     </div>
 </div>
 
 <div class="mt-2">
     <table id="categoryTable" class="table table-striped table-info table-responsive table-borderless">
         <thead>
-                <tr>
-                    <th class="w-75 text-center">@Html.DisplayNameFor(c => c.ProductType)</th>
-                    <th></th>
-                </tr>
+            <tr>
+                <th class="w-75 text-center">@Html.DisplayNameFor(c => c.SpecialTag)</th>
+                <th></th>
+            </tr>
         </thead>
 
         <tbody>
-            @foreach(var item in Model)
+            @foreach (var item in Model)
             {
                 <tr>
-                    <td>@item.ProductType</td>
+                    <td>@item.SpecialTag</td>
                     <td class="text-end">
-                        @Html.Partial("_ButtonPartial", Tuple.Create(item.Id, "ProductTypes"))
+                        @* <partial name="_ButtonPartial" model="@item.Id" /> *@
+                        @Html.Partial("_ButtonPartial", Tuple.Create(item.Id, "SpecialTags"))
                     </td>
                 </tr>
             }
@@ -37,7 +38,7 @@
     </table>
 </div>
 
-@section Scripts{
+@section Scripts {
     <script>
         $(document).ready(function () {
             $('#categoryTable').DataTable({

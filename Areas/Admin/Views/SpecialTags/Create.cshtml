@@ -1,0 +1,35 @@
+﻿@model Bangaliyana.Models.SpecialTags
+
+@{
+    ViewData["Title"] = "Create Special Tag";
+}
+
+<div class="p-4 border border-info rounded-2 w-75 mx-auto shadow">
+    <h3 class="text-center text-info">Enter Special Tag</h3><br />
+
+    <form asp-action="Create" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="form-group row">
+            <div class="col-2 text-end">
+                <label asp-for="SpecialTag"></label>
+            </div>
+            <div class="col-10">
+                <input asp-for="SpecialTag" class="form-control" />
+                <span asp-validation-for="SpecialTag" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-2"></div>
+            <div class="col-10">
+                <input type="submit" value="Save" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-success">Back to List</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
