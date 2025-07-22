@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "1P2A8Sk7fmY=",
+  "dgSpecHash": "igOVEyC8GO4=",
   "success": true,
   "projectFilePath": "E:\\Visual Studio\\Bangaliyana\\Bangaliyana\\Bangaliyana.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\OSL\\.nuget\\packages\\alertifyjs\\1.13.1\\alertifyjs.1.13.1.nupkg.sha512",
     "C:\\Users\\OSL\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
     "C:\\Users\\OSL\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",
     "C:\\Users\\OSL\\.nuget\\packages\\humanizer\\2.14.1\\humanizer.2.14.1.nupkg.sha512",

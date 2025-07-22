@@ -32,6 +32,7 @@ namespace Bangaliyana.Areas.Admin.Controllers
             {
                 _db.ProductTypes.Add(productTypes);
                 await _db.SaveChangesAsync();
+                TempData["onSave"] = "Product Type has been created.";
                 return RedirectToAction("Index");
             }
             return View(productTypes);
@@ -59,6 +60,7 @@ namespace Bangaliyana.Areas.Admin.Controllers
             {
                 _db.Update(productTypes);
                 await _db.SaveChangesAsync();
+                TempData["onEdit"] = "Product Type has been updated.";
                 return RedirectToAction("Index");
             }
             return View(productTypes);
@@ -95,6 +97,7 @@ namespace Bangaliyana.Areas.Admin.Controllers
             {
                 _db.Remove(productType);
                 await _db.SaveChangesAsync();
+                TempData["onDelete"] = "Product Type has been deleted.";
             }
             return RedirectToAction("Index");
         }

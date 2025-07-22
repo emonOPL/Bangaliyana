@@ -32,6 +32,7 @@ namespace Bangaliyana.Areas.Admin.Controllers
             if (ModelState.IsValid) {
                 _db.SpecialTags.Add(specialTags);
                 await _db.SaveChangesAsync();
+                TempData["onSave"] = "Special Tag has been created.";
                 return RedirectToAction("Index");
             }
             return View(specialTags);
@@ -56,6 +57,7 @@ namespace Bangaliyana.Areas.Admin.Controllers
             {
                 _db.Update(specialTags);
                 await _db.SaveChangesAsync();
+                TempData["onEdit"] = "Special Tag has been updated.";
                 return RedirectToAction("Index");
             }
             return View(specialTags);
@@ -85,6 +87,7 @@ namespace Bangaliyana.Areas.Admin.Controllers
             if (ModelState.IsValid) {
                 _db.Remove(specialTag);
                 await _db.SaveChangesAsync();
+                TempData["onDelete"] = "Special Tag has been deleted.";
             }
             return RedirectToAction("Index"); 
         }

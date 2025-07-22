@@ -52,6 +52,27 @@
                 autoWidth: false,
                 scrollX: true,
             });
+
+            $(function(){
+                var saveMessage = '@TempData["onSave"]'
+                if(saveMessage != null && saveMessage != ""){
+                    alertify.success(saveMessage);
+                }
+            })
+            
+            $(function(){
+                var editMessage = '@TempData["onEdit"]'
+                if(editMessage != null && editMessage != ""){
+                    alertify.message(editMessage);
+                }
+            })
+            
+            $(function(){
+                var deleteMessage = '@TempData["onDelete"]'
+                if(deleteMessage != null && deleteMessage != ""){
+                    alertify.warning(deleteMessage);
+                }
+            })
         });
     </script>
 
