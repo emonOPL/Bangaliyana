@@ -9,5 +9,10 @@ namespace Bangaliyana.Models
         [Required]
         [Display(Name ="Special Tag")]
         public string SpecialTag { get; set; }
+
+        [Required]
+        [Display(Name = "Description")]
+        public string Description { get; set; }
+
     }
 }

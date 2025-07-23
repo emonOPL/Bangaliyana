@@ -16,7 +16,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Bangaliyana")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+01762f3c1bca6296066af1b7d15c6356c16c325d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1727f10d344b60022860febc0c675563a7a1c1ae")]
 [assembly: System.Reflection.AssemblyProductAttribute("Bangaliyana")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Bangaliyana")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

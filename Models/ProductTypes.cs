@@ -10,5 +10,9 @@ namespace Bangaliyana.Models
         [Display(Name = "Product Type")]
         public string ProductType { get; set; }
 
+        [Required]
+        [Display(Name = "Description")]
+        public string Description { get; set; }
+
     }
 }
