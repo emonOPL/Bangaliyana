@@ -1,0 +1,895 @@
+@using Bangaliyana.Models
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@model Order
+
+@{
+    ViewData["Title"] = Localizer["EditOrderTitle", Model.Id].Value;
+    var canEditItems = User.IsInRole("Admin") || User.IsInRole("Moderator");
+    var areaName = ViewBag.AreaName as string ?? "Admin";
+    var controllerName = ViewBag.ControllerName as string ?? "Orders";
+}
+
+<style>
+    /* Dark mode fixes for search suggestions */
+    [data-theme="dark"] .product-search-item,
+    [data-theme="dark"] #productSearchResults .list-group-item {
+        background-color: #1a1d20 !important;
+        border-color: #495057 !important;
+        color: #e9ecef !important;
+    }
+    [data-theme="dark"] .product-search-item:hover,
+    [data-theme="dark"] #productSearchResults .list-group-item:hover {
+        background-color: #2b3035 !important;
+    }
+    [data-theme="dark"] .product-search-item strong,
+    [data-theme="dark"] #productSearchResults .list-group-item strong {
+        color: #ffffff !important;
+    }
+    [data-theme="dark"] .product-search-item .text-muted,
+    [data-theme="dark"] #productSearchResults .list-group-item .text-muted {
+        color: #adb5bd !important;
+    }
+    [data-theme="dark"] .product-search-item .text-success,
+    [data-theme="dark"] #productSearchResults .list-group-item .text-success {
+        color: #75b798 !important;
+    }
+
+    /* Dark mode fixes for table footer */
+    [data-theme="dark"] #orderItemsTable tfoot.table-light th,
+    [data-theme="dark"] #orderItemsTable tfoot.table-light td {
+        background-color: #1a1d20 !important;
+        color: #e9ecef !important;
+    }
+    [data-theme="dark"] #orderItemsTable tfoot tr.table-primary th,
+    [data-theme="dark"] #orderItemsTable tfoot tr.table-primary td {
+        background-color: #031633 !important;
+        color: #ffffff !important;
+    }
+</style>
+
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="display-6">@Localizer["EditOrderTitle", Model.Id]</h2>
+                    <p class="lead">@Localizer["OrderPlacedOn"] @Model.OrderDate.ToBangladeshString()</p>
+                </div>
+                <div>
+                    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary me-2">
+                        <i class="fas fa-eye"></i> @Localizer["ViewDetails"]
+                    </a>
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> @Localizer["BackToOrders"]
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="OrderDate" />
+        <input type="hidden" asp-for="UserId" />
+        <input type="hidden" asp-for="TransactionId" />
+        <input type="hidden" asp-for="PaymentMethod" />
+
+        <div class="row">
+            <!-- Order Information -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-receipt"></i> @Localizer["OrderInformation"]
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label asp-for="Status" class="form-label">@Localizer["OrderStatus"]</label>
+                            <select asp-for="Status" class="form-select" asp-items="GetOrderStatusSelectList()"></select>
+                            <span asp-validation-for="Status" class="text-danger"></span>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i>
+                                @Localizer["OrderConfirmedCancelNote"]
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="TotalAmount" class="form-label">@Localizer["TotalAmount"]</label>
+                            <div class="input-group">
+                                <span class="input-group-text">৳</span>
+                                <input asp-for="TotalAmount" class="form-control" type="number" step="1" min="0" value="@((int)Math.Round(Model.TotalAmount))" />
+                            </div>
+                            <span asp-validation-for="TotalAmount" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="DeliveryCharge" class="form-label">@Localizer["DeliveryCharge"]</label>
+                            <div class="input-group">
+                                <span class="input-group-text">৳</span>
+                                <input asp-for="DeliveryCharge" class="form-control" type="number" step="1" min="0" value="@((int)Math.Round(Model.DeliveryCharge))" />
+                            </div>
+                            <span asp-validation-for="DeliveryCharge" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input asp-for="IsPaymentReceived" class="form-check-input" type="checkbox" />
+                                <label asp-for="IsPaymentReceived" class="form-check-label">
+                                    @Localizer["PaymentReceived"]
+                                </label>
+                            </div>
+                            <span asp-validation-for="IsPaymentReceived" class="text-danger"></span>
+                        </div>
+
+                        <div class="alert alert-info alert-permanent">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>@Localizer["PaymentMethod"]:</strong> @FormatEnumName(Model.PaymentMethod.ToString())
+                            @if (!string.IsNullOrEmpty(Model.TransactionId))
+                            {
+                                <br><strong>@Localizer["TransactionId"]:</strong> <code>@Model.TransactionId</code>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.SenderMobileNumber))
+                            {
+                                <br><strong>@Localizer["PaymentNumber"]:</strong> <code>@Model.SenderMobileNumber</code>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Information -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user"></i> @Localizer["CustomerInformation"]
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label asp-for="CustomerName" class="form-label">@Localizer["CustomerName"]</label>
+                            <input asp-for="CustomerName" class="form-control" />
+                            <span asp-validation-for="CustomerName" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label">@Localizer["Email"]</label>
+                            <input asp-for="Email" class="form-control" type="email" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Phone" class="form-label">@Localizer["Phone"]</label>
+                            <input asp-for="Phone" class="form-control" />
+                            <span asp-validation-for="Phone" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Address" class="form-label">@Localizer["Address"]</label>
+                            <textarea asp-for="Address" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="Address" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="PostalCode" class="form-label">@Localizer["PostalCode"]</label>
+                            <input asp-for="PostalCode" class="form-control" />
+                            <span asp-validation-for="PostalCode" class="text-danger"></span>
+                        </div>
+
+                        @if (Model.User != null)
+                        {
+                            <div class="alert alert-info alert-permanent">
+                                <i class="fas fa-user"></i>
+                                <strong>@Localizer["RegisteredUser"]:</strong> @Model.User.FullName
+                                <br><small class="text-muted">@Model.User.Email</small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Items (Editable) -->
+        <div class="row">
+            <div class="col-12 mb-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-shopping-cart"></i> @Localizer["OrderItems"]
+                            <span class="badge bg-info ms-2" id="itemCount">@Model.OrderItems.Count @Localizer["items"]</span>
+                        </h5>
+                        @if (canEditItems)
+                        {
+                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                                <i class="fas fa-plus"></i> @Localizer["AddProduct"]
+                            </button>
+                        }
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped" id="orderItemsTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th style="width: 35%;">@Localizer["Product"]</th>
+                                        <th class="text-end" style="width: 18%;">@Localizer["UnitPrice"]</th>
+                                        <th class="text-center" style="width: 15%;">@Localizer["Quantity"]</th>
+                                        <th class="text-end" style="width: 18%;">@Localizer["TotalPrice"]</th>
+                                        @if (canEditItems)
+                                        {
+                                            <th class="text-center" style="width: 14%;">@Localizer["Actions"]</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody id="orderItemsBody">
+                                    @{
+                                        decimal itemsSubtotal = 0;
+                                    }
+                                    @foreach (var item in Model.OrderItems)
+                                    {
+                                        itemsSubtotal += item.TotalPrice;
+                                        <tr data-item-id="@item.Id">
+                                            <td>
+                                                <strong>@item.ProductName</strong>
+                                                <span class="variant-info-display" data-item-id="@item.Id">
+                                                    @if (!string.IsNullOrEmpty(item.VariantInfo))
+                                                    {
+                                                        <br><small class="text-info"><i class="fas fa-tag me-1"></i>@item.VariantInfo</small>
+                                                    }
+                                                </span>
+                                                @if (canEditItems)
+                                                {
+                                                    <button type="button" class="btn btn-outline-info btn-sm ms-2 edit-variant-btn"
+                                                            data-item-id="@item.Id" data-product-id="@item.ProductId"
+                                                            data-product-name="@item.ProductName" data-current-variant="@item.ProductVariantId"
+                                                            title="Edit Variant">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                }
+                                                <br><small class="text-muted">ID: @item.ProductId | Stock: @(item.Product?.Stock ?? 0)</small>
+                                            </td>
+                                            <td class="text-end align-middle">
+                                                @if (canEditItems)
+                                                {
+                                                    <div class="input-group input-group-sm justify-content-end">
+                                                        <span class="input-group-text">৳</span>
+                                                        <input type="number" class="form-control form-control-sm item-price"
+                                                               value="@((int)Math.Round(item.UnitPrice))" step="1" min="0"
+                                                               data-item-id="@item.Id" style="width: 80px;">
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span>৳@((int)Math.Round(item.UnitPrice))</span>
+                                                }
+                                            </td>
+                                            <td class="text-center align-middle">
+                                                @if (canEditItems)
+                                                {
+                                                    <div class="input-group input-group-sm justify-content-center">
+                                                        <input type="number" class="form-control form-control-sm text-center item-quantity"
+                                                               value="@item.Quantity" min="1"
+                                                               data-item-id="@item.Id" style="width: 70px;">
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">@item.Quantity</span>
+                                                }
+                                            </td>
+                                            <td class="text-end align-middle">
+                                                <strong class="item-total">৳@((int)Math.Round(item.TotalPrice))</strong>
+                                            </td>
+                                            @if (canEditItems)
+                                            {
+                                                <td class="text-center align-middle">
+                                                    <button type="button" class="btn btn-danger btn-sm remove-item-btn"
+                                                            data-item-id="@item.Id" data-product-name="@item.ProductName"
+                                                            title="Remove Item">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th colspan="3" class="text-end">@Localizer["ItemsSubtotal"]:</th>
+                                        <th class="text-end" id="subtotalDisplay">৳@((int)Math.Round(itemsSubtotal))</th>
+                                        @if (canEditItems)
+                                        {
+                                            <th></th>
+                                        }
+                                    </tr>
+                                    <tr>
+                                        <th colspan="3" class="text-end">@Localizer["DeliveryCharge"]:</th>
+                                        <th class="text-end">
+                                            @if (Model.FreeShippingApplied)
+                                            {
+                                                <span class="text-success">@Localizer["Free"]</span>
+                                            }
+                                            else
+                                            {
+                                                <span id="delivery-charge-display">৳@((int)Math.Round(Model.DeliveryCharge))</span>
+                                            }
+                                        </th>
+                                        @if (canEditItems)
+                                        {
+                                            <th></th>
+                                        }
+                                    </tr>
+                                    @if (Model.DiscountAmount > 0)
+                                    {
+                                        <tr>
+                                            <th colspan="3" class="text-end">@Localizer["CouponDiscount"] @(!string.IsNullOrEmpty(Model.CouponCode) ? $"({Model.CouponCode})" : ""):</th>
+                                            <th class="text-end text-danger">-৳@((int)Math.Round(Model.DiscountAmount))</th>
+                                            @if (canEditItems)
+                                            {
+                                                <th></th>
+                                            }
+                                        </tr>
+                                    }
+                                    @if (Model.RewardDiscountAmount > 0)
+                                    {
+                                        <tr>
+                                            <th colspan="3" class="text-end">@Localizer["VoucherDiscount"] @(Model.AppliedReward != null ? $"({Model.AppliedReward.RewardName})" : ""):</th>
+                                            <th class="text-end text-danger">-৳@((int)Math.Round(Model.RewardDiscountAmount))</th>
+                                            @if (canEditItems)
+                                            {
+                                                <th></th>
+                                            }
+                                        </tr>
+                                    }
+                                    @if (Model.WalletAmountUsed > 0)
+                                    {
+                                        <tr>
+                                            <th colspan="3" class="text-end">@Localizer["WalletUsed"]:</th>
+                                            <th class="text-end text-danger">-৳@((int)Math.Round(Model.WalletAmountUsed))</th>
+                                            @if (canEditItems)
+                                            {
+                                                <th></th>
+                                            }
+                                        </tr>
+                                    }
+                                    @if (Model.PremiumDiscountAmount > 0)
+                                    {
+                                        <tr>
+                                            <th colspan="3" class="text-end">@Localizer["PremiumDiscount"]:</th>
+                                            <th class="text-end text-danger">-৳@((int)Math.Round(Model.PremiumDiscountAmount))</th>
+                                            @if (canEditItems)
+                                            {
+                                                <th></th>
+                                            }
+                                        </tr>
+                                    }
+                                    <tr class="table-primary">
+                                        <th colspan="3" class="text-end">@Localizer["TotalAmount"]:</th>
+                                        <th class="text-end"><span id="total-amount-display">৳@((int)Math.Round(Model.TotalAmount))</span></th>
+                                        @if (canEditItems)
+                                        {
+                                            <th></th>
+                                        }
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        @if (canEditItems)
+                        {
+                            <div class="alert alert-info alert-permanent mt-3">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>@Localizer["StockNote"]:</strong> @Localizer["StockNoteMessage"]
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <a asp-action="Index" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> @Localizer["Cancel"]
+                                </a>
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> @Localizer["SaveChanges"]
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Remove Item Confirmation Modal -->
+@if (canEditItems)
+{
+    <div class="modal fade" id="removeItemModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content confirm-modal-content border-0 shadow-lg">
+                <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="@Localizer["Close"]"></button>
+                <div class="modal-body text-center p-4">
+                    <div class="confirm-icon-wrapper mb-3">
+                        <div class="confirm-icon-circle confirm-icon-danger">
+                            <i class="fas fa-trash-alt" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                    <h4 class="modal-title fw-bold mb-2">@Localizer["RemoveItem"]?</h4>
+                    <p class="text-muted mb-1">@Localizer["RemoveItemConfirmMessage"] "<span id="removeItemName"></span>"?</p>
+                    <p class="text-muted small mb-0">@Localizer["ActionCannotBeUndone"]</p>
+                </div>
+                <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                    </button>
+                    <button type="button" class="btn btn-danger px-4" id="confirmRemoveItem">
+                        <i class="fas fa-check me-1"></i> @Localizer["YesRemove"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Add Product Modal -->
+@if (canEditItems)
+{
+    <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addProductModalLabel">
+                        <i class="fas fa-plus-circle"></i> @Localizer["AddProductToOrder"]
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Localizer["Close"]"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["SearchProduct"]</label>
+                        <input type="text" id="productSearch" class="form-control" placeholder="@Localizer["TypeProductNameOrSku"]">
+                        <div id="productSearchResults" class="list-group mt-2" style="max-height: 300px; overflow-y: auto;"></div>
+                    </div>
+                    <div id="selectedProductInfo" style="display: none;">
+                        <hr>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>@Localizer["SelectedProduct"]</h6>
+                                <p id="selectedProductName" class="fw-bold mb-1"></p>
+                                <small class="text-muted" id="selectedProductSku"></small>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">@Localizer["Quantity"]</label>
+                                <input type="number" id="addProductQuantity" class="form-control" value="1" min="1">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">@Localizer["UnitPrice"]</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">৳</span>
+                                    <input type="number" id="addProductPrice" class="form-control" step="0.01" min="0">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">@Localizer["AvailableStock"]: <span id="selectedProductStock" class="fw-bold"></span></small>
+                        </div>
+                        <input type="hidden" id="selectedProductId">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                    <button type="button" class="btn btn-success" id="confirmAddProduct" disabled>
+                        <i class="fas fa-plus"></i> @Localizer["AddToOrder"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Variant Modal -->
+    <div class="modal fade" id="editVariantModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-tag me-2"></i>@Localizer["EditVariant"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>@Localizer["Product"]: <strong id="variantProductName"></strong></p>
+                    <div id="variantLoadingSpinner" class="text-center py-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">@Localizer["Loading"]...</span>
+                        </div>
+                    </div>
+                    <div id="variantOptionsContainer" class="d-none">
+                        <div class="mb-3">
+                            <label class="form-label">@Localizer["SelectVariant"]:</label>
+                            <select id="variantSelect" class="form-select">
+                                <option value="0">@Localizer["NoVariantBaseProduct"]</option>
+                            </select>
+                        </div>
+                        <div id="variantDetails" class="alert alert-info d-none">
+                            <small>
+                                <strong>@Localizer["Stock"]:</strong> <span id="variantStock"></span> |
+                                <strong>@Localizer["AdditionalPrice"]:</strong> ৳<span id="variantAdditionalPrice"></span>
+                            </small>
+                        </div>
+                        <div id="noVariantsMessage" class="alert alert-warning d-none">
+                            <i class="fas fa-info-circle me-2"></i>@Localizer["NoVariantsAvailable"]
+                        </div>
+                    </div>
+                    <input type="hidden" id="editVariantItemId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                    <button type="button" class="btn btn-primary" id="confirmVariantChange">
+                        <i class="fas fa-save me-1"></i>@Localizer["SaveChanges"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+        var jsAreaName = areaName;
+        var jsControllerName = controllerName;
+    }
+    <script>
+        var orderId = @Model.Id;
+        var antiForgeryToken = $('input[name="__RequestVerificationToken"]').val();
+        var apiArea = '@jsAreaName';
+        var apiController = '@jsControllerName';
+
+        $(document).ready(function () {
+            // Update display values when form fields change
+            $('#TotalAmount').on('input', function () {
+                var value = parseFloat($(this).val()) || 0;
+                $('#total-amount-display').text('৳' + Math.round(value));
+            });
+
+            $('#DeliveryCharge').on('input', function () {
+                var value = parseFloat($(this).val()) || 0;
+                $('#delivery-charge-display').text('৳' + Math.round(value));
+            });
+
+            // Product search for adding new items
+            var searchTimeout;
+            $('#productSearch').on('input', function () {
+                clearTimeout(searchTimeout);
+                var term = $(this).val();
+                if (term.length < 2) {
+                    $('#productSearchResults').empty();
+                    return;
+                }
+                searchTimeout = setTimeout(function () {
+                    $.get('/' + apiArea + '/' + apiController + '/SearchProducts', { term: term }, function (data) {
+                        var html = '';
+                        if (data.length === 0) {
+                            html = '<div class="list-group-item text-muted">No products found</div>';
+                        } else {
+                            data.forEach(function (p) {
+                                html += '<a href="#" class="list-group-item list-group-item-action product-search-item" ' +
+                                    'data-id="' + p.id + '" data-name="' + p.name + '" data-sku="' + p.sku + '" ' +
+                                    'data-price="' + p.price + '" data-stock="' + p.stock + '">' +
+                                    '<div class="d-flex justify-content-between">' +
+                                    '<div><strong>' + p.name + '</strong><br><small class="text-muted">SKU: ' + p.sku + '</small></div>' +
+                                    '<div class="text-end"><span class="text-success fw-bold">৳' + Math.round(p.price) + '</span>' +
+                                    '<br><small class="text-muted">Stock: ' + p.stock + '</small></div>' +
+                                    '</div></a>';
+                            });
+                        }
+                        $('#productSearchResults').html(html);
+                    });
+                }, 300);
+            });
+
+            // Select product from search results
+            $(document).on('click', '.product-search-item', function (e) {
+                e.preventDefault();
+                var $this = $(this);
+                $('#selectedProductId').val($this.data('id'));
+                $('#selectedProductName').text($this.data('name'));
+                $('#selectedProductSku').text('SKU: ' + $this.data('sku'));
+                $('#addProductPrice').val($this.data('price'));
+                $('#selectedProductStock').text($this.data('stock'));
+                $('#addProductQuantity').attr('max', $this.data('stock')).val(1);
+                $('#selectedProductInfo').show();
+                $('#confirmAddProduct').prop('disabled', false);
+                $('#productSearchResults').empty();
+                $('#productSearch').val('');
+            });
+
+            // Confirm add product
+            $('#confirmAddProduct').on('click', function () {
+                var productId = $('#selectedProductId').val();
+                var quantity = parseInt($('#addProductQuantity').val()) || 1;
+                var price = parseFloat($('#addProductPrice').val());
+
+                $.post('/' + apiArea + '/' + apiController + '/AddOrderItem', {
+                    orderId: orderId,
+                    productId: productId,
+                    quantity: quantity,
+                    customPrice: price,
+                    __RequestVerificationToken: antiForgeryToken
+                }, function (data) {
+                    if (data.success) {
+                        alertify.success(data.message);
+                        location.reload();
+                    } else {
+                        alertify.error(data.message);
+                    }
+                });
+            });
+
+            // Update item quantity
+            var quantityTimeout;
+            $(document).on('change', '.item-quantity', function () {
+                var $input = $(this);
+                var itemId = $input.data('item-id');
+                var newQuantity = parseInt($input.val()) || 1;
+
+                $.post('/' + apiArea + '/' + apiController + '/UpdateOrderItemQuantity', {
+                    orderItemId: itemId,
+                    newQuantity: newQuantity,
+                    __RequestVerificationToken: antiForgeryToken
+                }, function (data) {
+                    if (data.success) {
+                        alertify.success(data.message);
+                        refreshOrderTotals();
+                    } else {
+                        alertify.error(data.message);
+                    }
+                });
+            });
+
+            // Update item price
+            $(document).on('change', '.item-price', function () {
+                var $input = $(this);
+                var itemId = $input.data('item-id');
+                var newPrice = parseFloat($input.val()) || 0;
+
+                $.post('/' + apiArea + '/' + apiController + '/UpdateOrderItemPrice', {
+                    orderItemId: itemId,
+                    newPrice: newPrice,
+                    __RequestVerificationToken: antiForgeryToken
+                }, function (data) {
+                    if (data.success) {
+                        alertify.success(data.message);
+                        refreshOrderTotals();
+                    } else {
+                        alertify.error(data.message);
+                    }
+                });
+            });
+
+            // Remove item - show confirmation modal
+            var removeItemId = null;
+            var $removeBtn = null;
+
+            $(document).on('click', '.remove-item-btn', function () {
+                $removeBtn = $(this);
+                removeItemId = $removeBtn.data('item-id');
+                var productName = $removeBtn.data('product-name');
+
+                $('#removeItemName').text(productName);
+                $('#removeItemModal').modal('show');
+            });
+
+            // Confirm remove item
+            $('#confirmRemoveItem').on('click', function () {
+                if (!removeItemId) return;
+
+                $.post('/' + apiArea + '/' + apiController + '/RemoveOrderItem', {
+                    orderItemId: removeItemId,
+                    __RequestVerificationToken: antiForgeryToken
+                }, function (data) {
+                    $('#removeItemModal').modal('hide');
+                    if (data.success) {
+                        alertify.success(data.message);
+                        $removeBtn.closest('tr').fadeOut(300, function () {
+                            $(this).remove();
+                            refreshOrderTotals();
+                        });
+                    } else {
+                        alertify.error(data.message);
+                    }
+                });
+            });
+
+            // Reset remove modal on close
+            $('#removeItemModal').on('hidden.bs.modal', function () {
+                removeItemId = null;
+                $removeBtn = null;
+            });
+
+            // Refresh order totals
+            function refreshOrderTotals() {
+                $.get('/' + apiArea + '/' + apiController + '/GetOrderItems', { orderId: orderId }, function (data) {
+                    if (data.success) {
+                        $('#subtotalDisplay').text('৳' + Math.round(data.subTotal));
+                        $('#total-amount-display').text('৳' + Math.round(data.totalAmount));
+                        $('#TotalAmount').val(Math.round(data.totalAmount));
+                        $('#itemCount').text(data.items.length + ' items');
+
+                        // Update individual item totals
+                        data.items.forEach(function (item) {
+                            var $row = $('tr[data-item-id="' + item.id + '"]');
+                            $row.find('.item-total').text('৳' + Math.round(item.totalPrice));
+                        });
+                    }
+                });
+            }
+
+            // Reset modal on close
+            $('#addProductModal').on('hidden.bs.modal', function () {
+                $('#productSearch').val('');
+                $('#productSearchResults').empty();
+                $('#selectedProductInfo').hide();
+                $('#confirmAddProduct').prop('disabled', true);
+            });
+
+            // Show success/error messages from TempData
+            @if (TempData["success"] != null)
+            {
+                <text>alertify.success('@Html.Raw(TempData["success"])');</text>
+            }
+            @if (TempData["error"] != null)
+            {
+                <text>alertify.error('@Html.Raw(TempData["error"])');</text>
+            }
+
+            // Edit Variant functionality
+            var editVariantModal = new bootstrap.Modal(document.getElementById('editVariantModal'));
+            var currentVariants = [];
+            var editingItemId = null;
+
+            // Open edit variant modal
+            $(document).on('click', '.edit-variant-btn', function () {
+                var $btn = $(this);
+                editingItemId = $btn.data('item-id');
+                var productId = $btn.data('product-id');
+                var productName = $btn.data('product-name');
+                var currentVariant = $btn.data('current-variant');
+
+                $('#variantProductName').text(productName);
+                $('#editVariantItemId').val(editingItemId);
+                $('#variantLoadingSpinner').removeClass('d-none');
+                $('#variantOptionsContainer').addClass('d-none');
+                $('#variantDetails').addClass('d-none');
+                $('#noVariantsMessage').addClass('d-none');
+
+                editVariantModal.show();
+
+                // Load variants for this product
+                $.get('/' + apiArea + '/' + apiController + '/GetProductVariants', { productId: productId }, function (data) {
+                    $('#variantLoadingSpinner').addClass('d-none');
+                    $('#variantOptionsContainer').removeClass('d-none');
+
+                    if (data.success) {
+                        currentVariants = data.variants;
+                        var $select = $('#variantSelect');
+                        $select.empty().append('<option value="0">No Variant (Base Product)</option>');
+
+                        if (data.variants.length > 0) {
+                            data.variants.forEach(function (v) {
+                                var label = [];
+                                if (v.size) label.push('Size: ' + v.size);
+                                if (v.color) label.push('Color: ' + v.color);
+                                var displayText = label.join(', ') || 'Variant #' + v.id;
+                                if (v.additionalPrice > 0) displayText += ' (+৳' + v.additionalPrice + ')';
+                                displayText += ' [Stock: ' + v.stock + ']';
+
+                                var $option = $('<option></option>')
+                                    .val(v.id)
+                                    .text(displayText)
+                                    .data('stock', v.stock)
+                                    .data('price', v.additionalPrice);
+                                $select.append($option);
+                            });
+
+                            // Select current variant if any
+                            if (currentVariant) {
+                                $select.val(currentVariant);
+                            }
+                            updateVariantDetails();
+                        } else {
+                            $('#noVariantsMessage').removeClass('d-none');
+                        }
+                    }
+                });
+            });
+
+            // Update variant details when selection changes
+            $('#variantSelect').on('change', updateVariantDetails);
+
+            function updateVariantDetails() {
+                var selectedId = parseInt($('#variantSelect').val());
+                if (selectedId > 0) {
+                    var variant = currentVariants.find(function (v) { return v.id === selectedId; });
+                    if (variant) {
+                        $('#variantStock').text(variant.stock);
+                        $('#variantAdditionalPrice').text(variant.additionalPrice);
+                        $('#variantDetails').removeClass('d-none');
+                    }
+                } else {
+                    $('#variantDetails').addClass('d-none');
+                }
+            }
+
+            // Confirm variant change
+            $('#confirmVariantChange').on('click', function () {
+                var variantId = parseInt($('#variantSelect').val());
+                var itemId = editingItemId;
+
+                $.post('/' + apiArea + '/' + apiController + '/UpdateOrderItemVariant', {
+                    orderItemId: itemId,
+                    variantId: variantId > 0 ? variantId : null,
+                    __RequestVerificationToken: antiForgeryToken
+                }, function (data) {
+                    editVariantModal.hide();
+                    if (data.success) {
+                        alertify.success(data.message);
+
+                        // Update variant info display
+                        var $variantDisplay = $('.variant-info-display[data-item-id="' + itemId + '"]');
+                        if (data.variantInfo) {
+                            $variantDisplay.html('<br><small class="text-info"><i class="fas fa-tag me-1"></i>' + data.variantInfo + '</small>');
+                        } else {
+                            $variantDisplay.html('');
+                        }
+
+                        // Update price display
+                        var $row = $('tr[data-item-id="' + itemId + '"]');
+                        $row.find('.item-price').find('input').val(Math.round(data.unitPrice));
+                        $row.find('.item-total').text('৳' + Math.round(data.totalPrice));
+
+                        // Refresh order totals
+                        refreshOrderTotals();
+                    } else {
+                        alertify.error(data.message);
+                    }
+                });
+            });
+
+            // Reset edit variant modal on close
+            $('#editVariantModal').on('hidden.bs.modal', function () {
+                editingItemId = null;
+                currentVariants = [];
+            });
+        });
+    </script>
+}
+
+@functions {
+    private string FormatEnumName(string enumName)
+    {
+        return System.Text.RegularExpressions.Regex.Replace(enumName, "([a-z])([A-Z])", "$1 $2");
+    }
+
+    private List<SelectListItem> GetOrderStatusSelectList()
+    {
+        return Enum.GetValues(typeof(OrderStatus))
+            .Cast<OrderStatus>()
+            .Select(e => new SelectListItem
+            {
+                Value = ((int)e).ToString(),
+                Text = FormatEnumName(e.ToString())
+            })
+            .ToList();
+    }
+}

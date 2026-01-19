@@ -1,0 +1,313 @@
+@model X.PagedList.IPagedList<Bangaliyana.Models.Order>
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using X.PagedList.Mvc.Core
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    ViewData["Title"] = Localizer["CustomerRefunds"].Value;
+    var currentStatus = ViewBag.CurrentStatus as string;
+    var areaName = ViewBag.AreaName as string ?? "Moderator";
+    var controllerName = ViewBag.ControllerName as string ?? "Payment";
+}
+
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="mb-1">
+                        <i class="fas fa-hand-holding-usd text-primary me-2"></i>@Localizer["CustomerRefunds"]
+                    </h4>
+                    <p class="text-muted mb-0">@Localizer["CustomerRefundsSubtitle"]</p>
+                </div>
+                <a href="@Url.Action("Returns", "Orders", new { area = "Admin" })" class="btn btn-outline-primary">
+                    <i class="fas fa-undo me-1"></i> @Localizer["ViewReturns"]
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-6 col-md-4 col-lg-2 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="rounded-circle bg-secondary bg-opacity-10 p-3 d-inline-block mb-2">
+                        <i class="fas fa-list text-secondary fa-lg"></i>
+                    </div>
+                    <h4 class="mb-0">@ViewBag.TotalRefunds</h4>
+                    <small class="text-muted">@Localizer["Total"]</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="rounded-circle bg-warning bg-opacity-10 p-3 d-inline-block mb-2">
+                        <i class="fas fa-clock text-warning fa-lg"></i>
+                    </div>
+                    <h4 class="mb-0">@ViewBag.PendingRefunds</h4>
+                    <small class="text-muted">@Localizer["Pending"]</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="rounded-circle bg-info bg-opacity-10 p-3 d-inline-block mb-2">
+                        <i class="fas fa-spinner text-info fa-lg"></i>
+                    </div>
+                    <h4 class="mb-0">@ViewBag.ProcessingRefunds</h4>
+                    <small class="text-muted">@Localizer["InProgress"]</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="rounded-circle bg-success bg-opacity-10 p-3 d-inline-block mb-2">
+                        <i class="fas fa-check-circle text-success fa-lg"></i>
+                    </div>
+                    <h4 class="mb-0">@ViewBag.ApprovedRefunds</h4>
+                    <small class="text-muted">@Localizer["Approved"]</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="rounded-circle bg-danger bg-opacity-10 p-3 d-inline-block mb-2">
+                        <i class="fas fa-times-circle text-danger fa-lg"></i>
+                    </div>
+                    <h4 class="mb-0">@ViewBag.RejectedRefunds</h4>
+                    <small class="text-muted">@Localizer["Rejected"]</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="rounded-circle bg-success bg-opacity-10 p-3 d-inline-block mb-2">
+                        <i class="fas fa-check-double text-success fa-lg"></i>
+                    </div>
+                    <h4 class="mb-0">@ViewBag.CompletedRefunds</h4>
+                    <small class="text-muted">@Localizer["Completed"]</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-0">
+            <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                    <a class="nav-link @(string.IsNullOrEmpty(currentStatus) ? "active" : "")"
+                       href="@Url.Action("CustomerRefunds", controllerName, new { area = areaName })">
+                        @Localizer["All"] <span class="badge bg-secondary ms-1">@ViewBag.TotalRefunds</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentStatus == "Pending" ? "active" : "")"
+                       href="@Url.Action("CustomerRefunds", controllerName, new { area = areaName, status = "Pending" })">
+                        @Localizer["Pending"] <span class="badge bg-warning ms-1">@ViewBag.PendingRefunds</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentStatus == "InProgress" ? "active" : "")"
+                       href="@Url.Action("CustomerRefunds", controllerName, new { area = areaName, status = "InProgress" })">
+                        @Localizer["InProgress"] <span class="badge bg-info ms-1">@ViewBag.ProcessingRefunds</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentStatus == "Approved" ? "active" : "")"
+                       href="@Url.Action("CustomerRefunds", controllerName, new { area = areaName, status = "Approved" })">
+                        @Localizer["Approved"] <span class="badge bg-success ms-1">@ViewBag.ApprovedRefunds</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentStatus == "Rejected" ? "active" : "")"
+                       href="@Url.Action("CustomerRefunds", controllerName, new { area = areaName, status = "Rejected" })">
+                        @Localizer["Rejected"] <span class="badge bg-danger ms-1">@ViewBag.RejectedRefunds</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentStatus == "Completed" ? "active" : "")"
+                       href="@Url.Action("CustomerRefunds", controllerName, new { area = areaName, status = "Completed" })">
+                        @Localizer["Completed"] <span class="badge bg-success ms-1">@ViewBag.CompletedRefunds</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>@Localizer["OrderNumber"]</th>
+                                <th>@Localizer["Customer"]</th>
+                                <th>@Localizer["OrderAmount"]</th>
+                                <th>@Localizer["RefundAmount"]</th>
+                                <th>@Localizer["Status"]</th>
+                                <th>@Localizer["RefundMethod"]</th>
+                                <th>@Localizer["Reason"]</th>
+                                <th>@Localizer["Date"]</th>
+                                <th>@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <a href="@Url.Action("Details", "Orders", new { area = "Admin", id = order.Id })" class="text-decoration-none fw-bold">
+                                            #@(order.OrderNumber ?? order.Id.ToString())
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>@order.CustomerName</strong>
+                                            <small class="d-block text-muted">@order.User?.Email</small>
+                                        </div>
+                                    </td>
+                                    <td>৳@((int)Math.Round(order.TotalAmount))</td>
+                                    <td>
+                                        @if (order.ApprovedRefundAmount.HasValue && order.ApprovedRefundAmount > 0)
+                                        {
+                                            <span class="text-success fw-bold">৳@((int)Math.Round(order.ApprovedRefundAmount.Value))</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @{
+                                            var statusClass = order.RefundStatus switch
+                                            {
+                                                RefundStatus.Pending => "warning",
+                                                RefundStatus.Reviewing => "info",
+                                                RefundStatus.InProgress => "primary",
+                                                RefundStatus.Approved => "success",
+                                                RefundStatus.Rejected => "danger",
+                                                RefundStatus.Completed => "success",
+                                                _ => "secondary"
+                                            };
+                                        }
+                                        <span class="badge bg-@statusClass">@order.RefundStatus.GetDisplayName()</span>
+                                    </td>
+                                    <td>
+                                        @if (order.PreferredRefundMethod != null)
+                                        {
+                                            <span class="badge bg-outline-secondary">@order.PreferredRefundMethod.GetDisplayName()</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(order.ReturnReason))
+                                        {
+                                            <span title="@order.ReturnReason.FormatAsDisplayName()">
+                                                @order.ReturnReason.FormatAndTruncate(30)
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>@(order.RefundStatusChangedAt?.ToBangladeshShortDateString() ?? order.UpdatedAt.ToBangladeshShortDateString())</small>
+                                    </td>
+                                    <td>
+                                        <a href="@Url.Action("ReviewReturn", "Orders", new { area = "Admin", id = order.Id })"
+                                           class="btn btn-sm btn-outline-primary" title="@Localizer["ReviewReturn"]">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if (Model.PageCount > 1)
+                {
+                    <div class="card-footer bg-transparent border-0">
+                        <nav>
+                            @Html.PagedListPager(Model, page => Url.Action("CustomerRefunds", controllerName, new { area = areaName, page, status = currentStatus }),
+                                new PagedListRenderOptions
+                                {
+                                    DisplayLinkToFirstPage = PagedListDisplayMode.IfNeeded,
+                                    DisplayLinkToLastPage = PagedListDisplayMode.IfNeeded,
+                                    DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                                    DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                                    MaximumPageNumbersToDisplay = 5,
+                                    ContainerDivClasses = new[] { "d-flex", "justify-content-center" },
+                                    UlElementClasses = new[] { "pagination", "mb-0" },
+                                    LiElementClasses = new[] { "page-item" },
+                                    PageClasses = new[] { "page-link" },
+                                    ActiveLiElementClass = "active"
+                                })
+                        </nav>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">@Localizer["NoRefundRequestsFound"]</h5>
+                    <p class="text-muted">@Localizer["NoRefundRequestsFoundDescription"]</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+    [data-theme="dark"] .table {
+        color: #e5e7eb;
+    }
+    [data-theme="dark"] .table-light {
+        background-color: #374151;
+        color: #e5e7eb;
+    }
+    [data-theme="dark"] .table-light th {
+        background-color: #374151;
+        color: #e5e7eb;
+    }
+    [data-theme="dark"] .nav-tabs .nav-link {
+        color: #9ca3af;
+    }
+    [data-theme="dark"] .nav-tabs .nav-link.active {
+        background-color: #1f2937;
+        border-color: #374151;
+        color: #fff;
+    }
+    [data-theme="dark"] .page-link {
+        background-color: #1f2937;
+        border-color: #374151;
+        color: #9ca3af;
+    }
+    [data-theme="dark"] .page-item.active .page-link {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+        color: #fff;
+    }
+    [data-theme="dark"] .page-item.disabled .page-link {
+        background-color: #111827;
+        border-color: #374151;
+        color: #4b5563;
+    }
+</style>

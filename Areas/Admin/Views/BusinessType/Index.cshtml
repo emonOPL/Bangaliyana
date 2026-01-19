@@ -1,0 +1,245 @@
+@model IEnumerable<Bangaliyana.Models.BusinessType>
+@{
+    ViewData["Title"] = Localizer["BusinessTypes"];
+}
+
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2 class="mb-1"><i class="fas fa-briefcase text-primary me-2"></i>@Localizer["BusinessTypes"]</h2>
+            <p class="text-muted mb-0">@Localizer["ManageBusinessCategoriesForSellers"]</p>
+        </div>
+        <div class="col-md-6 text-end">
+            <a asp-action="Create" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i>@Localizer["AddBusinessType"]
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="businessTypeTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="width: 60px;">@Localizer["Icon"]</th>
+                            <th>@Localizer["Name"]</th>
+                            <th>@Localizer["Description"]</th>
+                            <th style="width: 100px;">@Localizer["Status"]</th>
+                            <th style="width: 100px;">@Localizer["Sellers"]</th>
+                            <th style="width: 150px;">@Localizer["Actions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sortableBody">
+                        @foreach (var item in Model)
+                        {
+                            <tr data-id="@item.Id">
+                                <td class="text-muted">@item.DisplayOrder</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(item.IconClass))
+                                    {
+                                        <i class="@item.IconClass fa-lg text-primary"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-briefcase fa-lg text-muted"></i>
+                                    }
+                                </td>
+                                <td class="fw-semibold">@item.Name</td>
+                                <td class="text-muted">@(item.Description != null && item.Description.Length > 50 ? item.Description.Substring(0, 50) + "..." : (item.Description ?? "-"))</td>
+                                <td>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input toggle-status" type="checkbox"
+                                               data-id="@item.Id" @(item.IsActive ? "checked" : "")>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">@item.Sellers.Count</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-primary" title="@Localizer["Edit"]">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-outline-danger" title="@Localizer["Delete"]"
+                                                data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                                data-id="@item.Id" data-name="@item.Name">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-5">
+            <i class="fas fa-briefcase fa-4x text-muted mb-3"></i>
+            <h5>@Localizer["NoBusinessTypesFound"]</h5>
+            <p class="text-muted">@Localizer["StartByAddingFirstBusinessType"]</p>
+            <a asp-action="Create" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i>@Localizer["AddBusinessType"]
+            </a>
+        </div>
+    }
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-trash-alt text-danger" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">@Localizer["DeleteBusinessType"]?</h4>
+                <p class="text-muted mb-1">@Localizer["ConfirmDeleteMessage"] "<span id="deleteItemName" class="fw-semibold"></span>"?</p>
+                <p class="text-muted small mb-0">@Localizer["ActionCannotBeUndone"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 py-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                </button>
+                <form id="deleteForm" method="post" class="m-0 d-inline-flex">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="fas fa-trash me-1"></i>@Localizer["Delete"]
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .table {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .table-light {
+        background-color: #374151;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .table-hover tbody tr:hover {
+        background-color: #374151;
+    }
+
+    .sortable-ghost {
+        opacity: 0.5;
+        background: #e3f2fd;
+    }
+
+    .sortable-drag {
+        cursor: grabbing;
+    }
+
+    tbody tr {
+        cursor: grab;
+    }
+</style>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script>
+        // Delete modal handler
+        var deleteModal = document.getElementById('deleteModal');
+        deleteModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var id = button.getAttribute('data-id');
+            var name = button.getAttribute('data-name');
+            document.getElementById('deleteItemName').textContent = name;
+            document.getElementById('deleteForm').action = '@Url.Action("Delete", "BusinessType")/' + id;
+        });
+
+        $(document).ready(function () {
+            // Toggle status
+            $('.toggle-status').on('change', function () {
+                var id = $(this).data('id');
+                var checkbox = $(this);
+
+                $.ajax({
+                    url: '@Url.Action("ToggleStatus", "BusinessType")',
+                    type: 'POST',
+                    data: { id: id },
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            alertify.success(response.isActive ? '@Localizer["BusinessTypeActivated"]' : '@Localizer["BusinessTypeDeactivated"]');
+                        } else {
+                            checkbox.prop('checked', !checkbox.prop('checked'));
+                            alertify.error(response.message);
+                        }
+                    },
+                    error: function () {
+                        checkbox.prop('checked', !checkbox.prop('checked'));
+                        alertify.error('@Localizer["FailedToUpdateStatus"]');
+                    }
+                });
+            });
+
+            // Sortable for reordering
+            var sortable = new Sortable(document.getElementById('sortableBody'), {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: function () {
+                    var orderedIds = [];
+                    $('#sortableBody tr').each(function () {
+                        orderedIds.push(parseInt($(this).data('id')));
+                    });
+
+                    $.ajax({
+                        url: '@Url.Action("UpdateOrder", "BusinessType")',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(orderedIds),
+                        success: function (response) {
+                            if (response.success) {
+                                // Update display order numbers
+                                $('#sortableBody tr').each(function (index) {
+                                    $(this).find('td:first').text(index + 1);
+                                });
+                                alertify.success('@Localizer["OrderUpdated"]');
+                            } else {
+                                alertify.error(response.message);
+                            }
+                        },
+                        error: function () {
+                            alertify.error('@Localizer["FailedToUpdateOrder"]');
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+}

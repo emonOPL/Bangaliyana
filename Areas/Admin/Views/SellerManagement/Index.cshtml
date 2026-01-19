@@ -1,0 +1,614 @@
+@model List<Bangaliyana.Models.Seller>
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+
+@{
+    ViewData["Title"] = Localizer["SellerManagement"].Value;
+    var statusFilter = ViewBag.CurrentStatus as SellerStatus?;
+    var searchTerm = ViewBag.Search as string;
+    var currentPage = (int)ViewBag.CurrentPage;
+    var totalPages = (int)ViewBag.TotalPages;
+    var totalSellers = (int)ViewBag.AllCount;
+    var pendingCount = (int)ViewBag.PendingCount;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-store text-primary me-2"></i>@Localizer["SellerManagement"]</h1>
+            <p class="text-muted mb-0">@Localizer["ManageSellersDescription"]</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            @if (pendingCount > 0)
+            {
+                <span class="badge bg-warning text-dark fs-6 d-flex align-items-center" style="height: 38px;">
+                    <i class="fas fa-clock me-1"></i>@pendingCount @Localizer["Pending"]
+                </span>
+            }
+            <span class="badge bg-primary fs-6 d-flex align-items-center" style="height: 38px;">@totalSellers @Localizer["TotalSellers"]</span>
+            <a asp-action="Create" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i>@Localizer["AddSeller"]
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Status Tabs -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link @(statusFilter == null ? "active" : "")" asp-action="Index" asp-route-search="@searchTerm">
+                <i class="fas fa-list me-1"></i>@Localizer["All"]
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(statusFilter == SellerStatus.Pending ? "active" : "")" asp-action="Index" asp-route-status="Pending" asp-route-search="@searchTerm">
+                <i class="fas fa-clock text-warning me-1"></i>@Localizer["Pending"]
+                @if (pendingCount > 0)
+                {
+                    <span class="badge bg-warning text-dark ms-1">@pendingCount</span>
+                }
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(statusFilter == SellerStatus.Approved ? "active" : "")" asp-action="Index" asp-route-status="Approved" asp-route-search="@searchTerm">
+                <i class="fas fa-check text-success me-1"></i>@Localizer["Approved"]
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(statusFilter == SellerStatus.Suspended ? "active" : "")" asp-action="Index" asp-route-status="Suspended" asp-route-search="@searchTerm">
+                <i class="fas fa-ban text-secondary me-1"></i>@Localizer["Suspended"]
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(statusFilter == SellerStatus.Rejected ? "active" : "")" asp-action="Index" asp-route-status="Rejected" asp-route-search="@searchTerm">
+                <i class="fas fa-times text-danger me-1"></i>@Localizer["Rejected"]
+            </a>
+        </li>
+    </ul>
+
+    <!-- Search -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" asp-action="Index" class="row g-3">
+                <input type="hidden" name="status" value="@statusFilter" />
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" name="search" class="form-control" placeholder="@Localizer["SearchSellerPlaceholder"]" value="@searchTerm" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-1"></i>@Localizer["Search"]
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>@Localizer["Clear"]
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sellers Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 60px;"></th>
+                            <th>@Localizer["Shop"]</th>
+                            <th>@Localizer["Owner"]</th>
+                            <th>@Localizer["Category"]</th>
+                            <th>@Localizer["Status"]</th>
+                            <th>@Localizer["Products"]</th>
+                            <th>@Localizer["Rating"]</th>
+                            <th>@Localizer["Commission"]</th>
+                            <th style="width: 180px;">@Localizer["Actions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            @foreach (var seller in Model)
+                            {
+                                var statusClass = seller.Status switch
+                                {
+                                    SellerStatus.Pending => "bg-warning text-dark",
+                                    SellerStatus.Approved => "bg-success",
+                                    SellerStatus.Rejected => "bg-danger",
+                                    SellerStatus.Suspended => "bg-secondary",
+                                    _ => "bg-light text-dark"
+                                };
+                                var statusIcon = seller.Status switch
+                                {
+                                    SellerStatus.Pending => "fa-clock",
+                                    SellerStatus.Approved => "fa-check",
+                                    SellerStatus.Rejected => "fa-times",
+                                    SellerStatus.Suspended => "fa-ban",
+                                    _ => "fa-question"
+                                };
+
+                                <tr>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(seller.ShopLogoUrl))
+                                        {
+                                            <img src="@seller.ShopLogoUrl" alt="@seller.ShopName" class="rounded-circle" width="50" height="50" style="object-fit: cover;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="rounded-circle bg-gradient-primary d-flex align-items-center justify-content-center text-white avatar-gradient" style="width: 50px; height: 50px;">
+                                                <span class="fw-bold">@(seller.ShopName?.Substring(0, 1).ToUpper() ?? "S")</span>
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>@seller.ShopName</strong>
+                                            @if (seller.IsVerified)
+                                            {
+                                                <i class="fas fa-check-circle text-success ms-1" title="Verified"></i>
+                                            }
+                                        </div>
+                                        <small class="text-muted">/@seller.ShopSlug</small>
+                                    </td>
+                                    <td>
+                                        @if (seller.User != null)
+                                        {
+                                            <div>@(seller.User.FullName ?? Localizer["NA"].Value)</div>
+                                            <small class="text-muted">@seller.User.Email</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@Localizer["Unknown"]</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge category-badge">
+                                            @(seller.BusinessTypeEntity?.Name ?? seller.BusinessCategory.GetDisplayName())
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @statusClass">
+                                            <i class="fas @statusIcon me-1"></i>@seller.Status.GetDisplayName()
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @{
+                                            var productCounts = ViewBag.ProductCounts as Dictionary<int, int>;
+                                            var sellerProductCount = productCounts != null && productCounts.ContainsKey(seller.Id) ? productCounts[seller.Id] : 0;
+                                        }
+                                        <span class="badge bg-info">@sellerProductCount</span>
+                                    </td>
+                                    <td>
+                                        @if (seller.Rating > 0)
+                                        {
+                                            <span class="text-warning">
+                                                <i class="fas fa-star"></i>
+                                                @seller.Rating.ToString("F1")
+                                            </span>
+                                            <small class="text-muted">(@seller.ReviewCount)</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@Localizer["NoRatings"]</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">@seller.CommissionRate%</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a asp-action="Details" asp-route-id="@seller.Id" class="btn btn-sm btn-outline-primary" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a asp-action="Edit" asp-route-id="@seller.Id" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            @if (seller.Status == SellerStatus.Pending)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-success" title="Approve" data-bs-toggle="modal" data-bs-target="#approveModal" data-seller-id="@seller.Id" data-seller-name="@seller.ShopName">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-danger" title="Reject" data-bs-toggle="modal" data-bs-target="#rejectModal-@seller.Id">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            }
+                                            @if (seller.Status == SellerStatus.Approved)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-warning" title="Suspend" data-bs-toggle="modal" data-bs-target="#suspendModal-@seller.Id">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                            }
+                                            @if (seller.Status == SellerStatus.Suspended)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-success" title="Reactivate" data-bs-toggle="modal" data-bs-target="#reactivateModal" data-seller-id="@seller.Id" data-seller-name="@seller.ShopName">
+                                                    <i class="fas fa-undo"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- Reject Modal -->
+                                <div class="modal fade" id="rejectModal-@seller.Id" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form asp-action="Reject" asp-route-id="@seller.Id" method="post">
+                                                <div class="modal-header bg-danger text-white">
+                                                    <h5 class="modal-title"><i class="fas fa-times me-2"></i>@Localizer["RejectSellerApplication"]</h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p>@Localizer["RejectSellerConfirm", seller.ShopName]</p>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">@Localizer["RejectionReasonOptional"]</label>
+                                                        <textarea name="reason" class="form-control" rows="3" placeholder="@Localizer["RejectionReasonPlaceholder"]"></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                                                    <button type="submit" class="btn btn-danger">
+                                                        <i class="fas fa-times me-1"></i>@Localizer["RejectApplication"]
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Suspend Modal -->
+                                <div class="modal fade" id="suspendModal-@seller.Id" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form asp-action="Suspend" asp-route-id="@seller.Id" method="post">
+                                                <div class="modal-header bg-warning text-dark">
+                                                    <h5 class="modal-title"><i class="fas fa-ban me-2"></i>@Localizer["SuspendSeller"]</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p>@Localizer["SuspendSellerConfirm", seller.ShopName]</p>
+                                                    <p class="text-muted small">@Localizer["SuspendSellerWarning"]</p>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">@Localizer["SuspensionReasonOptional"]</label>
+                                                        <textarea name="reason" class="form-control" rows="3" placeholder="@Localizer["SuspensionReasonPlaceholder"]"></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                                                    <button type="submit" class="btn btn-warning">
+                                                        <i class="fas fa-ban me-1"></i>@Localizer["SuspendSeller"]
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="9" class="text-center py-5 text-muted">
+                                    <i class="fas fa-store fa-3x mb-3"></i>
+                                    <p class="mb-0">@Localizer["NoSellersFound"]</p>
+                                    @if (!string.IsNullOrEmpty(searchTerm) || statusFilter != null)
+                                    {
+                                        <a asp-action="Index" class="btn btn-outline-primary mt-3">
+                                            <i class="fas fa-times me-1"></i>@Localizer["ClearFilters"]
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (totalPages > 1)
+        {
+            <div class="card-footer">
+                <nav aria-label="Seller pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-page="@(currentPage - 1)" asp-route-status="@statusFilter" asp-route-search="@searchTerm">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                        @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                        {
+                            <li class="page-item @(i == currentPage ? "active" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-status="@statusFilter" asp-route-search="@searchTerm">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-page="@(currentPage + 1)" asp-route-status="@statusFilter" asp-route-search="@searchTerm">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Approve Confirmation Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-check text-success" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">@Localizer["ApproveSellerQuestion"]</h4>
+                <p class="text-muted mb-1">@Localizer["ApproveSellerConfirmPart1"] "<span id="approveSellerName" class="fw-semibold"></span>"?</p>
+                <p class="text-muted small mb-0">@Localizer["ApproveSellerNote"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 py-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-success px-4" id="confirmApproveBtn">
+                    <i class="fas fa-check me-1"></i>@Localizer["YesApprove"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reactivate Confirmation Modal -->
+<div class="modal fade" id="reactivateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-undo text-success" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">@Localizer["ReactivateSellerQuestion"]</h4>
+                <p class="text-muted mb-1">@Localizer["ReactivateSellerConfirmPart1"] "<span id="reactivateSellerName" class="fw-semibold"></span>"?</p>
+                <p class="text-muted small mb-0">@Localizer["ReactivateSellerNote"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 py-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-success px-4" id="confirmReactivateBtn">
+                    <i class="fas fa-undo me-1"></i>@Localizer["YesReactivate"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .nav-tabs .nav-link {
+            color: var(--bs-gray-600);
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: 600;
+        }
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        }
+
+        /* Category badge styling */
+        .category-badge {
+            background-color: #e9ecef;
+            color: #495057;
+            border: 1px solid #dee2e6;
+        }
+
+        /* Action button consistency */
+        .action-btn {
+            border-radius: 0.25rem !important;
+        }
+
+        /* Dark mode support */
+        [data-theme="dark"] .category-badge {
+            background-color: #374151;
+            color: #e5e7eb;
+            border-color: #4b5563;
+        }
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .table {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table-light {
+            background-color: var(--bs-gray-800) !important;
+        }
+        [data-theme="dark"] .table-light th {
+            background-color: var(--bs-gray-800) !important;
+            color: var(--bs-light);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .table-hover tbody tr:hover {
+            background-color: var(--bs-gray-700) !important;
+        }
+        [data-theme="dark"] .table td,
+        [data-theme="dark"] .table th {
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .nav-tabs {
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .nav-tabs .nav-link {
+            color: var(--bs-gray-400);
+        }
+        [data-theme="dark"] .nav-tabs .nav-link.active {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700) var(--bs-gray-700) var(--bs-dark);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .input-group-text {
+            background-color: var(--bs-gray-700);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .modal-content {
+            background-color: var(--bs-gray-800);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .modal-header {
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .modal-footer {
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-footer {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .page-link {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+    </style>
+}
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        // Approve modal handler
+        var currentSellerId = null;
+        var approveModal = document.getElementById('approveModal');
+
+        approveModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            currentSellerId = button.getAttribute('data-seller-id');
+            var sellerName = button.getAttribute('data-seller-name');
+            document.getElementById('approveSellerName').textContent = sellerName;
+        });
+
+        document.getElementById('confirmApproveBtn').addEventListener('click', function() {
+            if (!currentSellerId) return;
+
+            var btn = this;
+            var originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Approving...';
+
+            $.ajax({
+                url: '@Url.Action("Approve", "SellerManagement", new { area = "Admin" })/' + currentSellerId,
+                type: 'POST',
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function(response) {
+                    // Hide modal
+                    bootstrap.Modal.getInstance(approveModal).hide();
+
+                    // Show success toast
+                    showToast('Seller approved successfully!', 'success');
+
+                    // Reload after short delay to update counts
+                    setTimeout(function() { location.reload(); }, 1000);
+                },
+                error: function(xhr) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    showToast('Error approving seller: ' + (xhr.responseText || 'Unknown error'), 'danger');
+                }
+            });
+        });
+
+        // Reset modal state when hidden
+        approveModal.addEventListener('hidden.bs.modal', function () {
+            currentSellerId = null;
+            var btn = document.getElementById('confirmApproveBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>Yes, Approve';
+        });
+
+        // Reactivate modal handler
+        var currentReactivateSellerId = null;
+        var reactivateModal = document.getElementById('reactivateModal');
+
+        reactivateModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            currentReactivateSellerId = button.getAttribute('data-seller-id');
+            var sellerName = button.getAttribute('data-seller-name');
+            document.getElementById('reactivateSellerName').textContent = sellerName;
+        });
+
+        document.getElementById('confirmReactivateBtn').addEventListener('click', function() {
+            if (!currentReactivateSellerId) return;
+
+            var btn = this;
+            var originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Reactivating...';
+
+            $.ajax({
+                url: '@Url.Action("Reactivate", "SellerManagement", new { area = "Admin" })/' + currentReactivateSellerId,
+                type: 'POST',
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function(response) {
+                    bootstrap.Modal.getInstance(reactivateModal).hide();
+                    showToast('Seller reactivated successfully!', 'success');
+                    setTimeout(function() { location.reload(); }, 1000);
+                },
+                error: function(xhr) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    showToast('Error reactivating seller: ' + (xhr.responseText || 'Unknown error'), 'danger');
+                }
+            });
+        });
+
+        // Reset reactivate modal state when hidden
+        reactivateModal.addEventListener('hidden.bs.modal', function () {
+            currentReactivateSellerId = null;
+            var btn = document.getElementById('confirmReactivateBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-undo me-1"></i>Yes, Reactivate';
+        });
+
+        function showToast(message, type) {
+            var toast = $('<div class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">' +
+                '<div class="toast show align-items-center text-white bg-' + type + ' border-0">' +
+                '<div class="d-flex">' +
+                '<div class="toast-body">' + message + '</div>' +
+                '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>' +
+                '</div></div></div>');
+            $('body').append(toast);
+            setTimeout(function() { toast.remove(); }, 3000);
+        }
+    </script>
+}

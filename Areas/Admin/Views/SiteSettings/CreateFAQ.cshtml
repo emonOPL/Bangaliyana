@@ -1,0 +1,52 @@
+@model Bangaliyana.Models.FAQ
+@{ ViewData["Title"] = "Add FAQ"; }
+
+<div class="container px-4">
+    <h1 class="mt-4"><i class="fas fa-plus me-2"></i>Add FAQ</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a asp-action="Index">Site Settings</a></li>
+        <li class="breadcrumb-item"><a asp-action="FAQs">FAQs</a></li>
+        <li class="breadcrumb-item active">Create</li>
+    </ol>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="CreateFAQ" method="post">
+                <div class="mb-3">
+                    <label asp-for="Question" class="form-label"></label>
+                    <input asp-for="Question" class="form-control" />
+                    <span asp-validation-for="Question" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Answer" class="form-label"></label>
+                    <textarea asp-for="Answer" class="form-control" rows="5" placeholder="HTML supported..."></textarea>
+                    <span asp-validation-for="Answer" class="text-danger"></span>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="Category" class="form-label"></label>
+                        <input asp-for="Category" class="form-control" placeholder="Shipping, Payment, etc." />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="DisplayOrder" class="form-label"></label>
+                        <input asp-for="DisplayOrder" class="form-control" type="number" value="0" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Status</label>
+                        <div class="form-check mt-2">
+                            <input asp-for="IsActive" class="form-check-input" type="checkbox" checked />
+                            <label asp-for="IsActive" class="form-check-label"></label>
+                        </div>
+                    </div>
+                </div>
+                <hr />
+                <div class="d-flex justify-content-between">
+                    <a asp-action="FAQs" class="btn btn-secondary"><i class="fas fa-arrow-left me-1"></i> Back</a>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

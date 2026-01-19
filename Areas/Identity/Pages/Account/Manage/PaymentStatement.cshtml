@@ -1,0 +1,481 @@
+@page
+@model Bangaliyana.Areas.Identity.Pages.Account.Manage.PaymentStatementModel
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    ViewData["Title"] = Localizer["PaymentStatement"].Value;
+    ViewData["ActivePage"] = "PaymentStatement";
+}
+
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-1"><i class="fas fa-file-invoice-dollar text-primary me-2"></i>@Localizer["PaymentStatement"]</h4>
+            <p class="text-muted mb-0">@Localizer["ViewPaymentHistoryAndSupport"]</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        var alertClass = Model.StatusMessage.StartsWith("Error") ? "alert-danger" : "alert-success";
+        var iconClass = Model.StatusMessage.StartsWith("Error") ? "fa-exclamation-circle" : "fa-check-circle";
+        <div class="alert @alertClass alert-dismissible fade show" role="alert">
+            <i class="fas @iconClass me-2"></i>@Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card border-success h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small mb-1">@Localizer["CurrentBalance"]</p>
+                            <h4 class="mb-0 text-success">BDT @(Model.CurrentSeller != null ? ((int)Math.Round(Model.CurrentSeller.AccountBalance)).ToString() : "0")</h4>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-wallet text-success fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small mb-1">@Localizer["TotalPayments"]</p>
+                            <h4 class="mb-0">@Model.Payments.Count()</h4>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-file-invoice text-primary fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small mb-1">@Localizer["Pending"]</p>
+                            <h4 class="mb-0 text-warning">@Model.Payments.Count(p => p.Status == Bangaliyana.Models.SellerPaymentStatus.Pending || p.Status == Bangaliyana.Models.SellerPaymentStatus.UnderReview || p.Status == Bangaliyana.Models.SellerPaymentStatus.Processing)</h4>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-clock text-warning fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small mb-1">@Localizer["TotalReceived"]</p>
+                            <h4 class="mb-0 text-success">BDT @((int)Math.Round(Model.Payments.Where(p => p.Status == Bangaliyana.Models.SellerPaymentStatus.Paid).Sum(p => p.Amount)))</h4>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-check-circle text-success fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col">
+                    <label class="form-label">@Localizer["FilterByStatus"]</label>
+                    <select name="status" class="form-select">
+                        <option value="">@Localizer["AllStatuses"]</option>
+                        @foreach (Bangaliyana.Models.SellerPaymentStatus status in Enum.GetValues(typeof(Bangaliyana.Models.SellerPaymentStatus)))
+                        {
+                            <option value="@status" selected="@(Model.FilterStatus == status)">@status.GetDisplayName()</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter me-1"></i>@Localizer["Filter"]
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Payments Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-history me-2"></i>@Localizer["PaymentHistory"]</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Payments.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>@Localizer["PaymentNumber"]</th>
+                                <th>@Localizer["Amount"]</th>
+                                <th>@Localizer["Method"]</th>
+                                <th>@Localizer["Status"]</th>
+                                <th>@Localizer["Period"]</th>
+                                <th>@Localizer["Date"]</th>
+                                <th class="text-center">@Localizer["Support"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var payment in Model.Payments)
+                            {
+                                var statusBadge = payment.Status switch
+                                {
+                                    Bangaliyana.Models.SellerPaymentStatus.Pending => "bg-warning text-dark",
+                                    Bangaliyana.Models.SellerPaymentStatus.UnderReview => "bg-info",
+                                    Bangaliyana.Models.SellerPaymentStatus.Processing => "bg-primary",
+                                    Bangaliyana.Models.SellerPaymentStatus.Paid => "bg-success",
+                                    Bangaliyana.Models.SellerPaymentStatus.Failed => "bg-danger",
+                                    _ => "bg-secondary"
+                                };
+                                var unreadCount = payment.Messages?.Count(m => !m.IsRead && m.IsStaffReply) ?? 0;
+                                <tr>
+                                    <td>
+                                        <span class="fw-bold">@payment.PaymentNumber</span>
+                                        @if (!string.IsNullOrEmpty(payment.TransactionReference))
+                                        {
+                                            <br /><small class="text-muted">Ref: @payment.TransactionReference</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold text-success">BDT @((int)Math.Round(payment.Amount))</span>
+                                    </td>
+                                    <td>
+                                        @if (payment.PaymentMethod == Bangaliyana.Models.SellerPaymentMethod.BankTransfer)
+                                        {
+                                            <span class="badge bg-secondary"><i class="fas fa-university me-1"></i>Bank</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success"><i class="fas fa-mobile-alt me-1"></i>Mobile</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @statusBadge">@payment.Status.GetDisplayName()</span>
+                                        @if (payment.Status == Bangaliyana.Models.SellerPaymentStatus.Failed && !string.IsNullOrEmpty(payment.FailureReason))
+                                        {
+                                            <br /><small class="text-danger">@payment.FailureReason</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>@payment.PeriodStart.ToBangladeshString("MMM yyyy")</small>
+                                    </td>
+                                    <td>
+                                        <small>@payment.CreatedAt.ToBangladeshShortDateString()</small>
+                                        @if (payment.CompletedAt.HasValue)
+                                        {
+                                            <br /><small class="text-success"><i class="fas fa-check me-1"></i>@payment.CompletedAt.Value.ToBangladeshString("dd MMM")</small>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="?viewMessages=@payment.Id" class="btn btn-sm btn-outline-primary position-relative" data-bs-toggle="modal" data-bs-target="#messagesModal" onclick="loadMessages(@payment.Id)">
+                                            <i class="fas fa-comments"></i>
+                                            @if (unreadCount > 0)
+                                            {
+                                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                                    @unreadCount
+                                                </span>
+                                            }
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted mb-0">@Localizer["NoPaymentRecords"]</p>
+                    <small class="text-muted">@Localizer["PaymentHistoryWillAppear"]</small>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                    <a class="page-link" href="?status=@Model.FilterStatus&page=@(Model.CurrentPage - 1)">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                @for (int i = Math.Max(1, Model.CurrentPage - 2); i <= Math.Min(Model.TotalPages, Model.CurrentPage + 2); i++)
+                {
+                    <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                        <a class="page-link" href="?status=@Model.FilterStatus&page=@i">@i</a>
+                    </li>
+                }
+                <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" href="?status=@Model.FilterStatus&page=@(Model.CurrentPage + 1)">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
+
+    <!-- Payment Info -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>@Localizer["PaymentInformation"]</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-primary"><i class="fas fa-calendar-alt me-2"></i>@Localizer["PaymentSchedule"]</h6>
+                    <ul class="text-muted small">
+                        <li>@Localizer["PaymentsProcessedMonthly"]</li>
+                        <li>@Localizer["BalanceAutoPaid"]</li>
+                        <li>@Localizer["MinimumPayoutAmount"]</li>
+                        <li>@Localizer["PaymentMethodDetermined"]</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-success"><i class="fas fa-shield-alt me-2"></i>@Localizer["NeedHelp"]</h6>
+                    <ul class="text-muted small">
+                        <li>@Localizer["ClickMessageIcon"]</li>
+                        <li>@Localizer["ProvidePaymentNumber"]</li>
+                        <li>@Localizer["UpdatePaymentAccounts", "<a asp-page=\"./PaymentAccounts\">", "</a>"]</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Messages Modal -->
+@if (Model.SelectedPayment != null)
+{
+    <div class="modal fade show" id="messagesModal" tabindex="-1" style="display: block; background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>@Localizer["PaymentDetails"] - @Model.SelectedPayment.PaymentNumber
+                    </h5>
+                    <a href="?" class="btn-close"></a>
+                </div>
+                <div class="modal-body p-0">
+                    <!-- Order Breakdown Section -->
+                    @if (Model.PaymentTransactions.Any())
+                    {
+                        <div class="p-3 border-bottom">
+                            <h6 class="mb-3"><i class="fas fa-list-alt me-2 text-primary"></i>@Localizer["OrderBreakdown"] <span class="badge bg-primary">@Model.PaymentTransactions.Count @Localizer["orders"]</span></h6>
+                            <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th>@Localizer["OrderNumber"]</th>
+                                            <th>@Localizer["Type"]</th>
+                                            <th>@Localizer["ProductPayout"]</th>
+                                            <th>@Localizer["Delivery"]</th>
+                                            <th class="text-end">@Localizer["Total"]</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var tx in Model.PaymentTransactions)
+                                        {
+                                            var isCOD = tx.Type == Bangaliyana.Models.SellerTransactionType.Commission;
+                                            var orderNumber = tx.Order?.OrderNumber ?? tx.OrderId?.ToString() ?? "-";
+                                            var deliveryCharge = tx.Order?.DeliveryCharge ?? 0m;
+                                            decimal productAmount = isCOD ? (tx.Order?.SubTotal ?? 0m) - Math.Abs(tx.Amount) : tx.Amount - deliveryCharge;
+
+                                            <tr>
+                                                <td>
+                                                    <a asp-area="Seller" asp-controller="Order" asp-action="Details" asp-route-id="@tx.OrderId" class="text-decoration-none fw-bold">
+                                                        #@orderNumber
+                                                    </a>
+                                                </td>
+                                                <td>
+                                                    @if (isCOD)
+                                                    {
+                                                        <span class="badge bg-warning text-dark"><i class="fas fa-money-bill me-1"></i>COD</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-success"><i class="fas fa-credit-card me-1"></i>Online</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (isCOD)
+                                                    {
+                                                        <span class="text-muted">-৳@Math.Abs(tx.Amount).ToString("N0")</span>
+                                                        <small class="text-muted">(commission)</small>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-success">৳@productAmount.ToString("N0")</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (deliveryCharge > 0)
+                                                    {
+                                                        @if (isCOD)
+                                                        {
+                                                            <span class="text-muted">collected</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-info">৳@deliveryCharge.ToString("N0")</span>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">-</span>
+                                                    }
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="@(tx.Amount >= 0 ? "text-success" : "text-danger") fw-bold">
+                                                        @(tx.Amount >= 0 ? "+" : "")৳@tx.Amount.ToString("N0")
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr class="fw-bold">
+                                            <td colspan="4" class="text-end">@Localizer["TotalPayout"]:</td>
+                                            <td class="text-end text-success">৳@Model.TotalProductPayout.ToString("N0")</td>
+                                        </tr>
+                                        @if (Model.TotalCommission > 0)
+                                        {
+                                            <tr class="fw-bold">
+                                                <td colspan="4" class="text-end">@Localizer["TotalCommission"]:</td>
+                                                <td class="text-end text-danger">-৳@Model.TotalCommission.ToString("N0")</td>
+                                            </tr>
+                                        }
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Messages Section -->
+                    <div class="p-3">
+                        <h6 class="mb-3"><i class="fas fa-comments me-2 text-primary"></i>@Localizer["SupportMessages"]</h6>
+                    </div>
+                    <div class="px-3" style="max-height: 250px; overflow-y: auto;" id="messagesContainer">
+                    @if (Model.Messages.Any())
+                    {
+                        @foreach (var msg in Model.Messages)
+                        {
+                            var isStaff = msg.IsStaffReply;
+                            <div class="d-flex mb-3 @(isStaff ? "" : "justify-content-end")">
+                                <div class="@(isStaff ? "bg-light" : "bg-primary text-white") rounded p-3" style="max-width: 80%;">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <strong class="@(isStaff ? "" : "text-white")">@(isStaff ? Localizer["SupportTeam"].Value : Localizer["You"].Value)</strong>
+                                        <small class="@(isStaff ? "text-muted" : "text-white-50") ms-2">
+                                            @msg.CreatedAt.ToBangladeshString("dd MMM, hh:mm tt")
+                                        </small>
+                                    </div>
+                                    <p class="mb-0" style="white-space: pre-wrap;">@msg.Message</p>
+                                    @if (msg.Attachments?.Any() == true)
+                                    {
+                                        <div class="mt-2">
+                                            @foreach (var att in msg.Attachments)
+                                            {
+                                                <a href="@att.FileUrl" target="_blank" class="badge @(isStaff ? "bg-secondary" : "bg-light text-dark")">
+                                                    <i class="fas fa-paperclip me-1"></i>@att.FileName
+                                                </a>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-comments fa-2x mb-2"></i>
+                            <p class="mb-0">@Localizer["NoMessagesYet"]</p>
+                        </div>
+                    }
+                    </div>
+                </div>
+                <div class="modal-footer d-block">
+                    <form method="post" asp-page-handler="SendMessage" enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="paymentId" value="@Model.SelectedPayment.Id" />
+                        <div class="mb-2">
+                            <textarea name="message" class="form-control" rows="2" placeholder="@Localizer["TypeYourMessage"].Value" required></textarea>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <input type="file" name="attachment" class="d-none" id="modalAttachment" />
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('modalAttachment').click();">
+                                    <i class="fas fa-paperclip me-1"></i>@Localizer["Attach"]
+                                </button>
+                                <small class="text-muted ms-1" id="modalAttachmentName"></small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-1"></i>@Localizer["Send"]
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+    [data-theme="dark"] .table {
+        color: #e5e7eb;
+    }
+    [data-theme="dark"] .table-light {
+        background-color: #374151;
+        color: #e5e7eb;
+    }
+    [data-theme="dark"] .modal-content {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+    [data-theme="dark"] .bg-light {
+        background-color: #374151 !important;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var container = document.getElementById('messagesContainer');
+            if (container) {
+                container.scrollTop = container.scrollHeight;
+            }
+        });
+
+        document.getElementById('modalAttachment')?.addEventListener('change', function() {
+            var fileName = this.files[0]?.name || '';
+            document.getElementById('modalAttachmentName').textContent = fileName ? fileName : '';
+        });
+    </script>
+}

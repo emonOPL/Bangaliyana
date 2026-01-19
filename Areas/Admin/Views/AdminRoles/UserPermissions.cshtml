@@ -1,0 +1,197 @@
+@model Dictionary<string, Bangaliyana.Services.PermissionResult>
+@using Bangaliyana.Models
+@using Bangaliyana.Services
+
+@{
+    ViewData["Title"] = "User Permissions";
+    var user = ViewBag.User as ApplicationUser;
+    var userRoles = ViewBag.UserRoles as List<AdminRole> ?? new List<AdminRole>();
+    var modules = ViewBag.Modules as string[] ?? Array.Empty<string>();
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Admin Roles</a></li>
+            <li class="breadcrumb-item active">User Permissions</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-user-shield text-info me-2"></i>User Permissions</h1>
+            <p class="text-muted mb-0">View all permissions for <strong>@user?.Email</strong></p>
+        </div>
+        <a asp-controller="UserManagement" asp-action="Edit" asp-route-id="@user?.Id" class="btn btn-outline-primary">
+            <i class="fas fa-user-edit me-1"></i> Edit User
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <!-- User Info Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-user me-2"></i>User Information</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2"><strong>Name:</strong> @(user?.FirstName ?? "") @(user?.LastName ?? "")</p>
+                    <p class="mb-2"><strong>Email:</strong> @user?.Email</p>
+                    <p class="mb-0"><strong>Created:</strong> @user?.CreatedAt.ToString("dd MMM yyyy")</p>
+                </div>
+            </div>
+
+            <!-- Assigned Admin Roles -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-tags me-2"></i>Assigned Admin Roles</h5>
+                </div>
+                <div class="card-body p-0">
+                    @if (userRoles.Any())
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var role in userRoles)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-shield-alt text-primary me-2"></i>
+                                        @role.Name
+                                    </div>
+                                    <span class="badge bg-primary">@(role.Permissions?.Count ?? 0) modules</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-info-circle mb-2"></i>
+                            <p class="mb-0">No admin roles assigned</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <!-- Permissions Matrix -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-key me-2"></i>Effective Permissions</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Module</th>
+                                    <th class="text-center">View</th>
+                                    <th class="text-center">Create</th>
+                                    <th class="text-center">Edit</th>
+                                    <th class="text-center">Delete</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var module in modules)
+                                {
+                                    Model.TryGetValue(module, out var perm);
+                                    var hasAny = perm?.HasAnyPermission ?? false;
+                                    var moduleIcon = module switch
+                                    {
+                                        "Dashboard" => "fas fa-tachometer-alt",
+                                        "Products" => "fas fa-box",
+                                        "Categories" => "fas fa-folder",
+                                        "Inventory" => "fas fa-warehouse",
+                                        "Reviews" => "fas fa-star",
+                                        "Orders" => "fas fa-shopping-cart",
+                                        "Transactions" => "fas fa-receipt",
+                                        "DeliveryCharges" => "fas fa-truck",
+                                        "SupportTickets" => "fas fa-ticket-alt",
+                                        "SupportChat" => "fas fa-comments",
+                                        "ContactInquiries" => "fas fa-envelope",
+                                        "Blog" => "fas fa-blog",
+                                        "StylingGuides" => "fas fa-palette",
+                                        "SeasonalCollections" => "fas fa-snowflake",
+                                        "SiteSettings" => "fas fa-cog",
+                                        "MenuManagement" => "fas fa-bars",
+                                        "Users" => "fas fa-users",
+                                        "Roles" => "fas fa-user-tag",
+                                        "Sellers" => "fas fa-store",
+                                        "SellerPayments" => "fas fa-money-bill",
+                                        "SellerMessages" => "fas fa-comments-dollar",
+                                        "Coupons" => "fas fa-tags",
+                                        "FlashSales" => "fas fa-bolt",
+                                        "PromotionalCampaigns" => "fas fa-bullhorn",
+                                        "CategoryPromotions" => "fas fa-percent",
+                                        "Reports" => "fas fa-chart-bar",
+                                        "BusinessTypes" => "fas fa-building",
+                                        "QA" => "fas fa-question-circle",
+                                        _ => "fas fa-cube"
+                                    };
+                                    <tr class="@(hasAny ? "" : "table-secondary")">
+                                        <td>
+                                            <i class="@moduleIcon @(hasAny ? "text-primary" : "text-muted") me-2"></i>
+                                            <strong class="@(hasAny ? "" : "text-muted")">@module</strong>
+                                        </td>
+                                        <td class="text-center">
+                                            @if (perm?.CanView == true)
+                                            {
+                                                <i class="fas fa-check-circle text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-times-circle text-muted"></i>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (perm?.CanCreate == true)
+                                            {
+                                                <i class="fas fa-check-circle text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-times-circle text-muted"></i>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (perm?.CanEdit == true)
+                                            {
+                                                <i class="fas fa-check-circle text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-times-circle text-muted"></i>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (perm?.CanDelete == true)
+                                            {
+                                                <i class="fas fa-check-circle text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-times-circle text-muted"></i>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        [data-theme="dark"] .card { background-color: var(--bs-dark); border-color: var(--bs-gray-700); }
+        [data-theme="dark"] .card-header.bg-light { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] .table { color: var(--bs-light); }
+        [data-theme="dark"] .table-light { background-color: var(--bs-gray-800) !important; }
+        [data-theme="dark"] .table-light th { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] .table-secondary { background-color: var(--bs-gray-700) !important; }
+        [data-theme="dark"] .list-group-item { background-color: var(--bs-gray-800); color: var(--bs-light); border-color: var(--bs-gray-700); }
+    </style>
+}

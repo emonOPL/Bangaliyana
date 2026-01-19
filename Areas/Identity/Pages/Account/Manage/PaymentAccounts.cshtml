@@ -1,0 +1,568 @@
+@page
+@model Bangaliyana.Areas.Identity.Pages.Account.Manage.PaymentAccountsModel
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    ViewData["Title"] = Localizer["PaymentAccounts"].Value;
+    ViewData["ActivePage"] = "PaymentAccounts";
+}
+
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-1"><i class="fas fa-credit-card text-primary me-2"></i>@Localizer["PaymentAccounts"]</h4>
+            <p class="text-muted mb-0">@Localizer["ManageBankAndMobileDetails"]</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        var alertClass = Model.StatusMessage.StartsWith("Error") ? "alert-danger" : "alert-success";
+        var iconClass = Model.StatusMessage.StartsWith("Error") ? "fa-exclamation-circle" : "fa-check-circle";
+        <div class="alert @alertClass alert-dismissible fade show" role="alert">
+            <i class="fas @iconClass me-2"></i>@Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Bank Account Section -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-university me-2"></i>@Localizer["BankAccount"]</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.PendingRequest != null)
+                    {
+                        <div class="alert alert-warning mb-4">
+                            <h6 class="alert-heading"><i class="fas fa-clock me-2"></i>@Localizer["ChangeRequestPending"]</h6>
+                            <p class="mb-1">@Localizer["BankChangeRequestSubmitted", Model.PendingRequest.RequestedAt.ToBangladeshString()]</p>
+                            <p class="mb-0 small">@Localizer["WaitForAdminApproval"]</p>
+                        </div>
+                    }
+
+                    @if (Model.BankAccount != null)
+                    {
+                        <!-- Current Bank Account Display -->
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3">@Localizer["CurrentBankAccount"]</h6>
+                            <div class="border rounded p-3 bg-light">
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <small class="text-muted d-block">@Localizer["BankName"]</small>
+                                        <strong>@Model.BankAccount.BankName</strong>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <small class="text-muted d-block">@Localizer["BranchName"]</small>
+                                        <strong>@(Model.BankAccount.BranchName ?? "-")</strong>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <small class="text-muted d-block">@Localizer["AccountHolder"]</small>
+                                        <strong>@Model.BankAccount.AccountHolderName</strong>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <small class="text-muted d-block">@Localizer["AccountNumber"]</small>
+                                        <strong>@Model.BankAccount.AccountNumber</strong>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(Model.BankAccount.RoutingNumber))
+                                    {
+                                        <div class="col-sm-6">
+                                            <small class="text-muted d-block">@Localizer["RoutingNumber"]</small>
+                                            <strong>@Model.BankAccount.RoutingNumber</strong>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.BankAccount.CheckbookPhotoUrl))
+                                    {
+                                        <div class="col-12 mt-2">
+                                            <small class="text-muted d-block mb-1">@Localizer["CheckbookPagePhoto"]</small>
+                                            <a href="@Model.BankAccount.CheckbookPhotoUrl" target="_blank" class="btn btn-outline-secondary btn-sm">
+                                                <i class="fas fa-image me-1"></i>@Localizer["ViewPhoto"]
+                                            </a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-info-circle me-2"></i>@Localizer["NoBankAccountYet"]
+                        </div>
+                    }
+
+                    @if (Model.PendingRequest == null)
+                    {
+                        <!-- Bank Change Request Form -->
+                        <h6 class="text-muted mb-3">@(Model.BankAccount == null ? Localizer["AddBankAccount"].Value : Localizer["RequestBankAccountChange"].Value)</h6>
+                        <form method="post" asp-page-handler="RequestBankChange" enctype="multipart/form-data">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="BankInput.BankName" class="form-label">@Localizer["BankName"] <span class="text-danger">*</span></label>
+                                    <input asp-for="BankInput.BankName" class="form-control" placeholder="@Localizer["BankNamePlaceholder"].Value" />
+                                    <span asp-validation-for="BankInput.BankName" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="BankInput.BranchName" class="form-label">@Localizer["BranchName"] <span class="text-danger">*</span></label>
+                                    <input asp-for="BankInput.BranchName" class="form-control" placeholder="@Localizer["BranchNamePlaceholder"].Value" />
+                                    <span asp-validation-for="BankInput.BranchName" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="BankInput.AccountHolderName" class="form-label">@Localizer["AccountHolderName"] <span class="text-danger">*</span></label>
+                                    <input asp-for="BankInput.AccountHolderName" class="form-control" placeholder="@Localizer["NameAsPerBankAccount"].Value" />
+                                    <span asp-validation-for="BankInput.AccountHolderName" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="BankInput.AccountNumber" class="form-label">@Localizer["AccountNumber"] <span class="text-danger">*</span></label>
+                                    <input asp-for="BankInput.AccountNumber" class="form-control" placeholder="@Localizer["YourAccountNumber"].Value" />
+                                    <span asp-validation-for="BankInput.AccountNumber" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="BankInput.RoutingNumber" class="form-label">@Localizer["RoutingNumber"]</label>
+                                    <input asp-for="BankInput.RoutingNumber" class="form-control" placeholder="@Localizer["Optional"].Value" />
+                                    <span asp-validation-for="BankInput.RoutingNumber" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="BankInput.SwiftBicCode" class="form-label">@Localizer["SwiftBicCode"]</label>
+                                    <input asp-for="BankInput.SwiftBicCode" class="form-control" placeholder="@Localizer["SwiftBicCodePlaceholder"].Value" />
+                                    <span asp-validation-for="BankInput.SwiftBicCode" class="text-danger small"></span>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">@Localizer["CheckbookPagePhoto"] <span class="text-danger">*</span></label>
+                                    <small class="d-block text-muted mb-2">@Localizer["AccountNumberMustBeVisible"]</small>
+                                    <div class="file-upload-wrapper" onclick="document.getElementById('checkbookFileInput').click()">
+                                        <input asp-for="BankInput.CheckbookPhoto" id="checkbookFileInput" type="file" accept=".jpg,.jpeg,.png" class="d-none" onchange="handleCheckbookPreview(this)" />
+                                        <div id="checkbookUploadArea" class="file-upload-area">
+                                            <div id="checkbookPlaceholder" class="file-upload-placeholder">
+                                                <i class="fas fa-cloud-upload-alt"></i>
+                                                <span class="file-upload-text">@Localizer["ClickToUpload"]</span>
+                                                <span class="file-upload-hint">@Localizer["ImageFormatHint"]</span>
+                                            </div>
+                                            <div id="checkbookPreviewContainer" class="file-preview-container d-none">
+                                                <img id="checkbookPreviewImg" src="" alt="Preview" class="file-preview-img" />
+                                                <div class="file-preview-overlay">
+                                                    <i class="fas fa-edit"></i>
+                                                    <span>@Localizer["Change"]</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span asp-validation-for="BankInput.CheckbookPhoto" class="text-danger small"></span>
+                                </div>
+                                @if (Model.BankAccount != null)
+                                {
+                                    <div class="col-12">
+                                        <label asp-for="BankInput.ChangeReason" class="form-label"></label>
+                                        <textarea asp-for="BankInput.ChangeReason" class="form-control" rows="2" placeholder="@Localizer["WhyChangeBankAccount"].Value"></textarea>
+                                        <span asp-validation-for="BankInput.ChangeReason" class="text-danger small"></span>
+                                    </div>
+                                }
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-paper-plane me-1"></i>@(Model.BankAccount == null ? Localizer["AddBankAccount"].Value : Localizer["SubmitChangeRequest"].Value)
+                                    </button>
+                                    @if (Model.BankAccount != null)
+                                    {
+                                        <small class="text-muted d-block mt-2 text-center">
+                                            <i class="fas fa-info-circle me-1"></i>@Localizer["ChangeRequestsRequireApproval"]
+                                        </small>
+                                    }
+                                </div>
+                            </div>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Banking Section -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-mobile-alt me-2"></i>@Localizer["MobileBankingOptional"]</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="UpdateMobileBanking">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label asp-for="MobileInput.Provider" class="form-label">@Localizer["MobileBankingProvider"]</label>
+                                <select asp-for="MobileInput.Provider" class="form-select" id="mobileProviderSelect">
+                                    @foreach (var provider in Enum.GetValues<Bangaliyana.Models.MobileBankingProvider>())
+                                    {
+                                        <option value="@provider">@provider.GetDisplayName()</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6 mobile-fields" style="@(Model.MobileInput.Provider == Bangaliyana.Models.MobileBankingProvider.None ? "display:none" : "")">
+                                <label asp-for="MobileInput.MobileNumber" class="form-label">@Localizer["MobileNumber"] <span class="text-danger mobile-required-indicator">*</span></label>
+                                <input asp-for="MobileInput.MobileNumber" class="form-control" placeholder="01XXXXXXXXX" />
+                                <span asp-validation-for="MobileInput.MobileNumber" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6 mobile-fields" style="@(Model.MobileInput.Provider == Bangaliyana.Models.MobileBankingProvider.None ? "display:none" : "")">
+                                <label asp-for="MobileInput.AccountName" class="form-label">@Localizer["AccountName"]</label>
+                                <input asp-for="MobileInput.AccountName" class="form-control" placeholder="@Localizer["MobileBankingAccountName"].Value" />
+                                <span asp-validation-for="MobileInput.AccountName" class="text-danger small"></span>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-save me-1"></i>@Localizer["SaveMobileBanking"]
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Mobile Banking Info Cards -->
+                    <div class="mt-4 pt-3 border-top">
+                        <h6 class="text-muted mb-3">@Localizer["SupportedProviders"]</h6>
+                        <div class="row g-2">
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-2 text-center">
+                                    <img src="/images/logos/bkash-logo.png" alt="bKash" class="img-fluid" style="height: 30px;" onerror="this.onerror=null;this.src='/images/noimage.jpg';">
+                                    <small class="d-block text-muted">bKash</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-2 text-center">
+                                    <img src="/images/logos/nagad-logo.png" alt="Nagad" class="img-fluid" style="height: 30px;" onerror="this.onerror=null;this.src='/images/noimage.jpg';">
+                                    <small class="d-block text-muted">Nagad</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-2 text-center">
+                                    <img src="/images/logos/rocket-logo.png" alt="Rocket" class="img-fluid" style="height: 30px;" onerror="this.onerror=null;this.src='/images/noimage.jpg';">
+                                    <small class="d-block text-muted">Rocket</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-2 text-center">
+                                    <img src="/images/logos/upay-logo.png" alt="Upay" class="img-fluid" style="height: 30px;" onerror="this.onerror=null;this.src='/images/noimage.jpg';">
+                                    <small class="d-block text-muted">Upay</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment History / Information -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>@Localizer["PaymentInformation"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary"><i class="fas fa-university me-2"></i>@Localizer["BankAccountPayments"]</h6>
+                            <ul class="text-muted small">
+                                <li>@Localizer["BankTransferProcessingTime"]</li>
+                                <li>@Localizer["BankAccountChangeVerification"]</li>
+                                <li>@Localizer["KeepCheckbookUpdated"]</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-success"><i class="fas fa-mobile-alt me-2"></i>@Localizer["MobileBankingPayments"]</h6>
+                            <ul class="text-muted small">
+                                <li>@Localizer["MobileBankingProcessingTime"]</li>
+                                <li>@Localizer["MobileBankingUpdateAnytime"]</li>
+                                <li>@Localizer["EnsureMobileRegistered"]</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Completely disable all green checkmark/valid styling on form controls */
+    .form-control,
+    .form-control:valid,
+    .form-control.is-valid,
+    .form-select,
+    .form-select:valid,
+    .form-select.is-valid {
+        background-image: none !important;
+        border-color: #dee2e6 !important;
+    }
+
+    /* Only show red border for invalid fields */
+    .form-control.is-invalid,
+    .form-control:invalid:not(:placeholder-shown),
+    .form-select.is-invalid {
+        border-color: #dc3545 !important;
+        background-image: none !important;
+    }
+
+    /* Focus state - neutral border */
+    .form-control:focus,
+    .form-select:focus {
+        border-color: #86b7fe !important;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+    }
+
+    /* Focus state for invalid fields */
+    .form-control.is-invalid:focus {
+        border-color: #dc3545 !important;
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
+    }
+
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .card-header {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .bg-light {
+        background-color: #374151 !important;
+    }
+
+    [data-theme="dark"] .border {
+        border-color: #374151 !important;
+    }
+
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+        border-color: #374151 !important;
+    }
+
+    [data-theme="dark"] .form-control:focus,
+    [data-theme="dark"] .form-select:focus {
+        border-color: #86b7fe !important;
+    }
+
+    /* File Upload Styling */
+    .file-upload-wrapper {
+        cursor: pointer;
+    }
+
+    .file-upload-area {
+        border: 2px dashed #d1d5db;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        background: linear-gradient(145deg, #f9fafb, #f3f4f6);
+        min-height: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .file-upload-area:hover {
+        border-color: #0d6efd;
+        background: linear-gradient(145deg, #e8f4ff, #dbeafe);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+    }
+
+    .file-upload-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .file-upload-placeholder i {
+        font-size: 2rem;
+        color: #9ca3af;
+        transition: all 0.3s;
+    }
+
+    .file-upload-area:hover .file-upload-placeholder i {
+        color: #0d6efd;
+        transform: scale(1.1);
+    }
+
+    .file-upload-text {
+        font-weight: 600;
+        color: #4b5563;
+        font-size: 0.95rem;
+    }
+
+    .file-upload-hint {
+        font-size: 0.8rem;
+        color: #9ca3af;
+    }
+
+    .file-preview-container {
+        position: relative;
+        width: 100%;
+        max-width: 200px;
+    }
+
+    .file-preview-img {
+        width: 100%;
+        height: auto;
+        max-height: 150px;
+        object-fit: contain;
+        border-radius: 8px;
+    }
+
+    .file-preview-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s;
+        color: white;
+        gap: 0.25rem;
+    }
+
+    .file-preview-container:hover .file-preview-overlay {
+        opacity: 1;
+    }
+
+    .file-preview-overlay i {
+        font-size: 1.5rem;
+    }
+
+    .file-preview-overlay span {
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    /* Dark mode file upload */
+    [data-theme="dark"] .file-upload-area {
+        background: linear-gradient(145deg, #374151, #1f2937);
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .file-upload-area:hover {
+        border-color: #60a5fa;
+        background: linear-gradient(145deg, #3b4f6b, #2d3f58);
+    }
+
+    [data-theme="dark"] .file-upload-text {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .file-upload-placeholder i {
+        color: #6b7280;
+    }
+
+    [data-theme="dark"] .file-upload-area:hover .file-upload-placeholder i {
+        color: #60a5fa;
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Checkbook photo preview handler
+        function handleCheckbookPreview(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#checkbookPreviewImg').attr('src', e.target.result);
+                    $('#checkbookPlaceholder').addClass('d-none');
+                    $('#checkbookPreviewContainer').removeClass('d-none');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        $(document).ready(function () {
+            // Function to remove all valid classes
+            function removeValidClasses() {
+                $('.form-control, .form-select').removeClass('is-valid');
+            }
+
+            // Remove valid classes on page load
+            removeValidClasses();
+
+            // Override jQuery validation to prevent valid class styling
+            if ($.validator) {
+                $.validator.setDefaults({
+                    highlight: function (element) {
+                        $(element).addClass('is-invalid').removeClass('is-valid');
+                    },
+                    unhighlight: function (element) {
+                        $(element).removeClass('is-invalid is-valid');
+                    },
+                    errorClass: 'is-invalid',
+                    validClass: '',
+                    errorPlacement: function (error, element) {
+                        // Don't show jQuery validation errors, use asp-validation-for
+                    }
+                });
+            }
+
+            // Observe DOM changes to remove valid classes when added dynamically
+            var observer = new MutationObserver(function (mutations) {
+                mutations.forEach(function (mutation) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                        var target = $(mutation.target);
+                        if (target.hasClass('is-valid')) {
+                            target.removeClass('is-valid');
+                        }
+                    }
+                });
+            });
+
+            // Observe all form controls
+            $('.form-control, .form-select').each(function () {
+                observer.observe(this, { attributes: true, attributeFilter: ['class'] });
+            });
+
+            // Mobile provider change handler
+            $('#mobileProviderSelect').on('change', function () {
+                var provider = $(this).val();
+                if (provider === 'None' || provider === '0') {
+                    $('.mobile-fields').slideUp();
+                    $('#MobileInput_MobileNumber, #MobileInput_AccountName').removeClass('is-invalid is-valid');
+                } else {
+                    $('.mobile-fields').slideDown();
+                }
+            });
+
+            // Remove valid classes on form input
+            $('.form-control, .form-select').on('input change blur', function () {
+                $(this).removeClass('is-valid');
+            });
+
+            // Form submit validation with smooth scroll to first error
+            $('form').on('submit', function (e) {
+                var $form = $(this);
+                var validator = $form.data('validator');
+
+                if (validator) {
+                    // Trigger validation
+                    if (!validator.form()) {
+                        e.preventDefault();
+
+                        // Find the first invalid field
+                        var $firstError = $form.find('.is-invalid, .input-validation-error').first();
+
+                        if ($firstError.length) {
+                            // Smooth scroll to the first invalid field with offset
+                            var offset = $firstError.offset().top - 120;
+                            $('html, body').animate({
+                                scrollTop: offset
+                            }, 500, function() {
+                                // Focus the field after scrolling
+                                $firstError.focus();
+                            });
+                        }
+
+                        return false;
+                    }
+                }
+            });
+        });
+    </script>
+}

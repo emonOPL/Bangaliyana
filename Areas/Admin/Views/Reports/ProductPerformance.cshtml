@@ -1,0 +1,405 @@
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = "Product Performance";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Reports</a></li>
+            <li class="breadcrumb-item active">Product Performance</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-box text-warning me-2"></i>Product Performance</h1>
+            <p class="text-muted mb-0">Analyze product sales and performance metrics</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="ExportCsv" asp-route-reportType="products" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" class="btn btn-outline-success">
+                <i class="fas fa-file-csv me-1"></i>Export CSV
+            </a>
+            <a asp-action="ExportPdf" asp-route-reportType="products" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" class="btn btn-outline-danger">
+                <i class="fas fa-file-pdf me-1"></i>Export PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">From Date</label>
+                    <input type="date" name="fromDate" class="form-control" value="@ViewBag.FromDate" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">To Date</label>
+                    <input type="date" name="toDate" class="form-control" value="@ViewBag.ToDate" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Category</label>
+                    <select name="categoryId" class="form-select">
+                        <option value="">All Categories</option>
+                        @if (ViewBag.Categories != null)
+                        {
+                            @foreach (var cat in (IEnumerable<Category>)ViewBag.Categories)
+                            {
+                                <option value="@cat.Id" selected="@(ViewBag.CategoryId == cat.Id)">@cat.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-1"></i>Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-primary bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-box text-primary fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.TotalProducts</h5>
+                    <small class="text-muted">Total Products</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-success bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-check-circle text-success fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.ActiveProducts</h5>
+                    <small class="text-muted">Active Products</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-warning bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-exclamation-triangle text-warning fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.LowStockProducts</h5>
+                    <small class="text-muted">Low Stock</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-danger bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-times-circle text-danger fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.OutOfStockProducts</h5>
+                    <small class="text-muted">Out of Stock</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar text-warning me-2"></i>Top 10 Products by Revenue</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="topProductsChart" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie text-info me-2"></i>Stock Status</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="stockStatusChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Best Sellers -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-fire text-danger me-2"></i>Best Selling Products</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (ViewBag.BestSellers != null && ((IEnumerable<dynamic>)ViewBag.BestSellers).Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th class="text-center">Sold</th>
+                                <th class="text-end">Revenue</th>
+                                <th class="text-center">Stock</th>
+                                <th class="text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                int rank = 1;
+                            }
+                            @foreach (var product in (IEnumerable<dynamic>)ViewBag.BestSellers)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (rank <= 3)
+                                        {
+                                            <span class="badge bg-@(rank == 1 ? "warning" : rank == 2 ? "secondary" : "danger")">
+                                                <i class="fas fa-trophy"></i> @rank
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@rank</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold">@product.Name</span>
+                                        <br>
+                                        <small class="text-muted">SKU: @(product.SKU ?? "-")</small>
+                                    </td>
+                                    <td><small>@(product.CategoryName ?? "-")</small></td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary">@product.TotalSold</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="text-success fw-bold">৳@(((decimal)product.Revenue).ToString("N0"))</span>
+                                    </td>
+                                    <td class="text-center">
+                                        @{
+                                            int stock = product.Stock ?? 0;
+                                            string stockClass = stock > 10 ? "success" : stock > 0 ? "warning" : "danger";
+                                        }
+                                        <span class="badge bg-@stockClass">@stock</span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (product.IsActive == true)
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        }
+                                    </td>
+                                </tr>
+                                rank++;
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="fas fa-box fa-2x text-muted mb-2"></i>
+                    <p class="text-muted mb-0">No sales data available for the selected period</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Low Performers -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-chart-line text-secondary me-2"></i>Low Performing Products (No Sales in Period)</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (ViewBag.LowPerformers != null && ((IEnumerable<dynamic>)ViewBag.LowPerformers).Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-center">Stock</th>
+                                <th class="text-center">Views</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var product in (IEnumerable<dynamic>)ViewBag.LowPerformers)
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="fw-bold">@product.Name</span>
+                                    </td>
+                                    <td><small>@(product.CategoryName ?? "-")</small></td>
+                                    <td class="text-end">৳@(((decimal)product.Price).ToString("N0"))</td>
+                                    <td class="text-center">
+                                        @{
+                                            int stock = product.Stock ?? 0;
+                                            string stockClass = stock > 10 ? "success" : stock > 0 ? "warning" : "danger";
+                                        }
+                                        <span class="badge bg-@stockClass">@stock</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <small class="text-muted">@(product.Views ?? 0)</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">@(((DateTime)product.CreatedAt).ToString("dd MMM yyyy"))</small>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                    <p class="text-muted mb-0">All products have sales in the selected period</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Low Stock Alert -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-exclamation-triangle text-warning me-2"></i>Low Stock Alert (Stock &lt; 10)</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (ViewBag.LowStockItems != null && ((IEnumerable<dynamic>)ViewBag.LowStockItems).Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th class="text-center">Current Stock</th>
+                                <th class="text-center">Sold (Period)</th>
+                                <th class="text-center">Urgency</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var product in (IEnumerable<dynamic>)ViewBag.LowStockItems)
+                            {
+                                <tr>
+                                    <td class="fw-bold">@product.Name</td>
+                                    <td><small>@(product.CategoryName ?? "-")</small></td>
+                                    <td class="text-center">
+                                        @{
+                                            int stock = product.Stock ?? 0;
+                                            string stockClass = stock > 5 ? "warning" : stock > 0 ? "danger" : "dark";
+                                        }
+                                        <span class="badge bg-@stockClass">@stock</span>
+                                    </td>
+                                    <td class="text-center">@(product.TotalSold ?? 0)</td>
+                                    <td class="text-center">
+                                        @if (stock == 0)
+                                        {
+                                            <span class="badge bg-danger">Out of Stock</span>
+                                        }
+                                        else if (stock <= 5)
+                                        {
+                                            <span class="badge bg-warning text-dark">Critical</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-info">Low</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                    <p class="text-muted mb-0">All products have sufficient stock</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fromDate = '@ViewBag.FromDate';
+            const toDate = '@ViewBag.ToDate';
+            const categoryId = '@ViewBag.CategoryId';
+
+            fetch(`@Url.Action("GetChartData", "Reports", new { area = "Admin" })?reportType=products&fromDate=${fromDate}&toDate=${toDate}&categoryId=${categoryId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Top Products Bar Chart
+                    const topCtx = document.getElementById('topProductsChart').getContext('2d');
+                    new Chart(topCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.productLabels || [],
+                            datasets: [{
+                                label: 'Revenue (৳)',
+                                data: data.productRevenue || [],
+                                backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                                borderColor: 'rgb(255, 193, 7)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) { return '৳' + value.toLocaleString(); }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Stock Status Doughnut Chart
+                    const stockCtx = document.getElementById('stockStatusChart').getContext('2d');
+                    new Chart(stockCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['In Stock', 'Low Stock', 'Out of Stock'],
+                            datasets: [{
+                                data: [
+                                    @ViewBag.ActiveProducts - @ViewBag.LowStockProducts,
+                                    @ViewBag.LowStockProducts - @ViewBag.OutOfStockProducts,
+                                    @ViewBag.OutOfStockProducts
+                                ],
+                                backgroundColor: [
+                                    'rgba(25, 135, 84, 0.8)',
+                                    'rgba(255, 193, 7, 0.8)',
+                                    'rgba(220, 53, 69, 0.8)'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { boxWidth: 12 } }
+                            }
+                        }
+                    });
+                })
+                .catch(err => console.log('Chart data error:', err));
+        });
+    </script>
+}

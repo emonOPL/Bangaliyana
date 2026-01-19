@@ -1,0 +1,88 @@
+@using Bangaliyana.Services
+@model List<MenuItemViewModel>
+
+<ul class="nav flex-column admin-sidebar-menu">
+    @foreach (var item in Model)
+    {
+        @if (item.Children.Any())
+        {
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center justify-content-between"
+                   data-bs-toggle="collapse"
+                   href="#sidebar_@item.Id"
+                   role="button"
+                   aria-expanded="false"
+                   aria-controls="sidebar_@item.Id">
+                    <span>
+                        @if (!string.IsNullOrEmpty(item.Icon))
+                        {
+                            <i class="@item.Icon me-2"></i>
+                        }
+                        @item.Name
+                    </span>
+                    <i class="fas fa-chevron-down small"></i>
+                </a>
+                <div class="collapse" id="sidebar_@item.Id">
+                    <ul class="nav flex-column ps-4">
+                        @foreach (var child in item.Children)
+                        {
+                            <li class="nav-item">
+                                @if (!string.IsNullOrEmpty(child.Url))
+                                {
+                                    <a class="nav-link py-1" href="@child.Url">
+                                        @if (!string.IsNullOrEmpty(child.Icon))
+                                        {
+                                            <i class="@child.Icon me-2"></i>
+                                        }
+                                        @child.Name
+                                    </a>
+                                }
+                                else
+                                {
+                                    <a class="nav-link py-1"
+                                       asp-area="@child.Area"
+                                       asp-controller="@child.Controller"
+                                       asp-action="@child.Action">
+                                        @if (!string.IsNullOrEmpty(child.Icon))
+                                        {
+                                            <i class="@child.Icon me-2"></i>
+                                        }
+                                        @child.Name
+                                    </a>
+                                }
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </li>
+        }
+        else
+        {
+            <li class="nav-item">
+                @if (!string.IsNullOrEmpty(item.Url))
+                {
+                    <a class="nav-link" href="@item.Url">
+                        @if (!string.IsNullOrEmpty(item.Icon))
+                        {
+                            <i class="@item.Icon me-2"></i>
+                        }
+                        @item.Name
+                    </a>
+                }
+                else
+                {
+                    <a class="nav-link"
+                       asp-area="@item.Area"
+                       asp-controller="@item.Controller"
+                       asp-action="@item.Action">
+                        @if (!string.IsNullOrEmpty(item.Icon))
+                        {
+                            <i class="@item.Icon me-2"></i>
+                        }
+                        @item.Name
+                    </a>
+                }
+            </li>
+        }
+    }
+</ul>

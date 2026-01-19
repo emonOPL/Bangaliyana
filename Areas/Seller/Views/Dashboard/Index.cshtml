@@ -1,0 +1,828 @@
+@model Bangaliyana.Models.Seller
+@using Bangaliyana.Extensions
+@using System.Text.Json
+@{
+    ViewData["Title"] = Localizer["SellerDashboard"].Value;
+    var seller = ViewBag.Seller as Seller;
+    var productCount = (int)ViewBag.ProductCount;
+    var orderCount = (int)ViewBag.OrderCount;
+    var totalRevenue = (decimal)ViewBag.TotalRevenue;
+    var pendingOrders = (int)ViewBag.PendingOrders;
+    var rating = (decimal)ViewBag.Rating;
+    var reviewCount = (int)ViewBag.ReviewCount;
+    var recentOrders = ViewBag.RecentOrders as List<OrderItem> ?? new List<OrderItem>();
+    var lowStockProducts = ViewBag.LowStockProducts as List<Products> ?? new List<Products>();
+    var accountBalance = (decimal)ViewBag.AccountBalance;
+    var recentTransactions = ViewBag.RecentTransactions as List<SellerTransaction> ?? new List<SellerTransaction>();
+    var commissionRate = (decimal)ViewBag.CommissionRate;
+
+    // Chart data
+    var monthlySales = ViewBag.MonthlySales as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var dailySales = ViewBag.DailySales as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var weeklySales = ViewBag.WeeklySales as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var orderStatusBreakdown = ViewBag.OrderStatusBreakdown as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+}
+
+<div class="container py-4">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="welcome-card">
+                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                    <div class="d-flex align-items-center">
+                        @if (!string.IsNullOrEmpty(Model.ShopLogoUrl))
+                        {
+                            <img src="@Model.ShopLogoUrl" alt="@Model.ShopName" class="shop-logo me-3" />
+                        }
+                        else
+                        {
+                            <div class="shop-logo-placeholder me-3">
+                                <i class="fas fa-store"></i>
+                            </div>
+                        }
+                        <div>
+                            <h2 class="mb-1">@Localizer["WelcomeBackName", Model.ShopName]</h2>
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                @if (Model.Status == SellerStatus.Approved)
+                                {
+                                    <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>@Localizer["Approved"]</span>
+                                }
+                                else if (Model.Status == SellerStatus.Pending)
+                                {
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>@Localizer["Pending"]</span>
+                                }
+                                else if (Model.Status == SellerStatus.Suspended)
+                                {
+                                    <span class="badge bg-danger"><i class="fas fa-ban me-1"></i>@Localizer["Suspended"]</span>
+                                }
+                                @if (Model.IsVerified)
+                                {
+                                    <span class="badge bg-info"><i class="fas fa-shield-alt me-1"></i>@Localizer["Verified"]</span>
+                                }
+                                <span class="badge bg-secondary">@Model.BusinessCategory.GetDisplayName()</span>
+                                @if (rating > 0)
+                                {
+                                    <span class="text-warning">
+                                        <i class="fas fa-star"></i> @rating.ToString("F1") (@reviewCount reviews)
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 mt-md-0">
+                        <a asp-action="Index" asp-controller="Shop" class="btn btn-outline-light me-2">
+                            <i class="fas fa-cog me-1"></i>@Localizer["ShopSettings"]
+                        </a>
+                        <a href="/shop/@Model.ShopSlug" target="_blank" class="btn btn-light">
+                            <i class="fas fa-external-link-alt me-1"></i>@Localizer["ViewShop"]
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards Row 1 -->
+    <div class="row mb-3">
+        <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+            <div class="stat-card bg-primary">
+                <div class="stat-icon"><i class="fas fa-box"></i></div>
+                <div class="stat-content">
+                    <div class="stat-value">@productCount</div>
+                    <div class="stat-label">@Localizer["Products"]</div>
+                </div>
+                <a asp-action="Index" asp-controller="Product" class="stat-link">@Localizer["ViewProducts"] <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+            <div class="stat-card bg-success">
+                <div class="stat-icon"><i class="fas fa-shopping-bag"></i></div>
+                <div class="stat-content">
+                    <div class="stat-value">@orderCount</div>
+                    <div class="stat-label">@Localizer["TotalOrders"]</div>
+                </div>
+                <a asp-action="Index" asp-controller="Order" class="stat-link">@Localizer["ViewOrders"] <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+            <div class="stat-card bg-info">
+                <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
+                <div class="stat-content">
+                    <div class="stat-value">৳@((int)Math.Round(totalRevenue))</div>
+                    <div class="stat-label">@Localizer["TotalRevenue"]</div>
+                </div>
+                <span class="stat-link">@Localizer["DeliveredOrdersOnly"]</span>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+            <div class="stat-card bg-warning">
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-content">
+                    <div class="stat-value">@pendingOrders</div>
+                    <div class="stat-label">@Localizer["PendingOrders"]</div>
+                </div>
+                <a asp-action="Pending" asp-controller="Order" class="stat-link">@Localizer["ViewPending"] <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Balance Card -->
+    <div class="row mb-4">
+        <div class="col-lg-6 col-md-6 mb-3">
+            <div class="balance-card">
+                <div class="balance-icon"><i class="fas fa-wallet"></i></div>
+                <div class="balance-content">
+                    <div class="balance-label">@Localizer["AccountBalance"]</div>
+                    <div class="balance-value @(accountBalance > 0 ? "text-positive" : accountBalance < 0 ? "text-negative" : "")">
+                        ৳@((int)Math.Round(accountBalance))
+                    </div>
+                    <div class="balance-info">
+                        <small>@Localizer["CommissionRate"]: <strong>@commissionRate%</strong></small>
+                    </div>
+                </div>
+                <a asp-action="Index" asp-controller="Transaction" class="balance-link">
+                    <i class="fas fa-history me-1"></i>@Localizer["ViewTransactionHistory"]
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-6 col-md-6 mb-3">
+            <div class="card h-100 commission-info-card">
+                <div class="card-body">
+                    <h6 class="card-title mb-3"><i class="fas fa-info-circle text-info me-2"></i>@Localizer["HowEarningsWork"]</h6>
+                    <div class="info-item mb-2">
+                        <span class="badge bg-success me-2">COD</span>
+                        <small>@Localizer["CODEarningsDescription", commissionRate]</small>
+                    </div>
+                    <div class="info-item">
+                        <span class="badge bg-primary me-2">@Localizer["Online"]</span>
+                        <small>@Localizer["OnlineEarningsDescription", 100 - commissionRate]</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-bolt text-warning me-2"></i>@Localizer["QuickActions"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        <a asp-action="Create" asp-controller="Product" class="btn btn-success">
+                            <i class="fas fa-plus me-1"></i>@Localizer["AddProduct"]
+                        </a>
+                        <a asp-action="Index" asp-controller="Order" asp-route-status="Pending" class="btn btn-warning">
+                            <i class="fas fa-clock me-1"></i>@Localizer["PendingOrders"]
+                            @if (pendingOrders > 0)
+                            {
+                                <span class="badge bg-light text-dark ms-1">@pendingOrders</span>
+                            }
+                        </a>
+                        <a asp-action="Index" asp-controller="Messages" class="btn btn-info">
+                            <i class="fas fa-comments me-1"></i>@Localizer["Messages"]
+                        </a>
+                        <a asp-action="Index" asp-controller="Shop" class="btn btn-outline-secondary">
+                            <i class="fas fa-store me-1"></i>@Localizer["EditShop"]
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Revenue Chart -->
+        <div class="col-lg-8 mb-4 mb-lg-0">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-chart-line text-success me-2"></i>@Localizer["RevenueOverview"]</h5>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-primary active" id="btnDaily" onclick="showChart('daily')">@Localizer["Daily"]</button>
+                        <button type="button" class="btn btn-outline-primary" id="btnWeekly" onclick="showChart('weekly')">@Localizer["Weekly"]</button>
+                        <button type="button" class="btn btn-outline-primary" id="btnMonthly" onclick="showChart('monthly')">@Localizer["Monthly"]</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height: 300px;">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                    <div class="text-center mt-3">
+                        <small class="text-muted" id="chartPeriodText">Showing last 7 days revenue</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Status Chart -->
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie text-info me-2"></i>@Localizer["OrderStatus"]</h5>
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <div class="chart-container flex-grow-1" style="position: relative; min-height: 250px;">
+                        <canvas id="orderStatusChart"></canvas>
+                    </div>
+                    <div class="order-status-legend mt-3">
+                        <div class="d-flex flex-wrap justify-content-center gap-2" id="statusLegend">
+                            <!-- Legend will be populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Orders -->
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-shopping-bag text-primary me-2"></i>@Localizer["RecentOrders"]</h5>
+                    <a asp-action="Index" asp-controller="Order" class="btn btn-sm btn-outline-primary">@Localizer["ViewAll"]</a>
+                </div>
+                <div class="card-body p-0">
+                    @if (recentOrders.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>@Localizer["Order"]</th>
+                                        <th>@Localizer["Product"]</th>
+                                        <th>@Localizer["Customer"]</th>
+                                        <th>@Localizer["Amount"]</th>
+                                        <th>@Localizer["Status"]</th>
+                                        <th>@Localizer["Date"]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in recentOrders)
+                                    {
+                                        var statusClass = item.Order?.Status switch
+                                        {
+                                            OrderStatus.Pending => "bg-warning text-dark",
+                                            OrderStatus.Processing => "bg-info",
+                                            OrderStatus.Shipped => "bg-primary",
+                                            OrderStatus.Delivered => "bg-success",
+                                            OrderStatus.Cancelled => "bg-danger",
+                                            _ => "bg-secondary"
+                                        };
+                                        <tr>
+                                            <td>
+                                                <a asp-action="Details" asp-controller="Order" asp-route-id="@item.OrderId" class="fw-semibold">
+                                                    #@item.Order?.OrderNumber
+                                                </a>
+                                            </td>
+                                            <td class="text-truncate" style="max-width: 200px;">@item.Product?.Name</td>
+                                            <td>@item.Order?.User?.FullName</td>
+                                            <td>৳@((int)Math.Round(item.TotalPrice))</td>
+                                            <td><span class="badge @statusClass">@item.Order?.Status</span></td>
+                                            <td><small class="text-muted">@item.Order?.OrderDate.ToBangladeshString("dd MMM")</small></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-shopping-bag fa-3x mb-3"></i>
+                            <p>@Localizer["NoOrdersYet"]</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Low Stock Products -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle text-warning me-2"></i>@Localizer["LowStock"]</h5>
+                    <a asp-action="Index" asp-controller="Product" class="btn btn-sm btn-outline-warning">@Localizer["ViewAll"]</a>
+                </div>
+                <div class="card-body p-0">
+                    @if (lowStockProducts.Any())
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var product in lowStockProducts)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <img src="~/@(product.ImageUrl ?? "images/products/noimage.jpg")" alt="@product.Name"
+                                             class="rounded me-2" style="width: 40px; height: 40px; object-fit: cover;" />
+                                        <div>
+                                            <a asp-action="Edit" asp-controller="Product" asp-route-id="@product.Id" class="text-decoration-none">
+                                                @product.Name.Truncate(25)
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <span class="badge @(product.Stock <= 2 ? "bg-danger" : "bg-warning text-dark")">
+                                        @Localizer["XLeft", product.Stock]
+                                    </span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+                            <p class="mb-0">@Localizer["AllProductsWellStocked"]</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .welcome-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .welcome-card h2 {
+        color: white;
+    }
+
+    .welcome-card .badge {
+        font-weight: 500;
+    }
+
+    .shop-logo {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .shop-logo-placeholder {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: white;
+    }
+
+    .stat-card {
+        position: relative;
+        padding: 1.5rem;
+        border-radius: 12px;
+        color: white;
+        overflow: hidden;
+        height: 100%;
+    }
+
+    .stat-card .stat-icon {
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+        font-size: 3rem;
+        opacity: 0.2;
+    }
+
+    .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    .stat-card .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+
+    .stat-card .stat-link {
+        display: block;
+        margin-top: 1rem;
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+        font-size: 0.85rem;
+    }
+
+    .stat-card .stat-link:hover {
+        color: white;
+    }
+
+    /* Dark mode */
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .card-header {
+        background-color: #111827;
+        border-color: #374151;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .table {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .table-light {
+        background-color: #374151;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .list-group-item {
+        background-color: #1f2937;
+        border-color: #374151;
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .welcome-card {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    }
+
+    /* Dark mode badge visibility fixes */
+    [data-theme="dark"] .badge.bg-warning {
+        color: #1f2937 !important;
+    }
+
+    [data-theme="dark"] .badge.bg-light {
+        background-color: #374151 !important;
+        color: #f3f4f6 !important;
+    }
+
+    [data-theme="dark"] .badge.bg-secondary {
+        background-color: #4b5563 !important;
+        color: #f3f4f6 !important;
+    }
+
+    /* Balance Card Styles */
+    .balance-card {
+        background: linear-gradient(135deg, #1e3a5f 0%, #0d7377 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(30, 58, 95, 0.3);
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .balance-card .balance-icon {
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+        font-size: 4rem;
+        opacity: 0.15;
+    }
+
+    .balance-card .balance-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin-bottom: 0.25rem;
+    }
+
+    .balance-card .balance-value {
+        font-size: 2.2rem;
+        font-weight: 700;
+    }
+
+    .balance-card .balance-value.text-positive {
+        color: #4ade80;
+    }
+
+    .balance-card .balance-value.text-negative {
+        color: #f87171;
+    }
+
+    .balance-card .balance-info {
+        margin-top: 0.5rem;
+        opacity: 0.85;
+    }
+
+    .balance-card .balance-link {
+        display: inline-block;
+        margin-top: auto;
+        padding-top: 1rem;
+        color: rgba(255, 255, 255, 0.9);
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: color 0.2s;
+    }
+
+    .balance-card .balance-link:hover {
+        color: white;
+        text-decoration: underline;
+    }
+
+    .commission-info-card {
+        border: 1px solid #e5e7eb;
+    }
+
+    .commission-info-card .info-item {
+        display: flex;
+        align-items: center;
+    }
+
+    [data-theme="dark"] .balance-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f766e 100%);
+    }
+
+    [data-theme="dark"] .commission-info-card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .commission-info-card .card-title {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .commission-info-card small {
+        color: #d1d5db;
+    }
+
+    /* Chart Styles */
+    .chart-container {
+        position: relative;
+    }
+
+    .btn-group .btn.active {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
+
+    [data-theme="dark"] .btn-group .btn-outline-primary {
+        color: #60a5fa;
+        border-color: #60a5fa;
+    }
+
+    [data-theme="dark"] .btn-group .btn-outline-primary:hover,
+    [data-theme="dark"] .btn-group .btn.active {
+        background-color: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+
+    .order-status-legend .legend-item {
+        display: flex;
+        align-items: center;
+        font-size: 0.85rem;
+    }
+
+    .order-status-legend .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        margin-right: 6px;
+    }
+</style>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        // Chart data from server
+        var dailySalesData = @Html.Raw(JsonSerializer.Serialize(dailySales.Select(d => new { date = ((DateTime)d.Date).ToString("MMM dd"), total = (decimal)d.Total })));
+        var weeklySalesData = @Html.Raw(JsonSerializer.Serialize(weeklySales.Select(w => new { week = "Week " + w.Week, total = (decimal)w.Total })));
+        var monthlySalesData = @Html.Raw(JsonSerializer.Serialize(monthlySales.Select(m => new { month = new DateTime(m.Year, m.Month, 1).ToString("MMM yyyy"), total = (decimal)m.Total })));
+        var orderStatusData = @Html.Raw(JsonSerializer.Serialize(orderStatusBreakdown.Select(o => new { status = (string)o.Status, count = (int)o.Count })));
+
+        // Status colors
+        var statusColors = {
+            'Pending': '#fbbf24',
+            'Processing': '#60a5fa',
+            'Confirmed': '#818cf8',
+            'Shipped': '#3b82f6',
+            'Delivered': '#22c55e',
+            'Cancelled': '#ef4444',
+            'Refunded': '#f97316',
+            'Failed': '#dc2626'
+        };
+
+        var revenueChart = null;
+        var orderStatusChart = null;
+
+        // Initialize charts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initRevenueChart('daily');
+            initOrderStatusChart();
+        });
+
+        function initRevenueChart(type) {
+            var ctx = document.getElementById('revenueChart').getContext('2d');
+            var labels = [];
+            var data = [];
+            var periodText = '';
+
+            if (type === 'daily') {
+                // Fill missing days with 0
+                var last7Days = [];
+                for (var i = 6; i >= 0; i--) {
+                    var date = new Date();
+                    date.setDate(date.getDate() - i);
+                    last7Days.push(date.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }));
+                }
+                labels = last7Days;
+                data = last7Days.map(function(day) {
+                    var found = dailySalesData.find(function(d) { return d.date === day; });
+                    return found ? found.total : 0;
+                });
+                periodText = 'Showing last 7 days revenue';
+            } else if (type === 'weekly') {
+                labels = weeklySalesData.map(function(w) { return w.week; });
+                data = weeklySalesData.map(function(w) { return w.total; });
+                if (labels.length === 0) {
+                    labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+                    data = [0, 0, 0, 0];
+                }
+                periodText = 'Showing last 4 weeks revenue';
+            } else if (type === 'monthly') {
+                // Fill missing months with 0
+                var last6Months = [];
+                for (var i = 5; i >= 0; i--) {
+                    var date = new Date();
+                    date.setMonth(date.getMonth() - i);
+                    last6Months.push(date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+                }
+                labels = last6Months;
+                data = last6Months.map(function(month) {
+                    var found = monthlySalesData.find(function(m) { return m.month === month; });
+                    return found ? found.total : 0;
+                });
+                periodText = 'Showing last 6 months revenue';
+            }
+
+            document.getElementById('chartPeriodText').textContent = periodText;
+
+            // Destroy existing chart
+            if (revenueChart) {
+                revenueChart.destroy();
+            }
+
+            // Get theme colors
+            var isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+            var gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+            var textColor = isDarkMode ? '#e5e7eb' : '#374151';
+
+            revenueChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Revenue (৳)',
+                        data: data,
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#22c55e',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: isDarkMode ? '#374151' : '#fff',
+                            titleColor: isDarkMode ? '#f3f4f6' : '#111827',
+                            bodyColor: isDarkMode ? '#e5e7eb' : '#374151',
+                            borderColor: isDarkMode ? '#4b5563' : '#e5e7eb',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    return '৳' + context.parsed.y.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: gridColor
+                            },
+                            ticks: {
+                                color: textColor,
+                                callback: function(value) {
+                                    return '৳' + value.toLocaleString();
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: textColor
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initOrderStatusChart() {
+            var ctx = document.getElementById('orderStatusChart').getContext('2d');
+            var labels = orderStatusData.map(function(o) { return o.status; });
+            var data = orderStatusData.map(function(o) { return o.count; });
+            var colors = labels.map(function(status) { return statusColors[status] || '#6b7280'; });
+
+            // Get theme colors
+            var isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+
+            // Show empty state if no data
+            if (data.length === 0 || data.every(function(d) { return d === 0; })) {
+                labels = ['No Orders'];
+                data = [1];
+                colors = ['#d1d5db'];
+            }
+
+            orderStatusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: isDarkMode ? '#1f2937' : '#fff',
+                        borderWidth: 3,
+                        hoverBorderWidth: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: isDarkMode ? '#374151' : '#fff',
+                            titleColor: isDarkMode ? '#f3f4f6' : '#111827',
+                            bodyColor: isDarkMode ? '#e5e7eb' : '#374151',
+                            borderColor: isDarkMode ? '#4b5563' : '#e5e7eb',
+                            borderWidth: 1
+                        }
+                    }
+                }
+            });
+
+            // Build custom legend
+            var legendHtml = '';
+            for (var i = 0; i < labels.length; i++) {
+                if (labels[i] !== 'No Orders') {
+                    legendHtml += '<div class="legend-item">' +
+                        '<span class="legend-color" style="background-color: ' + colors[i] + '"></span>' +
+                        '<span>' + labels[i] + ' (' + data[i] + ')</span>' +
+                        '</div>';
+                }
+            }
+            document.getElementById('statusLegend').innerHTML = legendHtml || '<small class="text-muted">No orders yet</small>';
+        }
+
+        function showChart(type) {
+            // Update button states
+            document.querySelectorAll('.btn-group .btn').forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+            document.getElementById('btn' + type.charAt(0).toUpperCase() + type.slice(1)).classList.add('active');
+
+            // Reinitialize chart
+            initRevenueChart(type);
+        }
+
+        // Listen for theme changes
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.attributeName === 'data-theme') {
+                    // Redraw charts with new theme
+                    var activeBtn = document.querySelector('.btn-group .btn.active');
+                    var activeType = activeBtn ? activeBtn.id.replace('btn', '').toLowerCase() : 'daily';
+                    initRevenueChart(activeType);
+                    initOrderStatusChart();
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true });
+    </script>
+}

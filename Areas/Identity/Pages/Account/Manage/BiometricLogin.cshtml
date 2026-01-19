@@ -1,0 +1,544 @@
+@page
+@model Bangaliyana.Areas.Identity.Pages.Account.Manage.BiometricLoginModel
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    ViewData["Title"] = Localizer["BiometricLogin"].Value;
+    ViewData["ActivePage"] = ManageNavPages.BiometricLogin;
+}
+
+<div class="biometric-settings">
+    <h4 class="mb-4">
+        <i class="fa fa-fingerprint me-2 text-primary"></i>@ViewData["Title"]
+    </h4>
+
+    <partial name="_StatusMessage" for="StatusMessage" />
+
+    <!-- Browser Support Warning -->
+    <div id="browserSupportAlert" class="alert alert-warning d-none">
+        <i class="fa fa-exclamation-triangle me-2"></i>
+        <strong>@Localizer["NotSupported"]:</strong> @Localizer["BiometricNotSupportedMessage"]
+    </div>
+
+    <!-- Feature Description -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex align-items-start">
+                <div class="feature-icon bg-primary bg-opacity-10 rounded-circle p-3 me-3">
+                    <i class="fa fa-shield-alt fa-2x text-primary"></i>
+                </div>
+                <div>
+                    <h5 class="mb-2">@Localizer["SecureFastLogin"]</h5>
+                    <p class="text-muted mb-0">
+                        @Localizer["BiometricDescription"]
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Platform Authenticator Check -->
+    <div id="platformCheckSection" class="mb-4">
+        <div class="spinner-border spinner-border-sm text-primary" role="status">
+            <span class="visually-hidden">Checking device support...</span>
+        </div>
+        <span class="ms-2 text-muted">Checking device biometric support...</span>
+    </div>
+
+    <!-- Register New Credential -->
+    <div id="registerSection" class="card mb-4 d-none">
+        <div class="card-header bg-success bg-opacity-10">
+            <h6 class="mb-0 text-success">
+                <i class="fa fa-plus-circle me-2"></i>@Localizer["RegisterBiometricLogin"]
+            </h6>
+        </div>
+        <div class="card-body">
+            <p class="mb-3">
+                @Localizer["BiometricRegisterDescription"]
+            </p>
+            <div class="mb-3">
+                <label for="deviceName" class="form-label">@Localizer["DeviceNameOptional"]</label>
+                <input type="text" class="form-control" id="deviceName" placeholder="@Localizer["DeviceNamePlaceholder"]">
+                <small class="text-muted">@Localizer["DeviceNameHint"]</small>
+            </div>
+            <button type="button" id="registerBtn" class="btn btn-success">
+                <i class="fa fa-fingerprint me-2"></i>@Localizer["RegisterBiometric"]
+            </button>
+        </div>
+    </div>
+
+    <!-- Registered Credentials List -->
+    <div class="card">
+        <div class="card-header">
+            <h6 class="mb-0">
+                <i class="fa fa-list me-2"></i>@Localizer["RegisteredDevices"]
+            </h6>
+        </div>
+        <div class="card-body">
+            <div id="credentialsList">
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span class="ms-2 text-muted">Loading credentials...</span>
+                </div>
+            </div>
+
+            <!-- Empty State Template -->
+            <div id="emptyState" class="text-center py-4 d-none">
+                <i class="fa fa-fingerprint fa-3x text-muted mb-3"></i>
+                <p class="text-muted mb-0">@Localizer["NoBiometricCredentials"]</p>
+                <small class="text-muted">@Localizer["RegisterDeviceToEnableBiometric"]</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Section -->
+    <div class="mt-4">
+        <h6><i class="fa fa-info-circle me-2 text-info"></i>@Localizer["HowItWorks"]</h6>
+        <ul class="text-muted small">
+            <li>@Localizer["BiometricHowItWorks1"]</li>
+            <li>@Localizer["BiometricHowItWorks2"]</li>
+            <li>@Localizer["BiometricHowItWorks3"]</li>
+            <li>@Localizer["BiometricHowItWorks4"]</li>
+            <li>@Localizer["BiometricHowItWorks5"]</li>
+        </ul>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function() {
+    const credentialsList = document.getElementById('credentialsList');
+    const emptyState = document.getElementById('emptyState');
+    const registerSection = document.getElementById('registerSection');
+    const platformCheckSection = document.getElementById('platformCheckSection');
+    const browserSupportAlert = document.getElementById('browserSupportAlert');
+    const registerBtn = document.getElementById('registerBtn');
+    const deviceNameInput = document.getElementById('deviceName');
+
+    // Check WebAuthn support
+    async function checkSupport() {
+        // Check if accessing via IP address (WebAuthn requires domain name)
+        const hostname = window.location.hostname;
+        const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname === 'localhost';
+
+        if (isIpAddress && hostname !== 'localhost') {
+            platformCheckSection.innerHTML = '<span class="text-warning"><i class="fa fa-exclamation-triangle me-2"></i>Biometric registration requires a domain name. IP address access is not supported for WebAuthn.</span>';
+            browserSupportAlert.classList.remove('d-none');
+            return false;
+        }
+
+        // Check if WebAuthn is supported
+        if (!window.PublicKeyCredential) {
+            platformCheckSection.innerHTML = '<span class="text-danger"><i class="fa fa-times-circle me-2"></i>WebAuthn is not supported in this browser</span>';
+            browserSupportAlert.classList.remove('d-none');
+            return false;
+        }
+
+        // Check if platform authenticator is available
+        try {
+            const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+
+            if (available) {
+                platformCheckSection.innerHTML = '<span class="text-success"><i class="fa fa-check-circle me-2"></i>Your device supports biometric authentication (Fingerprint/Face ID)</span>';
+            } else {
+                platformCheckSection.innerHTML = '<span class="text-info"><i class="fa fa-info-circle me-2"></i>You can use PIN, Pattern or Security Key for authentication</span>';
+            }
+            // Always show register button if WebAuthn is supported
+            registerSection.classList.remove('d-none');
+            return true;
+        } catch (error) {
+            platformCheckSection.innerHTML = '<span class="text-danger"><i class="fa fa-times-circle me-2"></i>Error checking biometric support: ' + error.message + '</span>';
+            return false;
+        }
+    }
+
+    // Load existing credentials
+    async function loadCredentials() {
+        try {
+            const response = await fetch('/api/BiometricAuth/credentials');
+            if (!response.ok) throw new Error('Failed to load credentials');
+
+            const credentials = await response.json();
+
+            if (credentials.length === 0) {
+                credentialsList.classList.add('d-none');
+                emptyState.classList.remove('d-none');
+                return;
+            }
+
+            credentialsList.classList.remove('d-none');
+            emptyState.classList.add('d-none');
+
+            credentialsList.innerHTML = credentials.map(cred => `
+                <div class="credential-item d-flex justify-content-between align-items-center p-3 border rounded mb-2" data-id="${cred.id}">
+                    <div class="d-flex align-items-center">
+                        <div class="credential-icon me-3">
+                            <i class="fa ${getDeviceIcon(cred.deviceName)} fa-2x text-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">${escapeHtml(cred.deviceName)}</h6>
+                            <small class="text-muted">
+                                <i class="fa fa-clock me-1"></i>
+                                ${cred.lastUsedAt ? 'Last used: ' + formatDate(cred.lastUsedAt) : 'Never used'}
+                                <span class="mx-2">|</span>
+                                <i class="fa fa-calendar me-1"></i>
+                                Registered: ${formatDate(cred.createdAt)}
+                                <span class="mx-2">|</span>
+                                <i class="fa fa-hashtag me-1"></i>
+                                Used ${cred.useCount} times
+                            </small>
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-outline-primary btn-sm rename-btn" title="Rename">
+                            <i class="fa fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm delete-btn" title="Delete">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Attach event listeners
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const item = this.closest('.credential-item');
+                    const id = item.dataset.id;
+                    deleteCredential(id);
+                });
+            });
+
+            document.querySelectorAll('.rename-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const item = this.closest('.credential-item');
+                    const id = item.dataset.id;
+                    const currentName = item.querySelector('h6').textContent;
+                    renameCredential(id, currentName);
+                });
+            });
+
+        } catch (error) {
+            credentialsList.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+        }
+    }
+
+    // Register new credential
+    async function registerCredential() {
+        registerBtn.disabled = true;
+        registerBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registering...';
+
+        try {
+            // Get registration options from server
+            const optionsResponse = await fetch('/api/BiometricAuth/register/options', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deviceName: deviceNameInput.value })
+            });
+
+            if (!optionsResponse.ok) {
+                const error = await optionsResponse.json();
+                throw new Error(error.error || 'Failed to get registration options');
+            }
+
+            const options = await optionsResponse.json();
+
+            // Convert base64url to ArrayBuffer
+            options.challenge = base64UrlToArrayBuffer(options.challenge);
+            options.user.id = base64UrlToArrayBuffer(options.user.id);
+            if (options.excludeCredentials) {
+                options.excludeCredentials = options.excludeCredentials.map(cred => ({
+                    ...cred,
+                    id: base64UrlToArrayBuffer(cred.id)
+                }));
+            }
+
+            // Create credential using WebAuthn
+            const credential = await navigator.credentials.create({ publicKey: options });
+
+            // Prepare response for server
+            const credentialData = {
+                id: arrayBufferToBase64Url(credential.rawId),
+                rawId: arrayBufferToBase64Url(credential.rawId),
+                type: credential.type,
+                response: {
+                    clientDataJSON: arrayBufferToBase64Url(credential.response.clientDataJSON),
+                    attestationObject: arrayBufferToBase64Url(credential.response.attestationObject)
+                },
+                authenticatorAttachment: credential.authenticatorAttachment,
+                deviceName: deviceNameInput.value || getDefaultDeviceName()
+            };
+
+            // Send to server
+            const completeResponse = await fetch('/api/BiometricAuth/register/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(credentialData)
+            });
+
+            if (!completeResponse.ok) {
+                const error = await completeResponse.json();
+                throw new Error(error.error || 'Registration failed');
+            }
+
+            showToast('Biometric credential registered successfully!', 'success');
+            deviceNameInput.value = '';
+            loadCredentials();
+
+        } catch (error) {
+            console.error('Registration error:', error);
+            if (error.name === 'NotAllowedError') {
+                showToast('Registration was cancelled or timed out', 'warning');
+            } else {
+                showToast('Error: ' + error.message, 'danger');
+            }
+        } finally {
+            registerBtn.disabled = false;
+            registerBtn.innerHTML = '<i class="fa fa-fingerprint me-2"></i>Register Biometric';
+        }
+    }
+
+    // Delete credential modal handling
+    let credentialToDelete = null;
+    let deleteCredentialModal = null;
+
+    function showDeleteCredentialModal(id) {
+        credentialToDelete = id;
+        if (!deleteCredentialModal) {
+            deleteCredentialModal = new bootstrap.Modal(document.getElementById('deleteCredentialModal'));
+        }
+        deleteCredentialModal.show();
+    }
+
+    async function performDeleteCredential() {
+        if (!credentialToDelete) return;
+
+        const id = credentialToDelete;
+        if (deleteCredentialModal) deleteCredentialModal.hide();
+        credentialToDelete = null;
+
+        try {
+            const response = await fetch(`/api/BiometricAuth/credentials/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete credential');
+            }
+
+            showToast('Credential deleted successfully', 'success');
+            loadCredentials();
+
+        } catch (error) {
+            showToast('Error: ' + error.message, 'danger');
+        }
+    }
+
+    function deleteCredential(id) {
+        showDeleteCredentialModal(id);
+    }
+
+    // Rename credential
+    async function renameCredential(id, currentName) {
+        const newName = prompt('Enter a new name for this device:', currentName);
+        if (!newName || newName === currentName) return;
+
+        try {
+            const response = await fetch(`/api/BiometricAuth/credentials/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deviceName: newName })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to update credential');
+            }
+
+            showToast('Credential renamed successfully', 'success');
+            loadCredentials();
+
+        } catch (error) {
+            showToast('Error: ' + error.message, 'danger');
+        }
+    }
+
+    // Helper functions
+    function base64UrlToArrayBuffer(base64url) {
+        const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        const padding = '='.repeat((4 - base64.length % 4) % 4);
+        const binary = atob(base64 + padding);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    function arrayBufferToBase64Url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+
+    function getDeviceIcon(deviceName) {
+        const name = (deviceName || '').toLowerCase();
+        if (name.includes('iphone') || name.includes('ipad') || name.includes('mac')) return 'fa-apple';
+        if (name.includes('android')) return 'fa-android';
+        if (name.includes('windows')) return 'fa-windows';
+        return 'fa-fingerprint';
+    }
+
+    function getDefaultDeviceName() {
+        const ua = navigator.userAgent.toLowerCase();
+        if (ua.includes('iphone')) return 'iPhone';
+        if (ua.includes('ipad')) return 'iPad';
+        if (ua.includes('mac')) return 'Mac';
+        if (ua.includes('android')) return 'Android Device';
+        if (ua.includes('windows')) return 'Windows PC';
+        return 'My Device';
+    }
+
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showToast(message, type) {
+        // Create toast container if it doesn't exist
+        let container = document.querySelector('.toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            container.style.zIndex = '9999';
+            document.body.appendChild(container);
+        }
+
+        const toastId = 'toast-' + Date.now();
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type} border-0`;
+        toast.id = toastId;
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        container.appendChild(toast);
+
+        const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
+        bsToast.show();
+
+        toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    }
+
+    // Initialize
+    registerBtn.addEventListener('click', registerCredential);
+
+    // Delete credential confirm button
+    document.getElementById('confirmDeleteCredentialBtn')?.addEventListener('click', performDeleteCredential);
+
+    checkSupport().then(() => {
+        loadCredentials();
+    });
+})();
+</script>
+}
+
+<!-- Delete Credential Confirmation Modal -->
+<div class="modal fade" id="deleteCredentialModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Localizer["Close"]"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="delete-cred-icon-wrapper mb-3"><div class="delete-cred-icon-circle"><i class="fas fa-fingerprint text-danger"></i></div></div>
+                <h4 class="modal-title fw-bold mb-2">@Localizer["RemoveBiometricQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["ConfirmRemoveBiometric"]</p>
+                <p class="text-muted small">@Localizer["BiometricRemoveWarning"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i> @Localizer["Cancel"]</button>
+                <button type="button" class="btn btn-danger px-4" id="confirmDeleteCredentialBtn"><i class="fas fa-check me-1"></i> @Localizer["YesRemove"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.biometric-settings .feature-icon {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.credential-item {
+    transition: all 0.2s ease;
+    background-color: var(--bg-color);
+}
+
+.credential-item:hover {
+    background-color: var(--bg-secondary);
+    transform: translateX(5px);
+}
+
+[data-theme="dark"] .credential-item {
+    border-color: var(--border-color) !important;
+}
+
+.credential-icon {
+    width: 50px;
+    text-align: center;
+}
+
+/* Mobile responsiveness */
+@@media (max-width: 576px) {
+    .credential-item {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+
+    .credential-item .btn-group {
+        margin-top: 1rem;
+        align-self: flex-end;
+    }
+}
+
+/* Delete credential modal styles */
+.delete-cred-icon-wrapper { display: flex; justify-content: center; }
+.delete-cred-icon-circle {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    display: flex; align-items: center; justify-content: center;
+    animation: pulse-danger 2s infinite;
+}
+.delete-cred-icon-circle i { font-size: 2.5rem; }
+@@keyframes pulse-danger {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+    70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+#deleteCredentialModal .modal-content { border-radius: 1rem; }
+#deleteCredentialModal .btn { border-radius: 0.5rem; font-weight: 500; }
+[data-theme="dark"] #deleteCredentialModal .modal-content { background-color: #252538; }
+[data-theme="dark"] #deleteCredentialModal .modal-title { color: #e0e0e0; }
+[data-theme="dark"] #deleteCredentialModal .text-muted { color: #a0a0a0 !important; }
+[data-theme="dark"] .delete-cred-icon-circle { background: linear-gradient(135deg, #3d2020 0%, #4a2525 100%); }
+</style>

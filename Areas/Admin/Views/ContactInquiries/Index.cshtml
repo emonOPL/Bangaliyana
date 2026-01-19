@@ -1,0 +1,257 @@
+@model IEnumerable<Bangaliyana.Models.ContactInquiry>
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = Localizer["ContactInquiries"].Value;
+    var filteredStatus = ViewBag.FilteredStatus as InquiryStatus?;
+    var areaName = ViewBag.AreaName as string ?? "Admin";
+    var controllerName = ViewBag.ControllerName as string ?? "ContactInquiries";
+}
+
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="fas fa-envelope text-primary me-2"></i>@Localizer["ContactInquiries"]
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a asp-area="@areaName" asp-action="Index" asp-controller="Dashboard">@Localizer["Dashboard"]</a></li>
+                    <li class="breadcrumb-item active">@Localizer["ContactInquiries"]</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <a asp-area="@areaName" asp-controller="@controllerName" asp-action="Index" class="text-decoration-none">
+                <div class="card stat-card @(filteredStatus == null ? "border-primary" : "")">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">@Localizer["Total"]</h6>
+                                <h3 class="mb-0">@ViewBag.TotalCount</h3>
+                            </div>
+                            <div class="stat-icon bg-primary-soft">
+                                <i class="fas fa-envelope text-primary"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <a asp-area="@areaName" asp-controller="@controllerName" asp-action="Index" asp-route-status="@InquiryStatus.New" class="text-decoration-none">
+                <div class="card stat-card @(filteredStatus == InquiryStatus.New ? "border-danger" : "")">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">@Localizer["New"]</h6>
+                                <h3 class="mb-0 text-danger">@ViewBag.NewCount</h3>
+                            </div>
+                            <div class="stat-icon bg-danger-soft">
+                                <i class="fas fa-exclamation-circle text-danger"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <a asp-area="@areaName" asp-controller="@controllerName" asp-action="Index" asp-route-status="@InquiryStatus.InProgress" class="text-decoration-none">
+                <div class="card stat-card @(filteredStatus == InquiryStatus.InProgress ? "border-warning" : "")">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">@Localizer["InProgress"]</h6>
+                                <h3 class="mb-0 text-warning">@ViewBag.InProgressCount</h3>
+                            </div>
+                            <div class="stat-icon bg-warning-soft">
+                                <i class="fas fa-clock text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <a asp-area="@areaName" asp-controller="@controllerName" asp-action="Index" asp-route-status="@InquiryStatus.Responded" class="text-decoration-none">
+                <div class="card stat-card @(filteredStatus == InquiryStatus.Responded ? "border-success" : "")">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">@Localizer["Responded"]</h6>
+                                <h3 class="mb-0 text-success">@ViewBag.RespondedCount</h3>
+                            </div>
+                            <div class="stat-icon bg-success-soft">
+                                <i class="fas fa-check-circle text-success"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Inquiries Table -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    @if (filteredStatus.HasValue)
+                    {
+                        <span>@filteredStatus.Value @Localizer["Inquiries"]</span>
+                    }
+                    else
+                    {
+                        <span>@Localizer["AllInquiries"]</span>
+                    }
+                </h5>
+                @if (filteredStatus.HasValue)
+                {
+                    <a asp-area="@areaName" asp-controller="@controllerName" asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>@Localizer["ClearFilter"]
+                    </a>
+                }
+            </div>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th>@Localizer["Customer"]</th>
+                                <th>@Localizer["Subject"]</th>
+                                <th>@Localizer["Category"]</th>
+                                <th>@Localizer["Status"]</th>
+                                <th>@Localizer["Date"]</th>
+                                <th style="width: 100px;">@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var inquiry in Model)
+                            {
+                                <tr class="@(inquiry.Status == InquiryStatus.New ? "table-warning" : "")">
+                                    <td>@inquiry.Id</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm me-2">
+                                                <i class="fas fa-user-circle fa-2x text-muted"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold">@inquiry.FullName</div>
+                                                <small class="text-muted">@inquiry.Email</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 250px;" title="@inquiry.Subject">
+                                            @inquiry.Subject
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">@inquiry.Category</span>
+                                    </td>
+                                    <td>
+                                        @switch (inquiry.Status)
+                                        {
+                                            case InquiryStatus.New:
+                                                <span class="badge bg-danger">@Localizer["New"]</span>
+                                                break;
+                                            case InquiryStatus.InProgress:
+                                                <span class="badge bg-warning text-dark">@Localizer["InProgress"]</span>
+                                                break;
+                                            case InquiryStatus.Responded:
+                                                <span class="badge bg-success">@Localizer["Responded"]</span>
+                                                break;
+                                            case InquiryStatus.Closed:
+                                                <span class="badge bg-secondary">@Localizer["Closed"]</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>@inquiry.CreatedAt.ToBangladeshDateString()</small>
+                                    </td>
+                                    <td>
+                                        <a asp-area="@areaName" asp-controller="@controllerName" asp-action="Details" asp-route-id="@inquiry.Id" class="btn btn-sm btn-outline-primary" title="@Localizer["ViewDetails"]">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                    <h5>@Localizer["NoInquiriesFound"]</h5>
+                    <p class="text-muted">
+                        @if (filteredStatus.HasValue)
+                        {
+                            <text>@Localizer["NoFilteredInquiriesYet", filteredStatus.Value.ToString().ToLower()]</text>
+                        }
+                        else
+                        {
+                            <text>@Localizer["NoContactInquiriesYet"]</text>
+                        }
+                    </p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .stat-card {
+        transition: all 0.2s ease;
+        border-width: 2px;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .bg-primary-soft { background: rgba(99, 102, 241, 0.1); }
+    .bg-danger-soft { background: rgba(239, 68, 68, 0.1); }
+    .bg-warning-soft { background: rgba(245, 158, 11, 0.1); }
+    .bg-success-soft { background: rgba(16, 185, 129, 0.1); }
+
+    .avatar-sm {
+        width: 35px;
+        height: 35px;
+    }
+
+    /* Dark mode */
+    [data-theme="dark"] .stat-card {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .card {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .table-warning {
+        background: rgba(245, 158, 11, 0.1) !important;
+    }
+</style>

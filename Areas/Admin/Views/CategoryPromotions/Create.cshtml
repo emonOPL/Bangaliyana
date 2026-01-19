@@ -1,0 +1,249 @@
+@model Bangaliyana.Models.CategoryPromotion
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    ViewData["Title"] = "Create Category Promotion";
+    var categories = ViewBag.Categories as SelectList;
+    var promotionTypes = ViewBag.PromotionTypes as List<SelectListItem>;
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Category Promotions</a></li>
+            <li class="breadcrumb-item active">Create Promotion</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="fas fa-tags me-2"></i>Create New Category Promotion</h4>
+        </div>
+        <div class="card-body">
+            @if (ViewBag.onError != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <i class="fas fa-exclamation-circle me-2"></i>@ViewBag.onError
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+
+                <div class="row">
+                    <div class="col-lg-8">
+                        <!-- Basic Information -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-info-circle me-2"></i>Basic Information</h5>
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label asp-for="Name" class="form-label fw-semibold">Promotion Name <span class="text-danger">*</span></label>
+                                    <input asp-for="Name" class="form-control" placeholder="Summer Category Sale" />
+                                    <span asp-validation-for="Name" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="CategoryId" class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+                                    <select asp-for="CategoryId" asp-items="categories" class="form-select">
+                                        <option value="">Select Category</option>
+                                    </select>
+                                    <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <label asp-for="Tagline" class="form-label fw-semibold">Tagline</label>
+                                    <input asp-for="Tagline" class="form-control" placeholder="Up to 50% off!" />
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <label asp-for="Description" class="form-label fw-semibold">Description</label>
+                                    <textarea asp-for="Description" class="form-control" rows="3" placeholder="Describe your promotion..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Discount Settings -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-percent me-2"></i>Discount Settings</h5>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="PromotionType" class="form-label fw-semibold">Promotion Type <span class="text-danger">*</span></label>
+                                    <select asp-for="PromotionType" class="form-select" id="promotionTypeSelect">
+                                        @if (promotionTypes != null)
+                                        {
+                                            @foreach (var type in promotionTypes)
+                                            {
+                                                <option value="@type.Value" selected="@type.Selected">@type.Text</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3" id="discountValueGroup">
+                                    <label asp-for="DiscountValue" class="form-label fw-semibold">Discount Value</label>
+                                    <div class="input-group">
+                                        <input asp-for="DiscountValue" type="number" step="1" min="1" class="form-control" />
+                                        <span class="input-group-text" id="discountSuffix">%</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3" id="maxDiscountGroup">
+                                    <label asp-for="MaxDiscountAmount" class="form-label fw-semibold">Max Discount</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">৳</span>
+                                        <input asp-for="MaxDiscountAmount" type="number" step="1" min="0" class="form-control" placeholder="500" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="MinOrderAmount" class="form-label fw-semibold">Minimum Order</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">৳</span>
+                                        <input asp-for="MinOrderAmount" type="number" step="1" min="0" class="form-control" placeholder="0" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Duration -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-calendar-alt me-2"></i>Duration (Optional)</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="StartDate" class="form-label fw-semibold">Start Date</label>
+                                    <input asp-for="StartDate" type="datetime-local" class="form-control" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="EndDate" class="form-label fw-semibold">End Date</label>
+                                    <input asp-for="EndDate" type="datetime-local" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Visuals -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-image me-2"></i>Visual Settings</h5>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-semibold">Desktop Banner</label>
+                                    <input type="file" name="bannerImage" class="form-control" accept="image/*" />
+                                    <small class="text-muted">Recommended: 1200x400px</small>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-semibold">Mobile Banner</label>
+                                    <input type="file" name="mobileBannerImage" class="form-control" accept="image/*" />
+                                    <small class="text-muted">Recommended: 600x300px</small>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-semibold">Thumbnail</label>
+                                    <input type="file" name="thumbnailImage" class="form-control" accept="image/*" />
+                                    <small class="text-muted">Recommended: 300x300px</small>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="BackgroundColor" class="form-label fw-semibold">Background Color</label>
+                                    <input asp-for="BackgroundColor" type="color" class="form-control form-control-color w-100" />
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="TextColor" class="form-label fw-semibold">Text Color</label>
+                                    <input asp-for="TextColor" type="color" class="form-control form-control-color w-100" />
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="IconClass" class="form-label fw-semibold">Icon Class</label>
+                                    <input asp-for="IconClass" class="form-control" placeholder="fas fa-gift" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Call to Action -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-mouse-pointer me-2"></i>Call to Action</h5>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="ButtonText" class="form-label fw-semibold">Button Text</label>
+                                    <input asp-for="ButtonText" class="form-control" placeholder="Shop Now" />
+                                </div>
+                                <div class="col-md-8 mb-3">
+                                    <label asp-for="CustomUrl" class="form-label fw-semibold">Custom URL</label>
+                                    <input asp-for="CustomUrl" class="form-control" placeholder="https://example.com/category" />
+                                    <small class="text-muted">Leave empty to use category URL</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <!-- Settings -->
+                        <div class="card bg-light">
+                            <div class="card-header">
+                                <i class="fas fa-cog me-2"></i>Settings
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="IsActive" class="form-check-input" />
+                                        <label asp-for="IsActive" class="form-check-label fw-semibold">Active</label>
+                                    </div>
+                                    <small class="text-muted">Enable this promotion</small>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="IsFeatured" class="form-check-input" />
+                                        <label asp-for="IsFeatured" class="form-check-label fw-semibold">Featured</label>
+                                    </div>
+                                    <small class="text-muted">Show in featured section</small>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="ShowOnHomepage" class="form-check-input" />
+                                        <label asp-for="ShowOnHomepage" class="form-check-label fw-semibold">Show on Homepage</label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="ShowCountdown" class="form-check-input" />
+                                        <label asp-for="ShowCountdown" class="form-check-label fw-semibold">Show Countdown</label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label asp-for="DisplayOrder" class="form-label fw-semibold">Display Order</label>
+                                    <input asp-for="DisplayOrder" type="number" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between pt-3 border-top mt-4">
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Create Promotion
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        $(document).ready(function () {
+            function updateDiscountFields() {
+                var type = $('#promotionTypeSelect').val();
+                if (type == '2') { // BannerOnly
+                    $('#discountValueGroup').hide();
+                    $('#maxDiscountGroup').hide();
+                } else if (type == '0') { // Percentage
+                    $('#discountValueGroup').show();
+                    $('#maxDiscountGroup').show();
+                    $('#discountSuffix').text('%');
+                } else { // FixedAmount
+                    $('#discountValueGroup').show();
+                    $('#maxDiscountGroup').hide();
+                    $('#discountSuffix').text('৳');
+                }
+            }
+
+            $('#promotionTypeSelect').on('change', updateDiscountFields);
+            updateDiscountFields();
+        });
+    </script>
+}

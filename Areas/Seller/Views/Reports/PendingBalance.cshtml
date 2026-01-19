@@ -1,0 +1,192 @@
+@model IEnumerable<Bangaliyana.Models.SellerMonthlyReport>
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = "Pending Balance";
+    var seller = ViewBag.Seller as Bangaliyana.Models.Seller;
+    var openReport = ViewBag.OpenReport as Bangaliyana.Models.SellerMonthlyReport;
+    var totalPendingBalance = (decimal)ViewBag.TotalPendingBalance;
+    var minimumPayout = (decimal)ViewBag.MinimumPayout;
+    var eligibleForPayout = (bool)ViewBag.EligibleForPayout;
+}
+
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Index")">My Reports</a></li>
+                    <li class="breadcrumb-item active">Pending Balance</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h4 class="mb-1">
+                        <i class="fas fa-wallet text-warning me-2"></i>Pending Balance
+                    </h4>
+                    <p class="text-muted mb-0">Your accumulated balance awaiting payout</p>
+                </div>
+                <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Reports
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100 border-start @(eligibleForPayout ? "border-success" : "border-warning") border-4">
+                <div class="card-body text-center">
+                    <h3 class="@(eligibleForPayout ? "text-success" : "text-warning") mb-1">@totalPendingBalance.ToString("N0") BDT</h3>
+                    <small class="text-muted">Total Pending Balance</small>
+                    @if (eligibleForPayout)
+                    {
+                        <div class="mt-2">
+                            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Eligible for Payout</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mt-2">
+                            <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Below Minimum (@minimumPayout.ToString("N0") BDT)</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100 border-start border-info border-4">
+                <div class="card-body text-center">
+                    <h3 class="text-info mb-1">@minimumPayout.ToString("N0") BDT</h3>
+                    <small class="text-muted">Minimum Payout Amount</small>
+                    <div class="mt-2">
+                        <small class="text-muted">Balance below this will be carried forward</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Open Report (if exists) -->
+    @if (openReport != null)
+    {
+        <div class="card border-0 shadow-sm mb-4 border-start border-primary border-4">
+            <div class="card-header bg-transparent">
+                <h6 class="mb-0"><i class="fas fa-calendar-alt text-primary me-2"></i>Current Month (In Progress)</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center mb-3">
+                        <h5 class="text-muted">@(new DateTime(openReport.Year, openReport.Month, 1).ToString("MMMM yyyy"))</h5>
+                        <span class="badge bg-primary">@openReport.Status.GetDisplayName()</span>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <p class="mb-0 text-muted">Sales</p>
+                        <h5>@openReport.TotalSales.ToString("N0") BDT</h5>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <p class="mb-0 text-muted">Commission</p>
+                        <h5 class="text-danger">-@openReport.CommissionAmount.ToString("N0") BDT</h5>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <p class="mb-0 text-muted">Estimated Payable</p>
+                        <h5 class="text-success">@openReport.NetPayable.ToString("N0") BDT</h5>
+                    </div>
+                </div>
+                <div class="alert alert-info mb-0">
+                    <i class="fas fa-info-circle me-1"></i>
+                    This amount will be finalized on the 1st of next month and added to your pending balance.
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Pending Reports -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent">
+            <h6 class="mb-0"><i class="fas fa-clock text-warning me-2"></i>Finalized Reports Awaiting Payout</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Report #</th>
+                            <th class="text-end">Sales</th>
+                            <th class="text-end">Commission</th>
+                            <th class="text-end">Carry Forward</th>
+                            <th class="text-end">Net Payable</th>
+                            <th class="text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            foreach (var report in Model)
+                            {
+                                var statusClass = report.Status switch
+                                {
+                                    MonthlyReportStatus.PendingPayout => "bg-warning text-dark",
+                                    MonthlyReportStatus.Finalized => "bg-info",
+                                    _ => "bg-secondary"
+                                };
+                                <tr>
+                                    <td>
+                                        <strong>@(new DateTime(report.Year, report.Month, 1).ToString("MMMM yyyy"))</strong>
+                                    </td>
+                                    <td><span class="text-muted">@report.ReportNumber</span></td>
+                                    <td class="text-end">@report.TotalSales.ToString("N0") BDT</td>
+                                    <td class="text-end text-danger">-@report.CommissionAmount.ToString("N0") BDT</td>
+                                    <td class="text-end text-info">
+                                        @if (report.CarryForwardFromPrevious > 0)
+                                        {
+                                            <span>+@report.CarryForwardFromPrevious.ToString("N0")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-end fw-bold text-success">@report.NetPayable.ToString("N0") BDT</td>
+                                    <td class="text-center">
+                                        <span class="badge @statusClass">@report.Status.GetDisplayName()</span>
+                                    </td>
+                                </tr>
+                            }
+                            <tr class="border-top border-2">
+                                <td colspan="5" class="text-end"><strong>Total Pending:</strong></td>
+                                <td class="text-end"><strong class="text-success">@Model.Sum(r => r.NetPayable).ToString("N0") BDT</strong></td>
+                                <td></td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    <i class="fas fa-check-circle fa-2x mb-2 d-block text-success"></i>
+                                    No pending reports. All balances have been paid out!
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Card -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body">
+            <h6><i class="fas fa-info-circle text-info me-2"></i>How Pending Balance Works</h6>
+            <ul class="mb-0 small text-muted">
+                <li>Your sales are tracked monthly from the 1st to the last day of each month</li>
+                <li>On the 1st of each month, the previous month's report is finalized</li>
+                <li>Minimum payout amount is <strong>@minimumPayout.ToString("N0") BDT</strong></li>
+                <li>If your payable amount is less than @minimumPayout.ToString("N0") BDT, it will be carried forward to the next month</li>
+                <li>Once eligible, payments are processed by the admin team</li>
+            </ul>
+        </div>
+    </div>
+</div>

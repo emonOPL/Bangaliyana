@@ -1,0 +1,109 @@
+@{
+    ViewData["Title"] = "Create Role";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">Create New Role</h1>
+            <p class="text-muted mb-0">Add a new role to the system</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to List
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Role Details</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Create" method="post">
+                        @Html.AntiForgeryToken()
+                        <div asp-validation-summary="All" class="text-danger"></div>
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Role Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                   placeholder="Enter role name" />
+                            <div class="form-text">Role names should be unique and descriptive.</div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Create Role
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info alert-permanent mb-3">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Tips for creating roles:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Use clear, descriptive names</li>
+                            <li>Avoid special characters in role names</li>
+                            <li>Role names are case-sensitive</li>
+                        </ul>
+                    </div>
+                    <div class="alert alert-warning alert-permanent mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Note:</strong> System roles (Admin, User, Seller, Moderator) cannot be created again.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Dark mode support */
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-header.bg-light {
+            background-color: var(--bs-gray-800) !important;
+            border-color: var(--bs-gray-700);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .card-body {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-control {
+            background-color: var(--bs-gray-700);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-control::placeholder {
+            color: var(--bs-gray-400);
+        }
+        [data-theme="dark"] .form-label {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-text {
+            color: var(--bs-gray-400);
+        }
+        [data-theme="dark"] h1,
+        [data-theme="dark"] h5 {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .text-muted {
+            color: var(--bs-gray-400) !important;
+        }
+    </style>
+}

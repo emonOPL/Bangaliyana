@@ -1,0 +1,577 @@
+@using Bangaliyana.Models
+@model IEnumerable<Coupon>
+@{
+    ViewData["Title"] = "Coupon Management";
+    var currentPage = ViewBag.CurrentPage as int? ?? 1;
+    var totalPages = ViewBag.TotalPages as int? ?? 1;
+    var totalCoupons = ViewBag.TotalCoupons as int? ?? 0;
+    var activeCoupons = ViewBag.ActiveCoupons as int? ?? 0;
+    var expiredCoupons = ViewBag.ExpiredCoupons as int? ?? 0;
+    var search = ViewBag.Search as string;
+    var status = ViewBag.Status as string;
+    var type = ViewBag.Type as string;
+}
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-ticket-alt text-success me-2"></i>Coupon Management</h1>
+            <p class="text-muted mb-0">Create and manage discount coupons</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <a asp-action="Create" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i>Create Coupon
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-primary bg-opacity-10">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle bg-primary bg-opacity-25 p-3 me-3">
+                        <i class="fas fa-ticket-alt text-primary fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0 fw-bold">@totalCoupons</h3>
+                        <small class="text-muted">Total Coupons</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-success bg-opacity-10">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle bg-success bg-opacity-25 p-3 me-3">
+                        <i class="fas fa-check-circle text-success fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0 fw-bold">@activeCoupons</h3>
+                        <small class="text-muted">Active Coupons</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-danger bg-opacity-10">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle bg-danger bg-opacity-25 p-3 me-3">
+                        <i class="fas fa-clock text-danger fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0 fw-bold">@expiredCoupons</h3>
+                        <small class="text-muted">Expired Coupons</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["onSave"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["onSave"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["onEdit"] != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show">
+            <i class="fas fa-info-circle me-2"></i>@TempData["onEdit"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["onDelete"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show">
+            <i class="fas fa-exclamation-triangle me-2"></i>@TempData["onDelete"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["onError"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["onError"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Filters Card -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <form asp-action="Index" method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted mb-1">Search</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" name="search" value="@search" class="form-control" placeholder="Code or description..." />
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted mb-1">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="active" selected="@(status == "active")">Active</option>
+                        <option value="inactive" selected="@(status == "inactive")">Inactive</option>
+                        <option value="expired" selected="@(status == "expired")">Expired</option>
+                        <option value="scheduled" selected="@(status == "scheduled")">Scheduled</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted mb-1">Discount Type</label>
+                    <select name="type" class="form-select">
+                        <option value="">All Types</option>
+                        <option value="Percentage" selected="@(type == "Percentage")">Percentage</option>
+                        <option value="FixedAmount" selected="@(type == "FixedAmount")">Fixed Amount</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-grow-1">
+                            <i class="fas fa-filter me-1"></i>Filter
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Anti-forgery token for AJAX requests -->
+    @Html.AntiForgeryToken()
+
+    <!-- Coupons Table Card -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Code</th>
+                                <th>Discount</th>
+                                <th class="text-center">Usage</th>
+                                <th>Validity</th>
+                                <th>Restrictions</th>
+                                <th class="text-center">Status</th>
+                                <th style="width: 140px;" class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var coupon in Model)
+                            {
+                                var now = DateTime.UtcNow;
+                                var isExpired = coupon.EndDate.HasValue && coupon.EndDate < now;
+                                var isScheduled = coupon.StartDate.HasValue && coupon.StartDate > now;
+                                var isLimitReached = coupon.UsageLimit.HasValue && coupon.TimesUsed >= coupon.UsageLimit;
+                                var isActive = coupon.IsActive && !isExpired && !isScheduled && !isLimitReached;
+
+                                var statusClass = isActive ? "bg-success" : (isExpired ? "bg-danger" : (isScheduled ? "bg-info" : (!coupon.IsActive ? "bg-secondary" : "bg-warning")));
+                                var statusText = isActive ? "Active" : (isExpired ? "Expired" : (isScheduled ? "Scheduled" : (!coupon.IsActive ? "Inactive" : "Limit Reached")));
+
+                                <tr>
+                                    <td>
+                                        <a asp-action="Details" asp-route-id="@coupon.Id" class="fw-bold text-decoration-none coupon-code">
+                                            @coupon.Code
+                                        </a>
+                                        @if (!string.IsNullOrEmpty(coupon.Description))
+                                        {
+                                            <br /><small class="text-muted">@(coupon.Description.Length > 40 ? coupon.Description.Substring(0, 40) + "..." : coupon.Description)</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (coupon.DiscountType == DiscountType.Percentage)
+                                        {
+                                            <span class="badge bg-primary fs-6">@coupon.DiscountValue%</span>
+                                            @if (coupon.MaximumDiscountAmount.HasValue)
+                                            {
+                                                <br /><small class="text-muted">Max: ৳@coupon.MaximumDiscountAmount.Value.ToString("N0")</small>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success fs-6">৳@coupon.DiscountValue.ToString("N0")</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="fw-semibold">@coupon.TimesUsed</span>
+                                        @if (coupon.UsageLimit.HasValue)
+                                        {
+                                            <span class="text-muted">/ @coupon.UsageLimit</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">/ Unlimited</span>
+                                        }
+                                        @if (coupon.UsagePerUserLimit.HasValue)
+                                        {
+                                            <br /><small class="text-muted"><i class="fas fa-user me-1"></i>@coupon.UsagePerUserLimit/user</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (coupon.StartDate.HasValue || coupon.EndDate.HasValue)
+                                        {
+                                            <small>
+                                                @if (coupon.StartDate.HasValue)
+                                                {
+                                                    <span class="text-muted">From:</span> @coupon.StartDate.Value.ToString("MMM dd, yyyy")<br />
+                                                }
+                                                @if (coupon.EndDate.HasValue)
+                                                {
+                                                    <span class="text-muted">To:</span> @coupon.EndDate.Value.ToString("MMM dd, yyyy")
+                                                }
+                                            </small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">No expiry</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @if (coupon.MinimumOrderAmount.HasValue)
+                                            {
+                                                <span class="badge bg-light text-dark" title="Minimum Order">
+                                                    <i class="fas fa-shopping-cart me-1"></i>Min ৳@coupon.MinimumOrderAmount.Value.ToString("N0")
+                                                </span>
+                                            }
+                                            @if (coupon.IsFirstOrderOnly)
+                                            {
+                                                <span class="badge bg-warning text-dark" title="First Order Only">
+                                                    <i class="fas fa-star me-1"></i>First Order
+                                                </span>
+                                            }
+                                            @if (coupon.CategoryId.HasValue)
+                                            {
+                                                <span class="badge bg-info" title="Category Specific">
+                                                    <i class="fas fa-folder me-1"></i>@(coupon.Category?.Name ?? "Category")
+                                                </span>
+                                            }
+                                            @if (coupon.SellerId.HasValue)
+                                            {
+                                                <span class="badge bg-purple" title="Seller Specific" style="background-color: #9333ea;">
+                                                    <i class="fas fa-store me-1"></i>@(coupon.Seller?.ShopName ?? "Seller")
+                                                </span>
+                                            }
+                                            @if (!string.IsNullOrEmpty(coupon.AssignedToUserId))
+                                            {
+                                                <span class="badge bg-dark" title="User Specific">
+                                                    <i class="fas fa-user me-1"></i>Assigned
+                                                </span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge @statusClass">@statusText</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="Details" asp-route-id="@coupon.Id" class="btn btn-outline-info" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a asp-action="Edit" asp-route-id="@coupon.Id" class="btn btn-outline-primary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-secondary toggle-active-btn"
+                                                    data-coupon-id="@coupon.Id"
+                                                    data-is-active="@coupon.IsActive.ToString().ToLower()"
+                                                    title="@(coupon.IsActive ? "Deactivate" : "Activate")">
+                                                <i class="fas @(coupon.IsActive ? "fa-toggle-on text-success" : "fa-toggle-off")"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" title="Delete"
+                                                    data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                                    data-coupon-id="@coupon.Id" data-coupon-code="@coupon.Code"
+                                                    @(coupon.TimesUsed > 0 ? "disabled" : "")>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if (totalPages > 1)
+                {
+                    <nav class="p-3 border-top">
+                        <ul class="pagination justify-content-center mb-0">
+                            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@(currentPage - 1)"
+                                   asp-route-search="@search" asp-route-status="@status" asp-route-type="@type">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            @{
+                                var startPage = Math.Max(1, currentPage - 2);
+                                var endPage = Math.Min(totalPages, startPage + 4);
+                                if (endPage - startPage < 4)
+                                {
+                                    startPage = Math.Max(1, endPage - 4);
+                                }
+                            }
+                            @if (startPage > 1)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-action="Index" asp-route-page="1"
+                                       asp-route-search="@search" asp-route-status="@status" asp-route-type="@type">1</a>
+                                </li>
+                                @if (startPage > 2)
+                                {
+                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                }
+                            }
+                            @for (int i = startPage; i <= endPage; i++)
+                            {
+                                <li class="page-item @(i == currentPage ? "active" : "")">
+                                    <a class="page-link" asp-action="Index" asp-route-page="@i"
+                                       asp-route-search="@search" asp-route-status="@status" asp-route-type="@type">@i</a>
+                                </li>
+                            }
+                            @if (endPage < totalPages)
+                            {
+                                @if (endPage < totalPages - 1)
+                                {
+                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                }
+                                <li class="page-item">
+                                    <a class="page-link" asp-action="Index" asp-route-page="@totalPages"
+                                       asp-route-search="@search" asp-route-status="@status" asp-route-type="@type">@totalPages</a>
+                                </li>
+                            }
+                            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@(currentPage + 1)"
+                                   asp-route-search="@search" asp-route-status="@status" asp-route-type="@type">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                        <div class="text-center text-muted small mt-2">
+                            Showing @((currentPage - 1) * 15 + 1) - @(Math.Min(currentPage * 15, totalCoupons)) of @totalCoupons coupons
+                        </div>
+                    </nav>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-ticket-alt fa-4x text-muted mb-3"></i>
+                    <h5 class="text-muted">No coupons found</h5>
+                    <p class="text-muted">
+                        @if (!string.IsNullOrEmpty(search) || !string.IsNullOrEmpty(status) || !string.IsNullOrEmpty(type))
+                        {
+                            <text>Try adjusting your filters or search criteria</text>
+                        }
+                        else
+                        {
+                            <text>Create your first coupon to get started</text>
+                        }
+                    </p>
+                    @if (!string.IsNullOrEmpty(search) || !string.IsNullOrEmpty(status) || !string.IsNullOrEmpty(type))
+                    {
+                        <a asp-action="Index" class="btn btn-outline-primary me-2">
+                            <i class="fas fa-times me-1"></i>Clear Filters
+                        </a>
+                    }
+                    <a asp-action="Create" class="btn btn-success">
+                        <i class="fas fa-plus me-1"></i>Create Coupon
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-trash-alt text-danger" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">Delete Coupon?</h4>
+                <p class="text-muted mb-1">Are you sure you want to delete coupon "<span id="deleteCouponCode" class="fw-semibold"></span>"?</p>
+                <p class="text-muted small mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 py-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <form id="deleteForm" method="post" class="m-0 d-inline-flex">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .coupon-code {
+            color: var(--bs-body-color);
+            font-family: 'Courier New', monospace;
+            transition: color 0.2s;
+        }
+        .coupon-code:hover {
+            color: var(--bs-primary);
+        }
+
+        .table > tbody > tr:hover {
+            background-color: rgba(var(--bs-primary-rgb), 0.05);
+        }
+
+        /* Dark mode styles */
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+
+        [data-theme="dark"] .table {
+            color: var(--bs-light);
+        }
+
+        [data-theme="dark"] .table-light {
+            background-color: #374151 !important;
+            color: #f3f4f6 !important;
+        }
+
+        [data-theme="dark"] .table-light th {
+            background-color: #374151 !important;
+            color: #f3f4f6 !important;
+        }
+
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+
+        [data-theme="dark"] .input-group-text {
+            background-color: var(--bs-gray-700);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+
+        [data-theme="dark"] .page-link {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+
+        [data-theme="dark"] .page-item.active .page-link {
+            background-color: var(--bs-primary);
+            border-color: var(--bs-primary);
+        }
+
+        [data-theme="dark"] .page-item.disabled .page-link {
+            background-color: var(--bs-gray-900);
+            color: var(--bs-gray-500);
+        }
+
+        [data-theme="dark"] .border-top {
+            border-color: var(--bs-gray-700) !important;
+        }
+
+        [data-theme="dark"] .modal-content {
+            background-color: var(--bs-dark);
+            color: var(--bs-light);
+        }
+
+        [data-theme="dark"] .badge.bg-light {
+            background-color: var(--bs-gray-700) !important;
+            color: var(--bs-light) !important;
+        }
+
+        [data-theme="dark"] .bg-primary.bg-opacity-10,
+        [data-theme="dark"] .bg-success.bg-opacity-10,
+        [data-theme="dark"] .bg-danger.bg-opacity-10 {
+            background-color: rgba(var(--bs-primary-rgb), 0.2) !important;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        // Delete modal handler
+        document.getElementById('deleteModal').addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var couponId = button.getAttribute('data-coupon-id');
+            var couponCode = button.getAttribute('data-coupon-code');
+
+            document.getElementById('deleteCouponCode').textContent = couponCode || '';
+            document.getElementById('deleteForm').action = '@Url.Action("Delete")/' + couponId;
+        });
+
+        // Toggle active status
+        $(document).on('click', '.toggle-active-btn', function (e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var couponId = $btn.data('coupon-id');
+            var $row = $btn.closest('tr');
+            var $statusBadge = $row.find('td:nth-child(6) .badge');
+
+            // Disable button during request
+            $btn.prop('disabled', true);
+
+            $.ajax({
+                url: '@Url.Action("ToggleActive")',
+                type: 'POST',
+                data: { id: couponId },
+                headers: { 'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val() },
+                success: function (response) {
+                    if (response.success) {
+                        // Update toggle icon using html() - more robust than class manipulation
+                        if (response.isActive) {
+                            $btn.html('<i class="fas fa-toggle-on text-success"></i>');
+                            $btn.attr('title', 'Deactivate').data('is-active', true);
+                        } else {
+                            $btn.html('<i class="fas fa-toggle-off"></i>');
+                            $btn.attr('title', 'Activate').data('is-active', false);
+                        }
+
+                        // Update status badge
+                        if ($statusBadge.length) {
+                            $statusBadge.removeClass('bg-success bg-danger bg-info bg-secondary bg-warning');
+                            if (response.isActive) {
+                                $statusBadge.addClass('bg-success').text('Active');
+                            } else {
+                                $statusBadge.addClass('bg-secondary').text('Inactive');
+                            }
+                        }
+
+                        // Show success notification
+                        if (typeof alertify !== 'undefined') {
+                            alertify.success(response.isActive ? 'Coupon activated' : 'Coupon deactivated');
+                        }
+                    } else {
+                        if (typeof alertify !== 'undefined') {
+                            alertify.error(response.message || 'Failed to update coupon status');
+                        }
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Toggle error:', error);
+                    if (typeof alertify !== 'undefined') {
+                        alertify.error('Failed to update coupon status');
+                    }
+                },
+                complete: function () {
+                    $btn.prop('disabled', false);
+                }
+            });
+        });
+    </script>
+}

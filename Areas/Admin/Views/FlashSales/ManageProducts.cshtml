@@ -1,0 +1,362 @@
+@model Bangaliyana.Models.FlashSale
+@{
+    ViewData["Title"] = "Manage Flash Sale Products";
+    var availableProducts = ViewBag.AvailableProducts as List<Bangaliyana.Models.Products> ?? new List<Bangaliyana.Models.Products>();
+}
+
+<style>
+    .product-search-result {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    .product-search-result:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Flash Sales</a></li>
+            <li class="breadcrumb-item"><a asp-action="Edit" asp-route-id="@Model.Id">@Model.Name</a></li>
+            <li class="breadcrumb-item active">Manage Products</li>
+        </ol>
+    </nav>
+
+    @if (TempData["onSave"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["onSave"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["onError"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["onError"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Current Products -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-boxes me-2"></i>Products in Flash Sale</h5>
+                    <span class="badge bg-light text-dark">@Model.Products.Count Products</span>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Products.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Original Price</th>
+                                        <th>Flash Sale Price</th>
+                                        <th>Discount</th>
+                                        <th>Stock</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.Products.OrderBy(p => p.DisplayOrder))
+                                    {
+                                        var product = item.Product;
+                                        var firstImage = product?.Images?.FirstOrDefault()?.ImageUrl;
+                                        <tr data-id="@item.Id">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    @if (!string.IsNullOrEmpty(firstImage))
+                                                    {
+                                                        <img src="@firstImage" alt="Product" class="rounded me-2" style="width: 50px; height: 50px; object-fit: cover;">
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="bg-light rounded me-2 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                                            <i class="fas fa-image text-muted"></i>
+                                                        </div>
+                                                    }
+                                                    <div>
+                                                        <strong>@product?.Name</strong>
+                                                        @if (!string.IsNullOrEmpty(product?.SKU))
+                                                        {
+                                                            <br /><small class="text-muted">SKU: @product.SKU</small>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>৳@product?.Price.ToString("N0")</td>
+                                            <td>
+                                                <input type="number" class="form-control form-control-sm flash-price" value="@item.FlashSalePrice" style="width: 100px;" />
+                                            </td>
+                                            <td>
+                                                <div class="input-group input-group-sm" style="width: 100px;">
+                                                    <input type="number" class="form-control discount-percent" value="@item.DiscountPercentage" />
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="number" class="form-control form-control-sm flash-stock" value="@item.FlashSaleStock" placeholder="Unlimited" style="width: 80px;" />
+                                                @if (item.SoldCount > 0)
+                                                {
+                                                    <small class="text-muted d-block">Sold: @item.SoldCount</small>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm btn-outline-primary save-product-btn" title="Save Changes">
+                                                    <i class="fas fa-save"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-product-btn" title="Remove">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No products added yet</h5>
+                            <p class="text-muted">Search and add products from the right panel</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Add Product -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-plus me-2"></i>Add Product</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="AddProduct" method="post" id="addProductForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="flashSaleId" value="@Model.Id" />
+                        <input type="hidden" name="productId" id="selectedProductId" />
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Search Product</label>
+                            <input type="text" class="form-control" id="productSearch" placeholder="Search by name or SKU..." autocomplete="off" />
+                            <div id="searchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto;"></div>
+                        </div>
+
+                        <div id="selectedProductInfo" class="d-none mb-3 p-3 bg-light rounded">
+                            <div class="d-flex align-items-center mb-2">
+                                <img id="selectedProductImage" src="" alt="" class="rounded me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                <div>
+                                    <strong id="selectedProductName"></strong>
+                                    <br /><small class="text-muted">Original: ৳<span id="selectedProductPrice"></span></small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Flash Sale Price <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">৳</span>
+                                <input type="number" name="flashSalePrice" class="form-control" id="flashSalePrice" required />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Discount Percentage <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" name="discountPercentage" class="form-control" id="discountPercentage" min="1" max="99" required />
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Stock Limit</label>
+                            <input type="number" name="flashSaleStock" class="form-control" placeholder="Leave empty for unlimited" />
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100" id="addProductBtn" disabled>
+                            <i class="fas fa-plus me-1"></i>Add Product
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Flash Sale Info -->
+            <div class="card shadow-sm mt-3">
+                <div class="card-header">
+                    <i class="fas fa-info-circle me-2"></i>Flash Sale Info
+                </div>
+                <div class="card-body">
+                    <p class="mb-2"><strong>Name:</strong> @Model.Name</p>
+                    <p class="mb-2"><strong>Start:</strong> @Model.StartDate.ToString("MMM dd, yyyy HH:mm")</p>
+                    <p class="mb-2"><strong>End:</strong> @Model.EndDate.ToString("MMM dd, yyyy HH:mm")</p>
+                    <p class="mb-0">
+                        <strong>Status:</strong>
+                        @if (Model.IsCurrentlyActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else if (Model.IsUpcoming)
+                        {
+                            <span class="badge bg-info">Upcoming</span>
+                        }
+                        else if (Model.IsExpired)
+                        {
+                            <span class="badge bg-danger">Expired</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inactive</span>
+                        }
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Flash Sales
+        </a>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            var searchTimeout;
+            var selectedProductOriginalPrice = 0;
+
+            // Product search
+            $('#productSearch').on('input', function () {
+                var term = $(this).val();
+                clearTimeout(searchTimeout);
+
+                if (term.length < 2) {
+                    $('#searchResults').empty();
+                    return;
+                }
+
+                searchTimeout = setTimeout(function () {
+                    $.get('@Url.Action("SearchProducts")', { term: term, flashSaleId: @Model.Id }, function (data) {
+                        var html = '';
+                        data.forEach(function (product) {
+                            var img = product.image ? '<img src="' + product.image + '" class="rounded me-2" style="width: 30px; height: 30px; object-fit: cover;">' : '';
+                            html += '<a href="#" class="list-group-item list-group-item-action product-search-result" data-id="' + product.id + '" data-name="' + product.name + '" data-price="' + product.price + '" data-image="' + (product.image || '') + '">' +
+                                '<div class="d-flex align-items-center">' + img +
+                                '<div><strong>' + product.name + '</strong><br><small class="text-muted">SKU: ' + (product.sku || 'N/A') + ' | ৳' + product.price.toLocaleString() + '</small></div>' +
+                                '</div></a>';
+                        });
+
+                        if (data.length === 0) {
+                            html = '<div class="list-group-item text-muted">No products found</div>';
+                        }
+
+                        $('#searchResults').html(html);
+                    });
+                }, 300);
+            });
+
+            // Select product from search
+            $(document).on('click', '.product-search-result', function (e) {
+                e.preventDefault();
+                var id = $(this).data('id');
+                var name = $(this).data('name');
+                var price = $(this).data('price');
+                var image = $(this).data('image');
+
+                selectedProductOriginalPrice = price;
+
+                $('#selectedProductId').val(id);
+                $('#selectedProductName').text(name);
+                $('#selectedProductPrice').text(price.toLocaleString());
+                if (image) {
+                    $('#selectedProductImage').attr('src', image).show();
+                } else {
+                    $('#selectedProductImage').hide();
+                }
+                $('#selectedProductInfo').removeClass('d-none');
+                $('#searchResults').empty();
+                $('#productSearch').val(name);
+                $('#addProductBtn').prop('disabled', false);
+
+                // Auto-calculate discount
+                $('#discountPercentage').trigger('input');
+            });
+
+            // Calculate flash sale price from discount percentage
+            $('#discountPercentage').on('input', function () {
+                var discount = parseInt($(this).val()) || 0;
+                if (selectedProductOriginalPrice > 0 && discount > 0 && discount < 100) {
+                    var flashPrice = Math.round(selectedProductOriginalPrice * (100 - discount) / 100);
+                    $('#flashSalePrice').val(flashPrice);
+                }
+            });
+
+            // Calculate discount percentage from flash sale price
+            $('#flashSalePrice').on('input', function () {
+                var flashPrice = parseFloat($(this).val()) || 0;
+                if (selectedProductOriginalPrice > 0 && flashPrice > 0) {
+                    var discount = Math.round((1 - flashPrice / selectedProductOriginalPrice) * 100);
+                    $('#discountPercentage').val(discount);
+                }
+            });
+
+            // Save product changes
+            $(document).on('click', '.save-product-btn', function () {
+                var $row = $(this).closest('tr');
+                var id = $row.data('id');
+                var flashPrice = $row.find('.flash-price').val();
+                var discount = $row.find('.discount-percent').val();
+                var stock = $row.find('.flash-stock').val() || null;
+
+                $.ajax({
+                    url: '@Url.Action("UpdateProduct")',
+                    type: 'POST',
+                    data: {
+                        id: id,
+                        flashSalePrice: flashPrice,
+                        discountPercentage: discount,
+                        flashSaleStock: stock
+                    },
+                    headers: { 'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val() },
+                    success: function (response) {
+                        if (response.success) {
+                            alert('Product updated successfully!');
+                        } else {
+                            alert('Failed to update product.');
+                        }
+                    }
+                });
+            });
+
+            // Remove product
+            $(document).on('click', '.remove-product-btn', function () {
+                if (!confirm('Are you sure you want to remove this product from the flash sale?')) return;
+
+                var $row = $(this).closest('tr');
+                var id = $row.data('id');
+
+                $.ajax({
+                    url: '@Url.Action("RemoveProduct")',
+                    type: 'POST',
+                    data: { id: id },
+                    headers: { 'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val() },
+                    success: function (response) {
+                        if (response.success) {
+                            $row.fadeOut(function () { $(this).remove(); });
+                        } else {
+                            alert('Failed to remove product.');
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+}

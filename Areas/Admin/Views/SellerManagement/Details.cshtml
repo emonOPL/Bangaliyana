@@ -1,0 +1,1041 @@
+@model Bangaliyana.Models.Seller
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+
+@{
+    ViewData["Title"] = Localizer["SellerDetails"].Value + " - " + Model.ShopName;
+    var recentOrders = ViewBag.RecentOrders as List<OrderItem>;
+    var productCount = (int)ViewBag.ProductCount;
+    var totalOrders = (int)ViewBag.OrderCount;
+    var totalSales = (decimal)ViewBag.TotalRevenue;
+    var primaryBank = Model.BankAccounts?.FirstOrDefault(b => b.IsPrimary) ?? Model.BankAccounts?.FirstOrDefault();
+}
+
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">@Localizer["SellerManagement"]</a></li>
+            <li class="breadcrumb-item active">@Model.ShopName</li>
+        </ol>
+    </nav>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Left Column - Shop Info -->
+        <div class="col-lg-8">
+            <!-- Shop Banner & Header -->
+            <div class="card mb-4 overflow-hidden">
+                @if (!string.IsNullOrEmpty(Model.ShopBannerUrl))
+                {
+                    <div class="shop-banner" style="height: 200px; background-image: url('@Model.ShopBannerUrl'); background-size: cover; background-position: center;"></div>
+                }
+                else
+                {
+                    <div class="shop-banner bg-gradient-primary" style="height: 200px;"></div>
+                }
+                <div class="card-body position-relative" style="margin-top: -60px;">
+                    <div class="d-flex align-items-end mb-3">
+                        @if (!string.IsNullOrEmpty(Model.ShopLogoUrl))
+                        {
+                            <img src="@Model.ShopLogoUrl" alt="@Model.ShopName" class="rounded-circle border border-4 border-white shadow" style="width: 120px; height: 120px; object-fit: cover; background: white;" />
+                        }
+                        else
+                        {
+                            <div class="rounded-circle border border-4 border-white shadow bg-gradient-primary d-flex align-items-center justify-content-center text-white" style="width: 120px; height: 120px; font-size: 3rem;">
+                                @(Model.ShopName?.Substring(0, 1).ToUpper() ?? "S")
+                            </div>
+                        }
+                        <div class="ms-3 mb-2">
+                            <h3 class="mb-0">
+                                @Model.ShopName
+                                @if (Model.IsVerified)
+                                {
+                                    <i class="fas fa-check-circle text-success ms-2" title="Verified"></i>
+                                }
+                            </h3>
+                            <p class="text-muted mb-0">/@Model.ShopSlug</p>
+                        </div>
+                    </div>
+
+                    <!-- Status & Actions -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            @{
+                                var statusClass = Model.Status switch
+                                {
+                                    SellerStatus.Pending => "bg-warning text-dark",
+                                    SellerStatus.Approved => "bg-success",
+                                    SellerStatus.Rejected => "bg-danger",
+                                    SellerStatus.Suspended => "bg-secondary",
+                                    _ => "bg-light text-dark"
+                                };
+                                var appStatusClass = Model.ApplicationStatus switch
+                                {
+                                    ApplicationStatus.ModificationRequired => "bg-warning text-dark",
+                                    ApplicationStatus.UnderReview => "bg-info",
+                                    ApplicationStatus.Approved => "bg-success",
+                                    ApplicationStatus.Rejected => "bg-danger",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @statusClass fs-6 me-2">
+                                <i class="fas fa-@(Model.Status == SellerStatus.Approved ? "check" : Model.Status == SellerStatus.Pending ? "clock" : Model.Status == SellerStatus.Rejected ? "times" : "ban") me-1"></i>
+                                @Model.Status.GetDisplayName()
+                            </span>
+                            @if (Model.ApplicationStatus == ApplicationStatus.ModificationRequired)
+                            {
+                                <span class="badge @appStatusClass fs-6 me-2">
+                                    <i class="fas fa-edit me-1"></i>@Localizer["ModificationRequired"]
+                                </span>
+                            }
+                            @if (Model.BusinessTypeEntity != null)
+                            {
+                                <span class="badge bg-info">
+                                    @if (!string.IsNullOrEmpty(Model.BusinessTypeEntity.IconClass))
+                                    {
+                                        <i class="@Model.BusinessTypeEntity.IconClass me-1"></i>
+                                    }
+                                    @Model.BusinessTypeEntity.Name
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-info">@Model.BusinessCategory.GetDisplayName()</span>
+                            }
+                        </div>
+                        <div class="btn-group flex-wrap">
+                            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+                                <i class="fas fa-edit me-1"></i>@Localizer["Edit"]
+                            </a>
+                            @if (Model.Status == SellerStatus.Pending)
+                            {
+                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal">
+                                    <i class="fas fa-check me-1"></i>@Localizer["Approve"]
+                                </button>
+                                <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modificationModal">
+                                    <i class="fas fa-clipboard-check me-1"></i>@Localizer["RequestChanges"]
+                                </button>
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                                    <i class="fas fa-times me-1"></i>@Localizer["Reject"]
+                                </button>
+                            }
+                            @if (Model.Status == SellerStatus.Approved)
+                            {
+                                <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#suspendModal">
+                                    <i class="fas fa-ban me-1"></i>@Localizer["Suspend"]
+                                </button>
+                            }
+                            @if (Model.Status == SellerStatus.Suspended)
+                            {
+                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#reactivateModal">
+                                    <i class="fas fa-undo me-1"></i>@Localizer["Reactivate"]
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shop Description -->
+            @if (!string.IsNullOrEmpty(Model.ShopDescription))
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-info-circle text-primary me-2"></i>@Localizer["About"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">@Model.ShopDescription</p>
+                    </div>
+                </div>
+            }
+
+            <!-- Contact Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-address-card text-primary me-2"></i>@Localizer["ContactInformation"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">@Localizer["BusinessEmail"]</label>
+                            <p class="mb-0 fw-medium">
+                                @if (!string.IsNullOrEmpty(Model.BusinessEmail))
+                                {
+                                    <a href="mailto:@Model.BusinessEmail">@Model.BusinessEmail</a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@Localizer["NotProvided"]</span>
+                                }
+                            </p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">@Localizer["BusinessPhone"]</label>
+                            <p class="mb-0 fw-medium">
+                                @if (!string.IsNullOrEmpty(Model.BusinessPhone))
+                                {
+                                    <a href="tel:@Model.BusinessPhone">@Model.BusinessPhone</a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@Localizer["NotProvided"]</span>
+                                }
+                            </p>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="text-muted small">@Localizer["BusinessAddress"]</label>
+                            <p class="mb-0 fw-medium">@(Model.BusinessAddress ?? Localizer["NotProvided"].Value)</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">@Localizer["OperatingHours"]</label>
+                            <p class="mb-0 fw-medium">@(Model.OperatingHours ?? Localizer["NotSpecified"].Value)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Social Links -->
+            @if (!string.IsNullOrEmpty(Model.FacebookUrl) || !string.IsNullOrEmpty(Model.InstagramUrl) || !string.IsNullOrEmpty(Model.WhatsAppNumber))
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-share-alt text-primary me-2"></i>Social Links</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex gap-3">
+                            @if (!string.IsNullOrEmpty(Model.FacebookUrl))
+                            {
+                                <a href="@Model.FacebookUrl" target="_blank" class="btn btn-outline-primary">
+                                    <i class="fab fa-facebook me-1"></i>Facebook
+                                </a>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.InstagramUrl))
+                            {
+                                <a href="@Model.InstagramUrl" target="_blank" class="btn btn-outline-danger">
+                                    <i class="fab fa-instagram me-1"></i>Instagram
+                                </a>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.WhatsAppNumber))
+                            {
+                                <a href="https://wa.me/@Model.WhatsAppNumber" target="_blank" class="btn btn-outline-success">
+                                    <i class="fab fa-whatsapp me-1"></i>WhatsApp
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Policies -->
+            @if (!string.IsNullOrEmpty(Model.ShopPolicies) || !string.IsNullOrEmpty(Model.ReturnPolicy) || !string.IsNullOrEmpty(Model.ShippingInfo))
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-file-contract text-primary me-2"></i>Policies</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(Model.ShopPolicies))
+                        {
+                            <h6>Shop Policies</h6>
+                            <p class="text-muted">@Model.ShopPolicies</p>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.ReturnPolicy))
+                        {
+                            <h6>Return Policy</h6>
+                            <p class="text-muted">@Model.ReturnPolicy</p>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.ShippingInfo))
+                        {
+                            <h6>Shipping Information</h6>
+                            <p class="text-muted mb-0">@Model.ShippingInfo</p>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Application Details (for pending) -->
+            @if (Model.Status == SellerStatus.Pending && !string.IsNullOrEmpty(Model.ApplicationNote))
+            {
+                <div class="card mb-4 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Application Note</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">@Model.ApplicationNote</p>
+                        @if (Model.AppliedAt.HasValue)
+                        {
+                            <p class="text-muted small mt-2 mb-0">Applied: @Model.AppliedAt.Value.ToBangladeshString("MMMM dd, yyyy 'at' hh:mm tt")</p>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Rejection Reason (for rejected) -->
+            @if (Model.Status == SellerStatus.Rejected && !string.IsNullOrEmpty(Model.RejectionReason))
+            {
+                <div class="card mb-4 border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="fas fa-times-circle me-2"></i>Rejection Reason</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">@Model.RejectionReason</p>
+                    </div>
+                </div>
+            }
+
+            <!-- Modification Notes -->
+            @if (Model.ApplicationStatus == ApplicationStatus.ModificationRequired && !string.IsNullOrEmpty(Model.ModificationNotes))
+            {
+                <div class="card mb-4 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Modification Required</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">@Model.ModificationNotes</p>
+                        @if (Model.ModificationRequestedAt.HasValue)
+                        {
+                            <p class="text-muted small mt-2 mb-0">
+                                <i class="fas fa-clock me-1"></i>Requested: @Model.ModificationRequestedAt.Value.ToBangladeshString("MMMM dd, yyyy 'at' hh:mm tt")
+                            </p>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Personal Information -->
+            @if (!string.IsNullOrEmpty(Model.FullName) || !string.IsNullOrEmpty(Model.PassportPhotoUrl))
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-user-circle text-primary me-2"></i>Personal Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            @if (!string.IsNullOrEmpty(Model.PassportPhotoUrl))
+                            {
+                                <div class="col-md-3 text-center mb-3">
+                                    <label class="text-muted small d-block mb-2">Passport Photo</label>
+                                    <a href="@Model.PassportPhotoUrl" target="_blank" class="d-inline-block">
+                                        <img src="@Model.PassportPhotoUrl" alt="Passport Photo"
+                                             class="img-thumbnail" style="max-width: 150px; max-height: 180px; object-fit: cover;">
+                                    </a>
+                                </div>
+                            }
+                            <div class="@(string.IsNullOrEmpty(Model.PassportPhotoUrl) ? "col-12" : "col-md-9")">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="text-muted small">Full Name</label>
+                                        <p class="mb-0 fw-medium">@(Model.FullName ?? "Not provided")</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="text-muted small">Father's Name</label>
+                                        <p class="mb-0 fw-medium">@(Model.FatherName ?? "Not provided")</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="text-muted small">Mother's Name</label>
+                                        <p class="mb-0 fw-medium">@(Model.MotherName ?? "Not provided")</p>
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <label class="text-muted small">Permanent Address</label>
+                                        <p class="mb-0 fw-medium">@(Model.PermanentAddress ?? "Not provided")</p>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(Model.PresentAddress) && Model.PresentAddress != Model.PermanentAddress)
+                                    {
+                                        <div class="col-12 mb-3">
+                                            <label class="text-muted small">Present Address</label>
+                                            <p class="mb-0 fw-medium">@Model.PresentAddress</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Identity Documents -->
+            @if (!string.IsNullOrEmpty(Model.DocumentNumber) || !string.IsNullOrEmpty(Model.DocumentPhotoUrl))
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-id-card text-primary me-2"></i>Identity Verification</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted small">Document Type</label>
+                                <p class="mb-0 fw-medium">
+                                    @switch (Model.DocumentType)
+                                    {
+                                        case DocumentType.NID:
+                                            <span class="badge bg-primary"><i class="fas fa-id-card me-1"></i>National ID (NID)</span>
+                                            break;
+                                        case DocumentType.BirthCertificate:
+                                            <span class="badge bg-info"><i class="fas fa-certificate me-1"></i>Birth Certificate</span>
+                                            break;
+                                        case DocumentType.Passport:
+                                            <span class="badge bg-success"><i class="fas fa-passport me-1"></i>Passport</span>
+                                            break;
+                                    }
+                                </p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted small">Document Number</label>
+                                <p class="mb-0 fw-medium font-monospace">@(Model.DocumentNumber ?? "Not provided")</p>
+                            </div>
+                            @if (!string.IsNullOrEmpty(Model.DocumentPhotoUrl))
+                            {
+                                <div class="col-12">
+                                    <label class="text-muted small d-block mb-2">Document Photo</label>
+                                    @if (Model.DocumentPhotoUrl.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <a href="@Model.DocumentPhotoUrl" target="_blank" class="btn btn-outline-primary">
+                                            <i class="fas fa-file-pdf me-2"></i>View PDF Document
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a href="@Model.DocumentPhotoUrl" target="_blank" class="d-inline-block">
+                                            <img src="@Model.DocumentPhotoUrl" alt="Document Photo"
+                                                 class="img-thumbnail" style="max-width: 400px; max-height: 300px; object-fit: contain;">
+                                        </a>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Bank Details -->
+            @if (primaryBank != null)
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-university text-primary me-2"></i>Bank Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted small">Bank Name</label>
+                                <p class="mb-0 fw-medium">@(primaryBank.BankName ?? "Not provided")</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted small">Branch Name</label>
+                                <p class="mb-0 fw-medium">@(primaryBank.BranchName ?? "Not provided")</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted small">Account Holder Name</label>
+                                <p class="mb-0 fw-medium">@(primaryBank.AccountHolderName ?? "Not provided")</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted small">Account Number</label>
+                                <p class="mb-0 fw-medium font-monospace">@(primaryBank.AccountNumber ?? "Not provided")</p>
+                            </div>
+                            @if (!string.IsNullOrEmpty(primaryBank.RoutingNumber))
+                            {
+                                <div class="col-md-6 mb-3">
+                                    <label class="text-muted small">Routing Number</label>
+                                    <p class="mb-0 fw-medium font-monospace">@primaryBank.RoutingNumber</p>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(primaryBank.CheckbookPhotoUrl))
+                            {
+                                <div class="col-12">
+                                    <label class="text-muted small d-block mb-2">Checkbook Photo</label>
+                                    <a href="@primaryBank.CheckbookPhotoUrl" target="_blank" class="d-inline-block">
+                                        <img src="@primaryBank.CheckbookPhotoUrl" alt="Checkbook Photo"
+                                             class="img-thumbnail" style="max-width: 400px; max-height: 300px; object-fit: contain;">
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Recent Orders -->
+            @if (recentOrders != null && recentOrders.Any())
+            {
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-shopping-bag text-primary me-2"></i>Recent Orders</h5>
+                        <a asp-area="Admin" asp-controller="Orders" asp-action="Index" asp-route-sellerId="@Model.Id" class="btn btn-sm btn-outline-primary">View All</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+                                <thead class="table-light" style="border-radius: 0;">
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Product</th>
+                                        <th>Qty</th>
+                                        <th>Amount</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in recentOrders.Take(5))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@item.OrderId">
+                                                    #@item.OrderId
+                                                </a>
+                                            </td>
+                                            <td>@(item.Product?.Name ?? "Unknown")</td>
+                                            <td>@item.Quantity</td>
+                                            <td>৳@((int)Math.Round(item.TotalPrice))</td>
+                                            <td>@item.CreatedAt.ToBangladeshShortDateString()</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Right Column - Stats & Quick Actions -->
+        <div class="col-lg-4">
+            <!-- Owner Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-user text-primary me-2"></i>Shop Owner</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.User != null)
+                    {
+                        <div class="d-flex align-items-center mb-3">
+                            @if (!string.IsNullOrEmpty(Model.User.AvatarUrl))
+                            {
+                                <img src="@Model.User.AvatarUrl" alt="@Model.User.FullName" class="rounded-circle" width="50" height="50" style="object-fit: cover;" />
+                            }
+                            else
+                            {
+                                <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="fas fa-user text-white"></i>
+                                </div>
+                            }
+                            <div class="ms-3">
+                                <strong>@(Model.User.FullName ?? "N/A")</strong>
+                                <br />
+                                <small class="text-muted">@Model.User.Email</small>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(Model.User.PhoneNumber))
+                        {
+                            <p class="mb-2"><i class="fas fa-phone text-muted me-2"></i>@Model.User.PhoneNumber</p>
+                        }
+                        <a asp-area="Admin" asp-controller="UserManagement" asp-action="Details" asp-route-id="@Model.User.Id" class="btn btn-outline-primary btn-sm w-100">
+                            <i class="fas fa-user me-1"></i>View User Profile
+                        </a>
+                    }
+                    else
+                    {
+                        <p class="text-muted">Owner information not available</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-6">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center py-3">
+                            <i class="fas fa-box fa-2x mb-2"></i>
+                            <h4 class="mb-0">@productCount</h4>
+                            <small>Products</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center py-3">
+                            <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                            <h4 class="mb-0">@totalOrders</h4>
+                            <small>Orders</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center py-3">
+                            <i class="fas fa-money-bill-wave fa-2x mb-2"></i>
+                            <h4 class="mb-0">@totalSales.ToString("N0")</h4>
+                            <small>Total Sales</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body text-center py-3">
+                            <i class="fas fa-star fa-2x mb-2"></i>
+                            <h4 class="mb-0">@(Model.Rating > 0 ? Model.Rating.ToString("F1") : "N/A")</h4>
+                            <small>Rating (@Model.ReviewCount)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Commission Rate -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-percentage text-primary me-2"></i>Commission Rate</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="UpdateCommission" asp-route-id="@Model.Id" method="post" id="commissionForm" novalidate>
+                        <div class="input-group">
+                            <input type="number" name="commissionRate" id="commissionRateInput" class="form-control" value="@Model.CommissionRate" min="0" max="100" step="0.5" />
+                            <span class="input-group-text">%</span>
+                            <button type="submit" class="btn btn-primary">Update</button>
+                        </div>
+                        <div id="commissionError" class="text-danger small mt-1" style="display: none;"></div>
+                        <small class="text-muted">Platform commission on each sale</small>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Business Documents -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-file-alt text-primary me-2"></i>Business Documents</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted small">Trade License Number</label>
+                        <p class="mb-0 fw-medium">@(Model.TradeLicenseNumber ?? "Not provided")</p>
+                    </div>
+                    <div>
+                        <label class="text-muted small">NID Number</label>
+                        <p class="mb-0 fw-medium">@(Model.NIDNumber ?? "Not provided")</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history text-primary me-2"></i>Timeline</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        @if (Model.AppliedAt.HasValue)
+                        {
+                            <li class="mb-2">
+                                <small class="text-muted">Applied</small><br />
+                                @Model.AppliedAt.Value.ToBangladeshShortDateString()
+                            </li>
+                        }
+                        @if (Model.ApprovedAt.HasValue)
+                        {
+                            <li class="mb-2">
+                                <small class="text-muted">Approved</small><br />
+                                @Model.ApprovedAt.Value.ToBangladeshShortDateString()
+                            </li>
+                        }
+                        <li class="mb-2">
+                            <small class="text-muted">Created</small><br />
+                            @Model.CreatedAt.ToBangladeshShortDateString()
+                        </li>
+                        <li>
+                            <small class="text-muted">Last Updated</small><br />
+                            @Model.UpdatedAt.ToBangladeshShortDateString()
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-bolt text-primary me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/shop/@Model.ShopSlug" target="_blank" class="btn btn-outline-primary">
+                            <i class="fas fa-external-link-alt me-1"></i>View Public Shop
+                        </a>
+                        <a asp-area="Admin" asp-controller="Product" asp-action="Index" asp-route-sellerId="@Model.Id" class="btn btn-outline-info">
+                            <i class="fas fa-box me-1"></i>View Products
+                        </a>
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="fas fa-trash me-1"></i>Delete Seller
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="Reject" asp-route-id="@Model.Id" method="post">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-times me-2"></i>Reject Application</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to reject this seller application?</p>
+                    <div class="mb-3">
+                        <label class="form-label">Rejection Reason</label>
+                        <textarea name="reason" class="form-control" rows="3" placeholder="Provide a reason for rejection..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Suspend Modal -->
+<div class="modal fade" id="suspendModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="Suspend" asp-route-id="@Model.Id" method="post">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="fas fa-ban me-2"></i>Suspend Seller</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to suspend this seller?</p>
+                    <div class="mb-3">
+                        <label class="form-label">Suspension Reason</label>
+                        <textarea name="reason" class="form-control" rows="3" placeholder="Provide a reason for suspension..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Suspend</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal (Admin Only) -->
+@if (User.IsInRole("Admin"))
+{
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="Delete" asp-route-id="@Model.Id" method="post">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title"><i class="fas fa-trash me-2"></i>Delete Seller</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Warning!</strong> This action cannot be undone.
+                        </div>
+                        <p>Are you sure you want to delete <strong>@Model.ShopName</strong>?</p>
+                        <p class="text-muted small">This will remove the seller record but keep the user account and products.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Delete Seller</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Request Modification Modal -->
+<div class="modal fade" id="modificationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form asp-action="RequestModification" asp-route-id="@Model.Id" method="post">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="fas fa-clipboard-check me-2"></i>Request Application Modification</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        The seller will receive a notification and can update their application based on your notes.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Modification Notes <span class="text-danger">*</span></label>
+                        <textarea name="notes" class="form-control" rows="5" required
+                                  placeholder="Please specify what needs to be corrected or updated in the application...&#10;&#10;Example:&#10;- Please upload a clearer photo of your NID&#10;- Bank account holder name doesn't match the applicant name&#10;- Please provide a valid trade license document"></textarea>
+                        <small class="text-muted">Be specific about what changes are required so the seller can address them.</small>
+                    </div>
+                    <div class="bg-light p-3 rounded">
+                        <h6 class="mb-2"><i class="fas fa-list-check me-2"></i>Quick Check Items:</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="mb-0 small">
+                                    <li>Passport photo is clear and recent</li>
+                                    <li>Document number is readable</li>
+                                    <li>Document photo is not blurry</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="mb-0 small">
+                                    <li>Bank details are complete</li>
+                                    <li>Checkbook shows account number</li>
+                                    <li>Shop details are accurate</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-paper-plane me-1"></i>Send Modification Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Confirmation Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-check text-success" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">Approve Seller?</h4>
+                <p class="text-muted mb-1">Are you sure you want to approve "<span class="fw-semibold">@Model.ShopName</span>"?</p>
+                <p class="text-muted small mb-0">The seller will be able to list products and start selling.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 py-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-success px-4" id="confirmApproveBtn">
+                    <i class="fas fa-check me-1"></i>Yes, Approve
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reactivate Confirmation Modal -->
+<div class="modal fade" id="reactivateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-undo text-success" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">Reactivate Seller?</h4>
+                <p class="text-muted mb-1">Are you sure you want to reactivate "<span class="fw-semibold">@Model.ShopName</span>"?</p>
+                <p class="text-muted small mb-0">The seller will be able to access their shop and sell products again.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 py-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-success px-4" id="confirmReactivateBtn">
+                    <i class="fas fa-undo me-1"></i>Yes, Reactivate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        // Approve modal handler
+        var approveModal = document.getElementById('approveModal');
+        document.getElementById('confirmApproveBtn').addEventListener('click', function() {
+            var btn = this;
+            var originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Approving...';
+
+            $.ajax({
+                url: '@Url.Action("Approve", "SellerManagement", new { area = "Admin" })/@Model.Id',
+                type: 'POST',
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function(response) {
+                    bootstrap.Modal.getInstance(approveModal).hide();
+                    showToast('Seller approved successfully!', 'success');
+                    setTimeout(function() { location.reload(); }, 1000);
+                },
+                error: function(xhr) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    showToast('Error approving seller: ' + (xhr.responseText || 'Unknown error'), 'danger');
+                }
+            });
+        });
+
+        approveModal.addEventListener('hidden.bs.modal', function () {
+            var btn = document.getElementById('confirmApproveBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>Yes, Approve';
+        });
+
+        // Reactivate modal handler
+        var reactivateModal = document.getElementById('reactivateModal');
+        document.getElementById('confirmReactivateBtn').addEventListener('click', function() {
+            var btn = this;
+            var originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Reactivating...';
+
+            $.ajax({
+                url: '@Url.Action("Reactivate", "SellerManagement", new { area = "Admin" })/@Model.Id',
+                type: 'POST',
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function(response) {
+                    bootstrap.Modal.getInstance(reactivateModal).hide();
+                    showToast('Seller reactivated successfully!', 'success');
+                    setTimeout(function() { location.reload(); }, 1000);
+                },
+                error: function(xhr) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    showToast('Error reactivating seller: ' + (xhr.responseText || 'Unknown error'), 'danger');
+                }
+            });
+        });
+
+        reactivateModal.addEventListener('hidden.bs.modal', function () {
+            var btn = document.getElementById('confirmReactivateBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-undo me-1"></i>Yes, Reactivate';
+        });
+
+        function showToast(message, type) {
+            var toastHtml = '<div class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">' +
+                '<div class="toast show align-items-center text-white bg-' + type + ' border-0" role="alert">' +
+                '<div class="d-flex">' +
+                '<div class="toast-body">' + message + '</div>' +
+                '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>' +
+                '</div></div></div>';
+            var $toast = $(toastHtml).appendTo('body');
+            setTimeout(function() { $toast.fadeOut(function() { $(this).remove(); }); }, 3000);
+        }
+
+        // Commission Rate custom validation
+        $(document).ready(function() {
+            var $input = $('#commissionRateInput');
+            var $error = $('#commissionError');
+            var $form = $('#commissionForm');
+
+            $form.on('submit', function(e) {
+                var value = parseFloat($input.val());
+
+                if (isNaN(value) || $input.val() === '') {
+                    e.preventDefault();
+                    $error.text('Commission rate is required.').show();
+                    $input.addClass('is-invalid');
+                    return false;
+                }
+
+                if (value < 0 || value > 100) {
+                    e.preventDefault();
+                    $error.text('Commission rate must be between 0 and 100.').show();
+                    $input.addClass('is-invalid');
+                    return false;
+                }
+
+                // Check step validation (must be multiple of 0.5)
+                var remainder = (value * 10) % 5;
+                if (remainder !== 0) {
+                    e.preventDefault();
+                    $error.text('Commission rate must be in 0.5 increments (e.g., 5, 5.5, 6, 6.5).').show();
+                    $input.addClass('is-invalid');
+                    return false;
+                }
+
+                $error.hide();
+                $input.removeClass('is-invalid');
+                return true;
+            });
+
+            $input.on('input', function() {
+                $error.hide();
+                $input.removeClass('is-invalid');
+            });
+        });
+    </script>
+}
+
+@section Styles {
+    <style>
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        }
+
+        /* Dark mode */
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-header {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .table-light {
+            background-color: var(--bs-gray-800) !important;
+        }
+        [data-theme="dark"] .table-light th {
+            background-color: var(--bs-gray-800) !important;
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .modal-content {
+            background-color: var(--bs-gray-800);
+        }
+        [data-theme="dark"] .form-control {
+            background-color: var(--bs-gray-700);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .input-group-text {
+            background-color: var(--bs-gray-700);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+    </style>
+}

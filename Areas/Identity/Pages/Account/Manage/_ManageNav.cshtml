@@ -1,0 +1,572 @@
+@using Bangaliyana.Models
+@using Microsoft.Extensions.Localization
+@inject SignInManager<ApplicationUser> SignInManager
+@inject Bangaliyana.Data.ApplicationDbContext DbContext
+@inject Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> UserManager
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    var hasExternalLogins = (await SignInManager.GetExternalAuthenticationSchemesAsync()).Any();
+    var user = await UserManager.GetUserAsync(User);
+    var userId = user?.Id ?? "";
+    var isSeller = User.IsInRole("Seller");
+    var isSuperAdmin = User.IsInRole("SuperAdmin");
+
+    // Get counts for badges
+    var orderCount = DbContext.Orders.Count(o => o.UserId == userId);
+    var wishlistCount = DbContext.Wishlists.Count(w => w.UserId == userId);
+    var addressCount = DbContext.UserAddresses.Count(a => a.UserId == userId);
+    var ticketCount = DbContext.Tickets.Count(t => t.UserId == userId && t.Status != TicketStatus.Closed);
+    var returnCount = DbContext.Orders.Count(o => o.UserId == userId && (o.Status == OrderStatus.Returned || o.ReturnReason != null));
+    var notificationCount = DbContext.UserNotifications.Count(n => n.UserId == userId && !n.IsRead);
+    var messageCount = DbContext.SellerConversations.Where(c => c.BuyerId == userId && !c.IsArchived).Sum(c => c.UnreadCountBuyer);
+
+    // Seller info - SuperAdmin can also see seller section
+    var seller = (isSeller || isSuperAdmin) ? DbContext.Sellers.FirstOrDefault(s => s.UserId == userId) : null;
+    var sellerProductCount = seller != null ? DbContext.Products.Count(p => p.SellerId == seller.Id) : 0;
+}
+
+<!-- Dashboard Navigation -->
+<div class="dashboard-nav">
+    <!-- User Profile Card -->
+    <div class="user-profile-card mb-4">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                @if (!string.IsNullOrEmpty(user?.AvatarUrl))
+                {
+                    <img src="@user.AvatarUrl" alt="Profile" class="avatar-img" />
+                }
+                else
+                {
+                    <div class="avatar-placeholder">
+                        <i class="fas fa-user"></i>
+                    </div>
+                }
+                @if (user?.IsVerified == true)
+                {
+                    <span class="verified-badge" title="Verified Account">
+                        <i class="fas fa-check-circle"></i>
+                    </span>
+                }
+            </div>
+            <div class="profile-info">
+                <h5 class="profile-name">@user?.FullName</h5>
+                <p class="profile-email">@user?.Email</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Activity Section -->
+    <div class="nav-section">
+        <h6 class="nav-section-title">
+            <i class="fas fa-chart-line me-2"></i>@Localizer["MyActivity"]
+        </h6>
+        <div class="list-group list-group-flush">
+            <a class="list-group-item list-group-item-action @ManageNavPages.OrdersNavClass(ViewContext)" asp-page="./Orders">
+                <div class="nav-item-content">
+                    <i class="fas fa-shopping-bag nav-icon"></i>
+                    <span>@Localizer["MyOrders"]</span>
+                </div>
+                @if (orderCount > 0)
+                {
+                    <span class="badge bg-primary rounded-pill">@orderCount</span>
+                }
+            </a>
+            <a class="list-group-item list-group-item-action @ManageNavPages.WishlistNavClass(ViewContext)" asp-page="./Wishlist">
+                <div class="nav-item-content">
+                    <i class="fas fa-heart nav-icon text-danger"></i>
+                    <span>@Localizer["Wishlist"]</span>
+                </div>
+                @if (wishlistCount > 0)
+                {
+                    <span class="badge bg-danger rounded-pill">@wishlistCount</span>
+                }
+            </a>
+            <a class="list-group-item list-group-item-action @ManageNavPages.OrderReturnsNavClass(ViewContext)" asp-page="./OrderReturns">
+                <div class="nav-item-content">
+                    <i class="fas fa-undo-alt nav-icon text-warning"></i>
+                    <span>@Localizer["ReturnsReplacements"]</span>
+                </div>
+                @if (returnCount > 0)
+                {
+                    <span class="badge bg-warning text-dark rounded-pill">@returnCount</span>
+                }
+            </a>
+        </div>
+    </div>
+
+    <!-- Account Section -->
+    <div class="nav-section">
+        <h6 class="nav-section-title">
+            <i class="fas fa-user-cog me-2"></i>@Localizer["Account"]
+        </h6>
+        <div class="list-group list-group-flush">
+            <a class="list-group-item list-group-item-action @ManageNavPages.IndexNavClass(ViewContext)" asp-page="./Index">
+                <div class="nav-item-content">
+                    <i class="fas fa-user nav-icon"></i>
+                    <span>@Localizer["Profile"]</span>
+                </div>
+            </a>
+            <a class="list-group-item list-group-item-action @ManageNavPages.SavedAddressesNavClass(ViewContext)" asp-page="./SavedAddresses">
+                <div class="nav-item-content">
+                    <i class="fas fa-map-marker-alt nav-icon text-success"></i>
+                    <span>@Localizer["SavedAddresses"]</span>
+                </div>
+                @if (addressCount > 0)
+                {
+                    <span class="badge bg-success rounded-pill">@addressCount</span>
+                }
+            </a>
+            <a class="list-group-item list-group-item-action @ManageNavPages.PaymentMethodsNavClass(ViewContext)" asp-page="./PaymentMethods">
+                <div class="nav-item-content">
+                    <i class="fas fa-credit-card nav-icon text-info"></i>
+                    <span>@Localizer["PaymentMethods"]</span>
+                </div>
+            </a>
+            <a class="list-group-item list-group-item-action @ManageNavPages.WalletRewardsNavClass(ViewContext)" asp-page="./WalletRewards">
+                <div class="nav-item-content">
+                    <i class="fas fa-wallet nav-icon text-purple"></i>
+                    <span>@Localizer["WalletRewards"]</span>
+                </div>
+                <span class="badge bg-purple rounded-pill">@Localizer["New"]</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Support Section -->
+    <div class="nav-section">
+        <h6 class="nav-section-title">
+            <i class="fas fa-headset me-2"></i>@Localizer["SupportSection"]
+        </h6>
+        <div class="list-group list-group-flush">
+            <a class="list-group-item list-group-item-action @ManageNavPages.SupportTicketsNavClass(ViewContext)" asp-page="./SupportTickets">
+                <div class="nav-item-content">
+                    <i class="fas fa-ticket-alt nav-icon"></i>
+                    <span>@Localizer["SupportTickets"]</span>
+                </div>
+                @if (ticketCount > 0)
+                {
+                    <span class="badge bg-warning text-dark rounded-pill">@ticketCount</span>
+                }
+            </a>
+            <a class="list-group-item list-group-item-action @ManageNavPages.NotificationsNavClass(ViewContext)" asp-page="./Notifications">
+                <div class="nav-item-content">
+                    <i class="fas fa-bell nav-icon text-info"></i>
+                    <span>@Localizer["Notifications"]</span>
+                </div>
+                @if (notificationCount > 0)
+                {
+                    <span class="badge bg-info rounded-pill">@notificationCount</span>
+                }
+            </a>
+            <a class="list-group-item list-group-item-action" href="@Url.Action("Index", "Messages", new { area = "Customer" })">
+                <div class="nav-item-content">
+                    <i class="fas fa-comment-dots nav-icon text-primary"></i>
+                    <span>@Localizer["SellerMessages"]</span>
+                </div>
+                @if (messageCount > 0)
+                {
+                    <span class="badge bg-primary rounded-pill">@messageCount</span>
+                }
+            </a>
+            <a class="list-group-item list-group-item-action @ManageNavPages.PlatformReviewNavClass(ViewContext)" asp-page="./PlatformReview">
+                <div class="nav-item-content">
+                    <i class="fas fa-star nav-icon text-warning"></i>
+                    <span>@Localizer["PlatformReview"]</span>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Seller Section (For sellers and SuperAdmin) -->
+    @if (isSeller || isSuperAdmin)
+    {
+        <div class="nav-section seller-section">
+            <h6 class="nav-section-title">
+                <i class="fas fa-store me-2"></i>@Localizer["Seller"]
+            </h6>
+            <div class="list-group list-group-flush">
+                <a class="list-group-item list-group-item-action" asp-area="Seller" asp-controller="Dashboard" asp-action="Index">
+                    <div class="nav-item-content">
+                        <i class="fas fa-tachometer-alt nav-icon text-primary"></i>
+                        <span>@Localizer["SellerDashboard"]</span>
+                    </div>
+                </a>
+                <a class="list-group-item list-group-item-action" asp-area="Seller" asp-controller="Shop" asp-action="Index">
+                    <div class="nav-item-content">
+                        <i class="fas fa-store nav-icon text-success"></i>
+                        <span>@Localizer["MyShop"]</span>
+                    </div>
+                    @if (seller != null && seller.Status == SellerStatus.Pending)
+                    {
+                        <span class="badge bg-warning text-dark rounded-pill">@Localizer["Pending"]</span>
+                    }
+                    else if (sellerProductCount > 0)
+                    {
+                        <span class="badge bg-success rounded-pill">@sellerProductCount @Localizer["Products"]</span>
+                    }
+                </a>
+                <a class="list-group-item list-group-item-action" asp-area="Seller" asp-controller="Product" asp-action="Index">
+                    <div class="nav-item-content">
+                        <i class="fas fa-box nav-icon text-info"></i>
+                        <span>@Localizer["MyProducts"]</span>
+                    </div>
+                </a>
+                <a class="list-group-item list-group-item-action" asp-area="Seller" asp-controller="Order" asp-action="Index">
+                    <div class="nav-item-content">
+                        <i class="fas fa-shopping-bag nav-icon text-warning"></i>
+                        <span>@Localizer["SellerOrders"]</span>
+                    </div>
+                </a>
+                <a class="list-group-item list-group-item-action" asp-area="Seller" asp-controller="Messages" asp-action="Index">
+                    <div class="nav-item-content">
+                        <i class="fas fa-comments nav-icon text-purple"></i>
+                        <span>@Localizer["CustomerMessages"]</span>
+                    </div>
+                </a>
+                <a class="list-group-item list-group-item-action @ManageNavPages.PaymentAccountsNavClass(ViewContext)" asp-page="./PaymentAccounts">
+                    <div class="nav-item-content">
+                        <i class="fas fa-credit-card nav-icon text-info"></i>
+                        <span>@Localizer["PaymentAccounts"]</span>
+                    </div>
+                </a>
+                <a class="list-group-item list-group-item-action @ManageNavPages.PaymentStatementNavClass(ViewContext)" asp-page="./PaymentStatement">
+                    <div class="nav-item-content">
+                        <i class="fas fa-file-invoice-dollar nav-icon text-success"></i>
+                        <span>@Localizer["PaymentStatement"]</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    }
+
+    <!-- Security Section -->
+    <div class="nav-section">
+        <h6 class="nav-section-title">
+            <i class="fas fa-shield-alt me-2"></i>@Localizer["SecuritySection"]
+        </h6>
+        <div class="list-group list-group-flush">
+            <a class="list-group-item list-group-item-action @ManageNavPages.EmailNavClass(ViewContext)" asp-page="./Email">
+                <div class="nav-item-content">
+                    <i class="fas fa-envelope nav-icon"></i>
+                    <span>@Localizer["EmailSettings"]</span>
+                </div>
+            </a>
+            <a class="list-group-item list-group-item-action @ManageNavPages.ChangePasswordNavClass(ViewContext)" asp-page="./ChangePassword">
+                <div class="nav-item-content">
+                    <i class="fas fa-key nav-icon"></i>
+                    <span>@Localizer["ChangePassword"]</span>
+                </div>
+            </a>
+            <a class="list-group-item list-group-item-action @ManageNavPages.BiometricLoginNavClass(ViewContext)" asp-page="./BiometricLogin">
+                <div class="nav-item-content">
+                    <i class="fas fa-fingerprint nav-icon text-success"></i>
+                    <span>@Localizer["BiometricLogin"]</span>
+                </div>
+            </a>
+            @if (hasExternalLogins)
+            {
+                <a class="list-group-item list-group-item-action @ManageNavPages.ExternalLoginsNavClass(ViewContext)" asp-page="./ExternalLogins">
+                    <div class="nav-item-content">
+                        <i class="fas fa-link nav-icon"></i>
+                        <span>@Localizer["ExternalLogins"]</span>
+                    </div>
+                </a>
+            }
+            <a class="list-group-item list-group-item-action @ManageNavPages.PersonalDataNavClass(ViewContext)" asp-page="./PersonalData">
+                <div class="nav-item-content">
+                    <i class="fas fa-database nav-icon text-secondary"></i>
+                    <span>@Localizer["PersonalData"]</span>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Dashboard Navigation Styles */
+    .dashboard-nav {
+        position: sticky;
+        top: 1rem;
+    }
+
+    /* User Profile Card */
+    .user-profile-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e5e7eb;
+    }
+
+    .profile-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .profile-avatar {
+        position: relative;
+        flex-shrink: 0;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        overflow: hidden;
+    }
+
+    .avatar-img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        display: block;
+    }
+
+    .avatar-placeholder {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        color: white;
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+    }
+
+    .avatar-placeholder i,
+    .avatar-placeholder svg {
+        color: white;
+        font-size: inherit;
+        line-height: 1;
+    }
+
+    .verified-badge {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background: #10b981;
+        color: white;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.6rem;
+        border: 2px solid white;
+    }
+
+    .profile-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .profile-name {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 0.15rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #1f2937;
+    }
+
+    .profile-email {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Navigation Sections */
+    .nav-section {
+        background: #fff;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+    }
+
+    .nav-section-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6b7280;
+        padding: 0.75rem 1rem;
+        margin: 0;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .nav-section .list-group-item {
+        border: none;
+        border-bottom: 1px solid #f3f4f6;
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.2s ease;
+        color: #374151;
+    }
+
+    .nav-section .list-group-item:last-child {
+        border-bottom: none;
+    }
+
+    .nav-section .list-group-item:hover {
+        background-color: #f9fafb;
+        padding-left: 1.25rem;
+    }
+
+    .nav-section .list-group-item.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-weight: 500;
+    }
+
+    .nav-section .list-group-item.active .nav-icon {
+        color: white !important;
+    }
+
+    .nav-section .list-group-item.active .badge {
+        background: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+    }
+
+    .nav-item-content {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .nav-icon {
+        width: 18px;
+        text-align: center;
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+
+    .badge.bg-purple {
+        background: #8b5cf6 !important;
+    }
+
+    .text-purple {
+        color: #8b5cf6 !important;
+    }
+
+    /* Dark Mode Styles */
+    [data-theme="dark"] .user-profile-card {
+        background: #1f2937;
+        border-color: #374151;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-theme="dark"] .user-profile-card .profile-name {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .user-profile-card .profile-email {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .user-profile-card .profile-avatar {
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+    }
+
+    [data-theme="dark"] .user-profile-card .avatar-img {
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+    }
+
+    [data-theme="dark"] .user-profile-card .avatar-placeholder {
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+    }
+
+    [data-theme="dark"] .user-profile-card .verified-badge {
+        border-color: #1f2937;
+    }
+
+    [data-theme="dark"] .nav-section {
+        background: #1f2937;
+        border-color: #374151;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-theme="dark"] .nav-section-title {
+        background: #111827;
+        color: #9ca3af;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .nav-section .list-group-item {
+        background: #1f2937;
+        color: #e5e7eb;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .nav-section .list-group-item:hover {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .nav-section .list-group-item.active {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    }
+
+    [data-theme="dark"] .nav-icon {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .nav-section .list-group-item:hover .nav-icon {
+        color: #e5e7eb;
+    }
+
+    /* Seller Section Styles */
+    .seller-section .nav-section-title {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .seller-section .nav-section-title i {
+        color: white;
+    }
+
+    [data-theme="dark"] .seller-section .nav-section-title {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 767.98px) {
+        .dashboard-nav {
+            position: relative;
+            top: 0;
+        }
+
+        .user-profile-card {
+            padding: 1rem;
+        }
+
+        .profile-avatar {
+            width: 40px;
+            height: 40px;
+        }
+
+        .profile-name {
+            font-size: 0.95rem;
+        }
+    }
+</style>

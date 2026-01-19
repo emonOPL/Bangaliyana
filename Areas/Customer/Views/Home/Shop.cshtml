@@ -1,0 +1,921 @@
+@model Bangaliyana.Models.Seller
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+
+@{
+    ViewData["Title"] = Model.ShopName + " - " + Localizer["Shop"];
+    var products = ViewBag.Products as List<Products> ?? new List<Products>();
+    var totalProducts = (int)ViewBag.TotalProducts;
+    var currentPage = (int)ViewBag.CurrentPage;
+    var totalPages = (int)ViewBag.TotalPages;
+    var currentSort = ViewBag.CurrentSort as string;
+    var currentCategory = ViewBag.CurrentCategory as int?;
+    var shopCategories = ViewBag.ShopCategories as List<Category> ?? new List<Category>();
+    var reviews = ViewBag.Reviews as List<ProductReview> ?? new List<ProductReview>();
+    var ratingDistribution = ViewBag.RatingDistribution as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var totalReviews = (int)ViewBag.TotalReviews;
+}
+
+<!-- Shop Header with Banner -->
+<div class="shop-header">
+    @if (!string.IsNullOrEmpty(Model.ShopBannerUrl))
+    {
+        <div class="shop-banner" style="background-image: url('@Model.ShopBannerUrl');"></div>
+    }
+    else
+    {
+        <div class="shop-banner bg-gradient-primary"></div>
+    }
+
+    <div class="container">
+        <div class="shop-profile">
+            <div class="shop-logo-wrapper">
+                @if (!string.IsNullOrEmpty(Model.ShopLogoUrl))
+                {
+                    <img src="@Model.ShopLogoUrl" alt="@Model.ShopName" class="shop-logo" />
+                }
+                else
+                {
+                    <div class="shop-logo-placeholder">
+                        @(Model.ShopName?.Substring(0, 1).ToUpper() ?? "S")
+                    </div>
+                }
+            </div>
+            <div class="shop-info">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <h1 class="shop-name mb-0">@Model.ShopName</h1>
+                    @if (Model.IsVerified)
+                    {
+                        <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>@Localizer["Verified"]</span>
+                    }
+                </div>
+                <div class="shop-meta">
+                    <span class="me-3">
+                        <i class="fas fa-tag text-muted me-1"></i>@(Model.BusinessTypeEntity?.Name ?? Model.BusinessCategory.GetDisplayName())
+                    </span>
+                    @if (Model.Rating > 0)
+                    {
+                        <span class="me-3">
+                            <span class="text-warning">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    if (i <= Math.Round(Model.Rating))
+                                    {
+                                        <i class="fas fa-star"></i>
+                                    }
+                                    else if (i - 0.5m <= Model.Rating)
+                                    {
+                                        <i class="fas fa-star-half-alt"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="far fa-star"></i>
+                                    }
+                                }
+                            </span>
+                            <span class="ms-1">@Model.Rating.ToString("F1") (@Model.ReviewCount @Localizer["ReviewsLower"])</span>
+                        </span>
+                    }
+                    <span class="me-3">
+                        <i class="fas fa-box text-muted me-1"></i>@totalProducts @Localizer["Products"]
+                    </span>
+                    <span class="me-3">
+                        <i class="fas fa-calendar text-muted me-1"></i>@Localizer["MemberSince"] @Model.CreatedAt.ToBangladeshString("MMM, yyyy")
+                    </span>
+                    <span id="followerCountDisplay">
+                        <i class="fas fa-users text-muted me-1"></i><span id="followerCount">@(ViewBag.FollowerCount ?? 0)</span> @Localizer["Followers"]
+                    </span>
+                </div>
+                <div class="shop-actions mt-3">
+                    <!-- Follow Button -->
+                    @{
+                        var isFollowing = (bool?)ViewBag.IsFollowing ?? false;
+                    }
+                    <button type="button" id="followBtn" class="btn @(isFollowing ? "btn-outline-primary" : "btn-primary")" data-seller-id="@Model.Id" data-following="@isFollowing.ToString().ToLower()">
+                        <i class="fas @(isFollowing ? "fa-user-check" : "fa-user-plus") me-1" id="followIcon"></i>
+                        <span id="followText">@(isFollowing ? Localizer["Following"] : Localizer["Follow"])</span>
+                    </button>
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <a asp-area="Customer" asp-controller="Messages" asp-action="StartConversation" asp-route-sellerId="@Model.Id" class="btn btn-outline-primary">
+                            <i class="fas fa-comment-dots me-1"></i>@Localizer["ContactSeller"]
+                        </a>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.WhatsAppNumber))
+                    {
+                        <a href="https://wa.me/@Model.WhatsAppNumber" target="_blank" class="btn btn-success">
+                            <i class="fab fa-whatsapp me-1"></i>WhatsApp
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs shop-tabs mb-4" id="shopTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="products-tab" data-bs-toggle="tab" data-bs-target="#products" type="button" role="tab">
+                <i class="fas fa-box me-1"></i>@Localizer["Products"] <span class="badge bg-primary">@totalProducts</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="about-tab" data-bs-toggle="tab" data-bs-target="#about" type="button" role="tab">
+                <i class="fas fa-info-circle me-1"></i>@Localizer["About"]
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="policies-tab" data-bs-toggle="tab" data-bs-target="#policies" type="button" role="tab">
+                <i class="fas fa-file-contract me-1"></i>@Localizer["Policies"]
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">
+                <i class="fas fa-star me-1"></i>@Localizer["Reviews"] <span class="badge bg-warning text-dark">@totalReviews</span>
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="shopTabContent">
+        <!-- Products Tab -->
+        <div class="tab-pane fade show active" id="products" role="tabpanel">
+            <div class="row">
+                <!-- Sidebar - Categories -->
+                <div class="col-lg-3 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-filter me-2"></i>@Localizer["Filter"]</h6>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="fw-semibold mb-3">@Localizer["Categories"]</h6>
+                            <div class="list-group list-group-flush">
+                                <a href="@Url.Action("Shop", "Home", new { area = "Customer", slug = Model.ShopSlug, sort = currentSort })"
+                                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(currentCategory == null ? "active" : "")">
+                                    @Localizer["AllProducts"]
+                                    <span class="badge bg-primary">@totalProducts</span>
+                                </a>
+                                @foreach (var cat in shopCategories)
+                                {
+                                    if (cat != null)
+                                    {
+                                        <a href="@Url.Action("Shop", "Home", new { area = "Customer", slug = Model.ShopSlug, sort = currentSort, category = cat.Id })"
+                                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(currentCategory == cat.Id ? "active" : "")">
+                                            @cat.Name
+                                        </a>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Products Grid -->
+                <div class="col-lg-9">
+                    <!-- Sort Bar -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <p class="mb-0 text-muted">@Localizer["ShowingProducts"] @products.Count @Localizer["Of"] @totalProducts @Localizer["ProductsLower"]</p>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-sort me-1"></i>
+                                @(currentSort switch
+                                {
+                                    "price-low" => Localizer["PriceLowToHigh"],
+                                    "price-high" => Localizer["PriceHighToLow"],
+                                    "popular" => Localizer["MostPopular"],
+                                    "rating" => Localizer["HighestRated"],
+                                    _ => Localizer["NewestFirst"]
+                                })
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item @(currentSort == null ? "active" : "")" href="@Url.Action("Shop", "Home", new { area = "Customer", slug = Model.ShopSlug, category = currentCategory })">@Localizer["NewestFirst"]</a></li>
+                                <li><a class="dropdown-item @(currentSort == "price-low" ? "active" : "")" href="@Url.Action("Shop", "Home", new { area = "Customer", slug = Model.ShopSlug, sort = "price-low", category = currentCategory })">@Localizer["PriceLowToHigh"]</a></li>
+                                <li><a class="dropdown-item @(currentSort == "price-high" ? "active" : "")" href="@Url.Action("Shop", "Home", new { area = "Customer", slug = Model.ShopSlug, sort = "price-high", category = currentCategory })">@Localizer["PriceHighToLow"]</a></li>
+                                <li><a class="dropdown-item @(currentSort == "popular" ? "active" : "")" href="@Url.Action("Shop", "Home", new { area = "Customer", slug = Model.ShopSlug, sort = "popular", category = currentCategory })">@Localizer["MostPopular"]</a></li>
+                                <li><a class="dropdown-item @(currentSort == "rating" ? "active" : "")" href="@Url.Action("Shop", "Home", new { area = "Customer", slug = Model.ShopSlug, sort = "rating", category = currentCategory })">@Localizer["HighestRated"]</a></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    @if (products.Any())
+                    {
+                        <div class="row g-3">
+                            @foreach (var product in products)
+                            {
+                                var imgUrl = !string.IsNullOrEmpty(product.ImageUrl)
+                                    ? (product.ImageUrl.StartsWith("/") ? product.ImageUrl : "/" + product.ImageUrl)
+                                    : "/images/products/noimage.jpg";
+                                <div class="col-6 col-md-4">
+                                    <div class="card product-card h-100">
+                                        <a asp-area="Customer" asp-controller="Home" asp-action="Details" asp-route-id="@product.Id" class="text-decoration-none">
+                                            <div class="product-image-wrapper">
+                                                <img src="@imgUrl"
+                                                     alt="@product.Name"
+                                                     class="card-img-top product-image"
+                                                     onerror="this.src='/images/products/noimage.jpg'" />
+                                                @if (product.DiscountPrice.HasValue && product.DiscountPrice < product.Price)
+                                                {
+                                                    var discount = Math.Round((1 - (product.DiscountPrice.Value / product.Price)) * 100);
+                                                    <span class="discount-badge">-@discount%</span>
+                                                }
+                                            </div>
+                                        </a>
+                                        <div class="card-body">
+                                            <a asp-area="Customer" asp-controller="Home" asp-action="Details" asp-route-id="@product.Id" class="text-decoration-none">
+                                                <h6 class="product-title text-truncate-2">@product.Name</h6>
+                                            </a>
+                                            <div class="product-price">
+                                                @if (product.DiscountPrice.HasValue && product.DiscountPrice < product.Price)
+                                                {
+                                                    <span class="current-price">৳@((int)Math.Round(product.DiscountPrice.Value))</span>
+                                                    <span class="original-price text-muted text-decoration-line-through ms-2">
+                                                        ৳@((int)Math.Round(product.Price))
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="current-price">৳@((int)Math.Round(product.Price))</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="card-footer bg-transparent border-0 pt-0">
+                                            <button type="button" class="btn btn-primary btn-sm w-100 add-to-cart-btn" data-product-id="@product.Id">
+                                                <i class="fas fa-cart-plus me-1"></i>@Localizer["AddToCart"]
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Pagination -->
+                        @if (totalPages > 1)
+                        {
+                            <nav class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                        <a class="page-link" href="@Url.Action("Shop", "Home", new { area = "Customer", slug = Model.ShopSlug, page = currentPage - 1, sort = currentSort, category = currentCategory })">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                    </li>
+                                    @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                                    {
+                                        <li class="page-item @(i == currentPage ? "active" : "")">
+                                            <a class="page-link" href="@Url.Action("Shop", "Home", new { area = "Customer", slug = Model.ShopSlug, page = i, sort = currentSort, category = currentCategory })">@i</a>
+                                        </li>
+                                    }
+                                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                        <a class="page-link" href="@Url.Action("Shop", "Home", new { area = "Customer", slug = Model.ShopSlug, page = currentPage + 1, sort = currentSort, category = currentCategory })">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                            <h5>@Localizer["NoProductsFound"]</h5>
+                            <p class="text-muted">@Localizer["ShopNoProductsYet"]</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- About Tab -->
+        <div class="tab-pane fade" id="about" role="tabpanel">
+            @{
+                var hasSocialLinks = !string.IsNullOrEmpty(Model.FacebookUrl) || !string.IsNullOrEmpty(Model.InstagramUrl) || !string.IsNullOrEmpty(Model.WhatsAppNumber);
+            }
+            <div class="row">
+                <div class="@(hasSocialLinks ? "col-lg-8" : "col-12")">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-store text-primary me-2"></i>@Localizer["AboutShopName", Model.ShopName]</h5>
+                        </div>
+                        <div class="card-body">
+                            @if (!string.IsNullOrEmpty(Model.ShopDescription))
+                            {
+                                <p class="lead">@Model.ShopDescription</p>
+                            }
+                            else
+                            {
+                                <p class="text-muted">@Localizer["NoDescriptionAvailable"]</p>
+                            }
+
+                            <hr />
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <h6><i class="fas fa-tag text-primary me-2"></i>@Localizer["BusinessType"]</h6>
+                                    <p>@(Model.BusinessTypeEntity?.Name ?? Model.BusinessCategory.GetDisplayName())</p>
+                                </div>
+                                @if (!string.IsNullOrEmpty(Model.OperatingHours))
+                                {
+                                    <div class="col-md-6 mb-3">
+                                        <h6><i class="fas fa-clock text-primary me-2"></i>@Localizer["OperatingHours"]</h6>
+                                        <p>@Model.OperatingHours</p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-address-card text-primary me-2"></i>@Localizer["ContactInformation"]</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                @if (!string.IsNullOrEmpty(Model.BusinessAddress))
+                                {
+                                    <div class="col-md-12 mb-3">
+                                        <h6><i class="fas fa-map-marker-alt text-danger me-2"></i>@Localizer["Address"]</h6>
+                                        <p>@Model.BusinessAddress</p>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(Model.BusinessPhone))
+                                {
+                                    <div class="col-md-6 mb-3">
+                                        <h6><i class="fas fa-phone text-success me-2"></i>@Localizer["Phone"]</h6>
+                                        <p><a href="tel:@Model.BusinessPhone">@Model.BusinessPhone</a></p>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(Model.BusinessEmail))
+                                {
+                                    <div class="col-md-6 mb-3">
+                                        <h6><i class="fas fa-envelope text-info me-2"></i>@Localizer["Email"]</h6>
+                                        <p><a href="mailto:@Model.BusinessEmail">@Model.BusinessEmail</a></p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (hasSocialLinks)
+                {
+                    <!-- Social Links Sidebar -->
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-share-alt text-primary me-2"></i>@Localizer["ConnectWithUs"]</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    @if (!string.IsNullOrEmpty(Model.FacebookUrl))
+                                    {
+                                        <a href="@Model.FacebookUrl" target="_blank" class="btn btn-outline-primary">
+                                            <i class="fab fa-facebook me-2"></i>Facebook
+                                        </a>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.InstagramUrl))
+                                    {
+                                        <a href="@Model.InstagramUrl" target="_blank" class="btn btn-outline-danger">
+                                            <i class="fab fa-instagram me-2"></i>Instagram
+                                        </a>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.WhatsAppNumber))
+                                    {
+                                        <a href="https://wa.me/@Model.WhatsAppNumber" target="_blank" class="btn btn-success">
+                                            <i class="fab fa-whatsapp me-2"></i>WhatsApp
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Policies Tab -->
+        <div class="tab-pane fade" id="policies" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    @if (!string.IsNullOrEmpty(Model.ReturnPolicy))
+                    {
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-undo text-primary me-2"></i>@Localizer["ReturnPolicy"]</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-0">@Model.ReturnPolicy</p>
+                            </div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.ShippingInfo))
+                    {
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-truck text-primary me-2"></i>@Localizer["ShippingInformation"]</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-0">@Model.ShippingInfo</p>
+                            </div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.ShopPolicies))
+                    {
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-file-contract text-primary me-2"></i>@Localizer["ShopPolicies"]</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-0">@Model.ShopPolicies</p>
+                            </div>
+                        </div>
+                    }
+
+                    @if (string.IsNullOrEmpty(Model.ReturnPolicy) && string.IsNullOrEmpty(Model.ShippingInfo) && string.IsNullOrEmpty(Model.ShopPolicies))
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-file-alt fa-4x text-muted mb-3"></i>
+                            <h5>@Localizer["NoPoliciesAvailable"]</h5>
+                            <p class="text-muted">@Localizer["ShopNoPoliciesYet"]</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Reviews Tab -->
+        <div class="tab-pane fade" id="reviews" role="tabpanel">
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <!-- Rating Summary -->
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <div class="display-3 fw-bold text-primary">@(Model.Rating > 0 ? Model.Rating.ToString("F1") : Localizer["NA"])</div>
+                            <div class="text-warning mb-2">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    if (Model.Rating > 0 && i <= Math.Round(Model.Rating))
+                                    {
+                                        <i class="fas fa-star"></i>
+                                    }
+                                    else if (Model.Rating > 0 && i - 0.5m <= Model.Rating)
+                                    {
+                                        <i class="fas fa-star-half-alt"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="far fa-star"></i>
+                                    }
+                                }
+                            </div>
+                            <p class="text-muted">@Localizer["BasedOnReviews", totalReviews]</p>
+
+                            <!-- Rating Distribution -->
+                            <hr />
+                            @for (int star = 5; star >= 1; star--)
+                            {
+                                var count = ratingDistribution.ContainsKey(star) ? ratingDistribution[star] : 0;
+                                var percentage = totalReviews > 0 ? (count * 100.0 / totalReviews) : 0;
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="me-2" style="width: 20px;">@star</span>
+                                    <i class="fas fa-star text-warning me-2"></i>
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar bg-warning" style="width: @percentage%"></div>
+                                    </div>
+                                    <span class="ms-2 text-muted" style="width: 30px;">@count</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    @if (reviews.Any())
+                    {
+                        @foreach (var review in reviews)
+                        {
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="d-flex align-items-center">
+                                            @if (!string.IsNullOrEmpty(review.User?.AvatarUrl))
+                                            {
+                                                <img src="@review.User.AvatarUrl" alt="@review.User.FullName" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;" />
+                                            }
+                                            else
+                                            {
+                                                <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
+                                                    <i class="fas fa-user text-white"></i>
+                                                </div>
+                                            }
+                                            <div>
+                                                <strong>@(review.User?.FullName ?? Localizer["Anonymous"])</strong>
+                                                @if (review.IsVerifiedPurchase)
+                                                {
+                                                    <span class="badge bg-success-subtle text-success ms-1">@Localizer["VerifiedPurchase"]</span>
+                                                }
+                                                <br />
+                                                <small class="text-muted">@review.CreatedAt.ToBangladeshShortDateString()</small>
+                                            </div>
+                                        </div>
+                                        <div class="text-warning">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                <i class="fas @(i <= review.Rating ? "fa-star" : "fa-star text-muted")"></i>
+                                            }
+                                        </div>
+                                    </div>
+                                    <p class="mb-2">
+                                        <a asp-area="Customer" asp-controller="Home" asp-action="Details" asp-route-id="@review.ProductId" class="text-decoration-none">
+                                            <small class="text-muted">@Localizer["Product"]: @review.Product?.Name</small>
+                                        </a>
+                                    </p>
+                                    @if (!string.IsNullOrEmpty(review.Title))
+                                    {
+                                        <h6 class="mb-2">@review.Title</h6>
+                                    }
+                                    <p class="mb-0">@review.Comment</p>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-star fa-4x text-muted mb-3"></i>
+                            <h5>@Localizer["NoReviewsYet"]</h5>
+                            <p class="text-muted">@Localizer["ShopNoReviewsYet"]</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .shop-header {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .shop-banner {
+            height: 250px;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        .shop-banner::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 150px;
+            background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+        }
+
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        }
+
+        .shop-profile {
+            display: flex;
+            align-items: flex-end;
+            margin-top: -80px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .shop-logo-wrapper {
+            flex-shrink: 0;
+        }
+
+        .shop-logo {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 5px solid white;
+            object-fit: cover;
+            background: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .shop-logo-placeholder {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 5px solid white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .shop-info {
+            margin-left: 1.5rem;
+            padding-bottom: 1rem;
+        }
+
+        .shop-name {
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .shop-meta {
+            color: rgba(255,255,255,0.9);
+            margin-top: 0.5rem;
+        }
+
+        .shop-tabs .nav-link {
+            color: var(--bs-gray-600);
+            border: none;
+            border-bottom: 3px solid transparent;
+            padding: 0.75rem 1.5rem;
+        }
+
+        .shop-tabs .nav-link.active {
+            color: var(--bs-primary);
+            border-bottom-color: var(--bs-primary);
+            font-weight: 600;
+        }
+
+        .product-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .product-image-wrapper {
+            position: relative;
+            padding-top: 100%;
+            overflow: hidden;
+        }
+
+        .product-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .discount-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ef4444;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .product-title {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            height: 2.8em;
+            overflow: hidden;
+            color: var(--bs-body-color);
+        }
+
+        .text-truncate-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .current-price {
+            font-weight: 700;
+            color: var(--bs-primary);
+        }
+
+        /* Dark mode */
+        [data-theme="dark"] .shop-info {
+            color: rgba(255,255,255,0.9);
+        }
+
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+
+        [data-theme="dark"] .card-header {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-700);
+        }
+
+        [data-theme="dark"] .list-group-item {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-700);
+            color: var(--bs-light);
+        }
+
+        [data-theme="dark"] .list-group-item-action:hover {
+            background-color: var(--bs-gray-700);
+        }
+
+        [data-theme="dark"] .list-group-item.active {
+            background-color: var(--bs-primary);
+            border-color: var(--bs-primary);
+        }
+
+        [data-theme="dark"] .nav-tabs {
+            border-color: var(--bs-gray-700);
+        }
+
+        [data-theme="dark"] .shop-tabs .nav-link {
+            color: var(--bs-gray-400);
+        }
+
+        [data-theme="dark"] .shop-tabs .nav-link.active {
+            color: var(--bs-primary);
+        }
+
+        [data-theme="dark"] .product-title {
+            color: var(--bs-light);
+        }
+
+        @@media (max-width: 768px) {
+            .shop-banner {
+                height: 180px;
+            }
+
+            .shop-profile {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                margin-top: -60px;
+            }
+
+            .shop-logo, .shop-logo-placeholder {
+                width: 120px;
+                height: 120px;
+                font-size: 3rem;
+            }
+
+            .shop-info {
+                margin-left: 0;
+                margin-top: 1rem;
+            }
+
+            .shop-name {
+                font-size: 1.5rem;
+            }
+
+            .shop-meta {
+                font-size: 0.875rem;
+            }
+
+            .shop-tabs .nav-link {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+}
+
+@section Scripts {
+    @Html.AntiForgeryToken()
+    <script>
+        // Follow/Unfollow shop functionality
+        document.getElementById('followBtn')?.addEventListener('click', function() {
+            var button = this;
+            var sellerId = button.getAttribute('data-seller-id');
+            var isFollowing = button.getAttribute('data-following') === 'true';
+
+            @if (!User.Identity?.IsAuthenticated ?? true)
+            {
+                <text>
+                // Redirect to login if not authenticated
+                window.location.href = '/Identity/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
+                return;
+                </text>
+            }
+
+            button.disabled = true;
+            var originalText = document.getElementById('followText').textContent;
+            document.getElementById('followText').textContent = '@Localizer["Loading"]';
+
+            fetch('/Customer/Home/ToggleFollowShop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                },
+                body: 'sellerId=' + sellerId
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update button state
+                    button.setAttribute('data-following', data.isFollowing.toString());
+
+                    if (data.isFollowing) {
+                        button.classList.remove('btn-primary');
+                        button.classList.add('btn-outline-primary');
+                        document.getElementById('followIcon').className = 'fas fa-user-check me-1';
+                        document.getElementById('followText').textContent = '@Localizer["Following"]';
+                    } else {
+                        button.classList.remove('btn-outline-primary');
+                        button.classList.add('btn-primary');
+                        document.getElementById('followIcon').className = 'fas fa-user-plus me-1';
+                        document.getElementById('followText').textContent = '@Localizer["Follow"]';
+                    }
+
+                    // Update follower count
+                    document.getElementById('followerCount').textContent = data.followerCount;
+
+                    // Show toast notification
+                    if (typeof alertify !== 'undefined') {
+                        alertify.success(data.message);
+                    }
+                } else {
+                    document.getElementById('followText').textContent = originalText;
+                    if (typeof alertify !== 'undefined') {
+                        alertify.error(data.message || '@Localizer["FailedToUpdateFollowStatus"]');
+                    }
+                }
+                button.disabled = false;
+            })
+            .catch(function(error) {
+                document.getElementById('followText').textContent = originalText;
+                button.disabled = false;
+                if (typeof alertify !== 'undefined') {
+                    alertify.error('@Localizer["ErrorOccurred"]');
+                }
+            });
+        });
+
+        // Add to cart functionality
+        document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var productId = this.getAttribute('data-product-id');
+                var button = this;
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>@Localizer["Adding"]';
+
+                fetch('/Customer/Home/AddToCartAjax?productId=' + productId, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        button.innerHTML = '<i class="fas fa-check me-1"></i>@Localizer["Added"]';
+                        button.classList.remove('btn-primary');
+                        button.classList.add('btn-success');
+
+                        // Update cart count in header if exists
+                        var cartCount = document.querySelector('.cart-count');
+                        if (cartCount && data.cartCount) {
+                            cartCount.textContent = data.cartCount;
+                        }
+
+                        setTimeout(function() {
+                            button.innerHTML = '<i class="fas fa-cart-plus me-1"></i>@Localizer["AddToCart"]';
+                            button.classList.remove('btn-success');
+                            button.classList.add('btn-primary');
+                            button.disabled = false;
+                        }, 2000);
+                    } else {
+                        button.innerHTML = '<i class="fas fa-times me-1"></i>@Localizer["Failed"]';
+                        button.classList.remove('btn-primary');
+                        button.classList.add('btn-danger');
+
+                        setTimeout(function() {
+                            button.innerHTML = '<i class="fas fa-cart-plus me-1"></i>@Localizer["AddToCart"]';
+                            button.classList.remove('btn-danger');
+                            button.classList.add('btn-primary');
+                            button.disabled = false;
+                        }, 2000);
+                    }
+                })
+                .catch(function() {
+                    button.innerHTML = '<i class="fas fa-cart-plus me-1"></i>@Localizer["AddToCart"]';
+                    button.disabled = false;
+                });
+            });
+        });
+    </script>
+}

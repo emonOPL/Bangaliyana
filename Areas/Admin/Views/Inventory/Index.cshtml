@@ -1,0 +1,253 @@
+@using Bangaliyana.Models
+@model IEnumerable<Products>
+@{
+    ViewData["Title"] = "Inventory Management";
+    var currentPage = ViewBag.CurrentPage as int? ?? 1;
+    var totalPages = ViewBag.TotalPages as int? ?? 1;
+    var totalProducts = ViewBag.TotalProducts as int? ?? 0;
+    var inStockProducts = ViewBag.InStockProducts as int? ?? 0;
+    var lowStockProducts = ViewBag.LowStockProducts as int? ?? 0;
+    var outOfStockProducts = ViewBag.OutOfStockProducts as int? ?? 0;
+    var totalStockUnits = ViewBag.TotalStockUnits as int? ?? 0;
+    var totalStockValue = ViewBag.TotalStockValue as decimal? ?? 0;
+    var search = ViewBag.Search as string;
+    var status = ViewBag.Status as string;
+    var categoryId = ViewBag.CategoryId as int?;
+    var sellerId = ViewBag.SellerId as int?;
+}
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-warehouse text-info me-2"></i>Inventory Management</h1>
+            <p class="text-muted mb-0">Monitor and manage product stock levels</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="History" class="btn btn-outline-secondary">
+                <i class="fas fa-history me-1"></i>Stock History
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm bg-primary bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="fas fa-boxes text-primary fa-2x mb-2"></i>
+                    <h3 class="mb-0 fw-bold">@totalProducts</h3>
+                    <small class="text-muted">Total Products</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm bg-success bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle text-success fa-2x mb-2"></i>
+                    <h3 class="mb-0 fw-bold">@inStockProducts</h3>
+                    <small class="text-muted">In Stock</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm bg-warning bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle text-warning fa-2x mb-2"></i>
+                    <h3 class="mb-0 fw-bold">@lowStockProducts</h3>
+                    <small class="text-muted">Low Stock</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm bg-danger bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="fas fa-times-circle text-danger fa-2x mb-2"></i>
+                    <h3 class="mb-0 fw-bold">@outOfStockProducts</h3>
+                    <small class="text-muted">Out of Stock</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm bg-info bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="fas fa-cubes text-info fa-2x mb-2"></i>
+                    <h3 class="mb-0 fw-bold">@totalStockUnits.ToString("N0")</h3>
+                    <small class="text-muted">Total Units</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm bg-secondary bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="fas fa-dollar-sign text-secondary fa-2x mb-2"></i>
+                    <h3 class="mb-0 fw-bold">@totalStockValue.ToString("N0")</h3>
+                    <small class="text-muted">Stock Value</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form asp-action="Index" method="get" class="row g-3">
+                <div class="col-md-3">
+                    <input type="text" name="search" class="form-control" placeholder="Search by name or SKU..." value="@search">
+                </div>
+                <div class="col-md-2">
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="outofstock" selected="@(status == "outofstock")">Out of Stock</option>
+                        <option value="lowstock" selected="@(status == "lowstock")">Low Stock</option>
+                        <option value="instock" selected="@(status == "instock")">In Stock</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="categoryId" class="form-select" asp-items="ViewBag.Categories">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="sellerId" class="form-select" asp-items="ViewBag.Sellers">
+                        <option value="">All Sellers</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-1"></i>Search
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="d-flex gap-2 mb-3">
+        <a asp-action="LowStock" class="btn btn-sm btn-outline-warning">
+            <i class="fas fa-exclamation-triangle me-1"></i>View Low Stock (@lowStockProducts)
+        </a>
+        <a asp-action="OutOfStock" class="btn btn-sm btn-outline-danger">
+            <i class="fas fa-times-circle me-1"></i>View Out of Stock (@outOfStockProducts)
+        </a>
+    </div>
+
+    <!-- Products Table -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th>SKU</th>
+                                <th>Category</th>
+                                <th>Seller</th>
+                                <th class="text-center">Stock</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var product in Model)
+                            {
+                                var firstImage = product.Images?.FirstOrDefault()?.ImageUrl ?? product.ImageUrl ?? "images/products/noimage.jpg";
+                                var stockClass = product.Stock <= 0 ? "text-danger" : (product.Stock <= 5 ? "text-warning" : "text-success");
+                                var statusBadge = product.Stock <= 0 ? "bg-danger" : (product.Stock <= 5 ? "bg-warning" : "bg-success");
+                                var statusText = product.Stock <= 0 ? "Out of Stock" : (product.Stock <= 5 ? "Low Stock" : "In Stock");
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="~/@firstImage" alt="@product.Name" class="rounded me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                            <div>
+                                                <span class="fw-medium">@product.Name</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td><small class="text-muted">@(product.SKU ?? "-")</small></td>
+                                    <td><small>@(product.Category?.Name ?? "-")</small></td>
+                                    <td><small>@(product.Seller?.ShopName ?? "Own")</small></td>
+                                    <td class="text-center">
+                                        <span class="fw-bold @stockClass">@product.Stock</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge @statusBadge">@statusText</span>
+                                    </td>
+                                    <td class="text-end">
+                                        @if (product.HasDiscount)
+                                        {
+                                            <span class="text-decoration-line-through text-muted small">@product.Price.ToString("N0")</span>
+                                            <span class="fw-bold text-danger">@product.EffectivePrice.ToString("N0")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="fw-bold">@product.Price.ToString("N0")</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="Details" asp-route-id="@product.Id" class="btn btn-outline-primary" title="Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a asp-action="Adjust" asp-route-id="@product.Id" class="btn btn-outline-success" title="Adjust Stock">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a asp-action="History" asp-route-productId="@product.Id" class="btn btn-outline-secondary" title="History">
+                                                <i class="fas fa-history"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-boxes fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No products found</h5>
+                    <p class="text-muted mb-0">Try adjusting your search filters</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    @if (totalPages > 1)
+    {
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@(currentPage - 1)"
+                       asp-route-search="@search" asp-route-status="@status"
+                       asp-route-categoryId="@categoryId" asp-route-sellerId="@sellerId">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@i"
+                           asp-route-search="@search" asp-route-status="@status"
+                           asp-route-categoryId="@categoryId" asp-route-sellerId="@sellerId">@i</a>
+                    </li>
+                }
+                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@(currentPage + 1)"
+                       asp-route-search="@search" asp-route-status="@status"
+                       asp-route-categoryId="@categoryId" asp-route-sellerId="@sellerId">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>

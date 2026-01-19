@@ -1,0 +1,270 @@
+@model List<Bangaliyana.Models.SellerSubscription>
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+
+@{
+    ViewData["Title"] = "Subscription Subscribers";
+    var plans = ViewBag.Plans as List<SellerSubscriptionPlan> ?? new List<SellerSubscriptionPlan>();
+    var currentPlanId = ViewBag.CurrentPlanId as int?;
+    var currentStatus = ViewBag.CurrentStatus as string;
+    var currentPage = (int)ViewBag.CurrentPage;
+    var totalPages = (int)ViewBag.TotalPages;
+    var totalCount = (int)ViewBag.TotalCount;
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Subscription Plans</a></li>
+            <li class="breadcrumb-item active">Subscribers</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-users text-primary me-2"></i>Subscribers</h1>
+            <p class="text-muted mb-0">View and manage seller subscriptions</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Plans
+        </a>
+    </div>
+
+    @if (TempData["success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Filters -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">Subscription Plan</label>
+                    <select name="planId" class="form-select form-select-sm">
+                        <option value="">All Plans</option>
+                        @foreach (var plan in plans)
+                        {
+                            <option value="@plan.Id" selected="@(currentPlanId == plan.Id)">@plan.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">Status</label>
+                    <select name="status" class="form-select form-select-sm">
+                        <option value="">All Status</option>
+                        @foreach (SubscriptionStatus status in Enum.GetValues(typeof(SubscriptionStatus)))
+                        {
+                            <option value="@status" selected="@(currentStatus == status.ToString())">@status.GetDisplayName()</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-grow-1" style="height: 38px;">
+                            <i class="fas fa-filter me-1"></i>Filter
+                        </button>
+                        <a href="@Url.Action("Subscribers")" class="btn btn-outline-secondary" style="height: 38px; width: 38px;" title="Clear filters">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Subscribers Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>Subscriptions
+                <span class="badge bg-primary ms-2">@totalCount</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Seller</th>
+                                <th>Plan</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var sub in Model)
+                            {
+                                var statusClass = sub.Status switch
+                                {
+                                    SubscriptionStatus.Active => "bg-success",
+                                    SubscriptionStatus.Expired => "bg-secondary",
+                                    SubscriptionStatus.Cancelled => "bg-danger",
+                                    SubscriptionStatus.PendingPayment => "bg-warning text-dark",
+                                    SubscriptionStatus.Suspended => "bg-dark",
+                                    _ => "bg-primary"
+                                };
+                                var isExpiringSoon = sub.Status == SubscriptionStatus.Active && sub.EndDate < DateTime.UtcNow.AddDays(7);
+                                <tr>
+                                    <td>
+                                        @if (sub.Seller != null)
+                                        {
+                                            <a asp-action="SellerDetails" asp-route-id="@sub.SellerId" class="text-decoration-none">
+                                                <strong>@sub.Seller.ShopName</strong>
+                                            </a>
+                                            <br /><small class="text-muted">@sub.Seller.User?.Email</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Seller #@sub.SellerId</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (sub.Plan != null)
+                                        {
+                                            <span class="badge @(sub.Plan.BadgeColor ?? "bg-primary")">
+                                                <i class="@(sub.Plan.IconClass ?? "fas fa-tag") me-1"></i>@sub.Plan.Name
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>@sub.StartDate.ToString("dd MMM yyyy")</small>
+                                    </td>
+                                    <td>
+                                        <small class="@(isExpiringSoon ? "text-danger fw-bold" : "")">
+                                            @sub.EndDate.ToString("dd MMM yyyy")
+                                            @if (isExpiringSoon)
+                                            {
+                                                <i class="fas fa-exclamation-circle text-danger ms-1" title="Expiring soon"></i>
+                                            }
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <strong>৳@sub.AmountPaid.ToString("N0")</strong>
+                                        @if (sub.IsTrial)
+                                        {
+                                            <span class="badge bg-info ms-1">Trial</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @statusClass">@sub.Status.GetDisplayName()</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="SellerDetails" asp-route-id="@sub.SellerId" class="btn btn-outline-primary" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            @if (sub.Status == SubscriptionStatus.Active)
+                                            {
+                                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal-@sub.Id" title="Cancel Subscription">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if (totalPages > 1)
+                {
+                    <nav class="p-3">
+                        <ul class="pagination pagination-sm justify-content-center mb-0">
+                            @if (currentPage > 1)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-action="Subscribers" asp-route-page="@(currentPage - 1)"
+                                       asp-route-planId="@currentPlanId" asp-route-status="@currentStatus">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+                                </li>
+                            }
+                            @for (var i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                            {
+                                <li class="page-item @(i == currentPage ? "active" : "")">
+                                    <a class="page-link" asp-action="Subscribers" asp-route-page="@i"
+                                       asp-route-planId="@currentPlanId" asp-route-status="@currentStatus">@i</a>
+                                </li>
+                            }
+                            @if (currentPage < totalPages)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-action="Subscribers" asp-route-page="@(currentPage + 1)"
+                                       asp-route-planId="@currentPlanId" asp-route-status="@currentStatus">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No subscriptions found</h5>
+                    <p class="text-muted mb-0">Subscriptions will appear here when sellers subscribe to plans.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Modals -->
+@foreach (var sub in Model.Where(s => s.Status == SubscriptionStatus.Active))
+{
+    <div class="modal fade" id="cancelModal-@sub.Id" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cancel Subscription</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form asp-action="CancelSubscription" asp-route-id="@sub.Id" method="post">
+                    <div class="modal-body">
+                        <p>Are you sure you want to cancel this subscription for <strong>@sub.Seller?.ShopName</strong>?</p>
+                        <div class="mb-3">
+                            <label class="form-label">Cancellation Reason (Optional)</label>
+                            <textarea name="reason" class="form-control" rows="2" placeholder="Enter reason for cancellation"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-danger">Cancel Subscription</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Styles {
+    <style>
+        [data-theme="dark"] .card { background-color: var(--bs-dark); border-color: var(--bs-gray-700); }
+        [data-theme="dark"] .card-header.bg-light { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] .table { color: var(--bs-light); }
+        [data-theme="dark"] .table-light { background-color: var(--bs-gray-800) !important; }
+        [data-theme="dark"] .table-light th { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] .modal-content { background-color: var(--bs-dark); color: var(--bs-light); }
+        [data-theme="dark"] .form-control, [data-theme="dark"] .form-select { background-color: var(--bs-gray-800); color: var(--bs-light); border-color: var(--bs-gray-600); }
+    </style>
+}

@@ -1,0 +1,184 @@
+@model List<Bangaliyana.Models.BlogPost>
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Localizer["FashionTipsAndBlog"];
+    var categories = ViewBag.Categories as List<BlogCategory>;
+    var featuredPosts = ViewBag.FeaturedPosts as List<BlogPost>;
+    var currentPage = (int)ViewBag.CurrentPage;
+    var totalPages = (int)ViewBag.TotalPages;
+    var selectedCategoryId = ViewBag.SelectedCategoryId as int?;
+    var searchQuery = ViewBag.SearchQuery as string;
+}
+
+<div class="blog-page py-5">
+    <div class="container">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-5 fw-bold"><i class="fas fa-blog text-primary me-2"></i>@Localizer["FashionTipsAndBlog"]</h1>
+            <p class="lead text-muted">@Localizer["DiscoverLatestTrendsAndTips"]</p>
+        </div>
+
+        <!-- Search -->
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-6">
+                <form asp-action="Index" method="get" class="search-form">
+                    <div class="input-group">
+                        <input type="text" name="search" value="@searchQuery" class="form-control" placeholder="@Localizer["SearchArticles"]">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Categories -->
+        @if (categories?.Any() == true)
+        {
+            <div class="categories-bar mb-4">
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <a asp-action="Index" class="btn @(selectedCategoryId == null && string.IsNullOrEmpty(searchQuery) ? "btn-primary" : "btn-outline-primary") btn-sm">@Localizer["All"]</a>
+                    @foreach (var cat in categories)
+                    {
+                        <a asp-action="Index" asp-route-categoryId="@cat.Id" class="btn @(selectedCategoryId == cat.Id ? "btn-primary" : "btn-outline-primary") btn-sm">
+                            @if (!string.IsNullOrEmpty(cat.IconClass))
+                            {
+                                <i class="@cat.IconClass me-1"></i>
+                            }
+                            @cat.Name
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (Model.Any())
+        {
+            <div class="row">
+                <!-- Main Content -->
+                <div class="col-lg-8">
+                    <div class="row g-4">
+                        @foreach (var post in Model)
+                        {
+                            <div class="col-md-6">
+                                <article class="blog-card card h-100 border-0 shadow-sm">
+                                    @if (!string.IsNullOrEmpty(post.FeaturedImageUrl))
+                                    {
+                                        <a asp-action="Details" asp-route-slug="@post.Slug">
+                                            <img src="~/@post.FeaturedImageUrl" class="card-img-top" alt="@post.Title" style="height: 200px; object-fit: cover;">
+                                        </a>
+                                    }
+                                    <div class="card-body">
+                                        @if (post.Category != null)
+                                        {
+                                            <span class="badge bg-primary mb-2">@post.Category.Name</span>
+                                        }
+                                        <h5 class="card-title">
+                                            <a asp-action="Details" asp-route-slug="@post.Slug" class="text-decoration-none text-dark">@post.Title</a>
+                                        </h5>
+                                        @if (!string.IsNullOrEmpty(post.Excerpt))
+                                        {
+                                            <p class="card-text text-muted small">@post.Excerpt</p>
+                                        }
+                                        <div class="d-flex justify-content-between align-items-center mt-3">
+                                            <small class="text-muted">
+                                                <i class="far fa-calendar me-1"></i>@post.PublishedAt?.ToString("dd MMM yyyy")
+                                            </small>
+                                            <small class="text-muted">
+                                                <i class="far fa-eye me-1"></i>@post.ViewCount @Localizer["Views"]
+                                            </small>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Pagination -->
+                    @if (totalPages > 1)
+                    {
+                        <nav class="mt-5">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                    <a class="page-link" asp-action="Index" asp-route-page="@(currentPage - 1)" asp-route-categoryId="@selectedCategoryId" asp-route-search="@searchQuery">@Localizer["Previous"]</a>
+                                </li>
+                                @for (int i = 1; i <= totalPages; i++)
+                                {
+                                    <li class="page-item @(currentPage == i ? "active" : "")">
+                                        <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-categoryId="@selectedCategoryId" asp-route-search="@searchQuery">@i</a>
+                                    </li>
+                                }
+                                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                    <a class="page-link" asp-action="Index" asp-route-page="@(currentPage + 1)" asp-route-categoryId="@selectedCategoryId" asp-route-search="@searchQuery">@Localizer["Next"]</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    }
+                </div>
+
+                <!-- Sidebar -->
+                <div class="col-lg-4">
+                    <!-- Featured Posts -->
+                    @if (featuredPosts?.Any() == true)
+                    {
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <i class="fas fa-star me-2"></i>@Localizer["FeaturedArticles"]
+                            </div>
+                            <div class="card-body">
+                                @foreach (var post in featuredPosts)
+                                {
+                                    <div class="d-flex mb-3">
+                                        @if (!string.IsNullOrEmpty(post.ThumbnailImageUrl ?? post.FeaturedImageUrl))
+                                        {
+                                            <img src="~/@(post.ThumbnailImageUrl ?? post.FeaturedImageUrl)" class="rounded me-3" alt="@post.Title" style="width: 60px; height: 60px; object-fit: cover;">
+                                        }
+                                        <div>
+                                            <a asp-action="Details" asp-route-slug="@post.Slug" class="text-decoration-none fw-semibold text-dark small">@post.Title</a>
+                                            <small class="text-muted d-block">@post.PublishedAt?.ToString("dd MMM yyyy")</small>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Categories Sidebar -->
+                    @if (categories?.Any() == true)
+                    {
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-light">
+                                <i class="fas fa-folder me-2"></i>@Localizer["Categories"]
+                            </div>
+                            <ul class="list-group list-group-flush">
+                                @foreach (var cat in categories)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <a asp-action="Index" asp-route-categoryId="@cat.Id" class="text-decoration-none">@cat.Name</a>
+                                        <span class="badge bg-primary rounded-pill">@cat.PostCount</span>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row">
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="fas fa-blog fa-4x text-muted mb-3"></i>
+                        <h4>@Localizer["NoArticlesFound"]</h4>
+                        <p class="text-muted">@Localizer["CheckBackLaterForNewContent"]</p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .blog-card:hover { transform: translateY(-5px); transition: all 0.3s ease; }
+    .blog-card img { transition: all 0.3s ease; }
+    .blog-card:hover img { opacity: 0.9; }
+</style>

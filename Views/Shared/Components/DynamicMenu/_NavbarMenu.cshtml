@@ -1,0 +1,81 @@
+@using Bangaliyana.Services
+@model List<MenuItemViewModel>
+
+@foreach (var item in Model)
+{
+    @if (item.Children.Any())
+    {
+        <!-- Dropdown menu -->
+        <div class="dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center"
+               href="#"
+               id="navDropdown_@item.Id"
+               role="button"
+               data-bs-toggle="dropdown"
+               aria-expanded="false">
+                @if (!string.IsNullOrEmpty(item.Icon))
+                {
+                    <i class="@item.Icon me-1"></i>
+                }
+                <span class="d-none d-sm-inline">@item.Name</span>
+            </a>
+            <ul class="dropdown-menu shadow-lg border-0 rounded-3" aria-labelledby="navDropdown_@item.Id">
+                @foreach (var child in item.Children)
+                {
+                    <li>
+                        @if (!string.IsNullOrEmpty(child.Url))
+                        {
+                            <a class="dropdown-item py-2" href="@child.Url">
+                                @if (!string.IsNullOrEmpty(child.Icon))
+                                {
+                                    <i class="@child.Icon me-2 text-muted"></i>
+                                }
+                                @child.Name
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="dropdown-item py-2"
+                               asp-area="@child.Area"
+                               asp-controller="@child.Controller"
+                               asp-action="@child.Action">
+                                @if (!string.IsNullOrEmpty(child.Icon))
+                                {
+                                    <i class="@child.Icon me-2 text-muted"></i>
+                                }
+                                @child.Name
+                            </a>
+                        }
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+    else
+    {
+        <!-- Single menu item -->
+        @if (!string.IsNullOrEmpty(item.Url))
+        {
+            <a class="nav-link d-flex align-items-center" href="@item.Url">
+                @if (!string.IsNullOrEmpty(item.Icon))
+                {
+                    <i class="@item.Icon me-1"></i>
+                }
+                <span class="d-none d-sm-inline">@item.Name</span>
+            </a>
+        }
+        else
+        {
+            <a class="nav-link d-flex align-items-center"
+               asp-area="@item.Area"
+               asp-controller="@item.Controller"
+               asp-action="@item.Action">
+                @if (!string.IsNullOrEmpty(item.Icon))
+                {
+                    <i class="@item.Icon me-1"></i>
+                }
+                <span class="d-none d-sm-inline">@item.Name</span>
+            </a>
+        }
+    }
+}

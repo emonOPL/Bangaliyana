@@ -1,0 +1,223 @@
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = "Create Manual Refund";
+    var order = ViewBag.Order as Order;
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Transactions</a></li>
+            <li class="breadcrumb-item"><a asp-action="RefundRequests">Refund Requests</a></li>
+            <li class="breadcrumb-item active">Create Refund</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-undo text-danger me-2"></i>Create Manual Refund</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Important:</strong> This action will create a refund transaction and notify the customer. Make sure the refund details are correct before submitting.
+                    </div>
+
+                    @if (order != null)
+                    {
+                        <!-- Order Info Card -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <h6 class="card-title"><i class="fas fa-shopping-cart text-primary me-2"></i>Order Information</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tr>
+                                                <td class="text-muted">Order Number</td>
+                                                <td class="fw-bold">#@order.OrderNumber</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Order Date</td>
+                                                <td>@order.CreatedAt.ToString("dd MMM yyyy")</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Order Total</td>
+                                                <td class="fw-bold text-success">৳@order.TotalAmount.ToString("N0")</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        @if (order.User != null)
+                                        {
+                                            <table class="table table-sm table-borderless mb-0">
+                                                <tr>
+                                                    <td class="text-muted">Customer</td>
+                                                    <td>@order.User.FirstName @order.User.LastName</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-muted">Email</td>
+                                                    <td>@order.User.Email</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-muted">Phone</td>
+                                                    <td>@(order.User.PhoneNumber ?? "-")</td>
+                                                </tr>
+                                            </table>
+                                        }
+                                    </div>
+                                </div>
+
+                                @if (order.OrderItems?.Any() == true)
+                                {
+                                    <hr>
+                                    <h6 class="mb-2">Order Items</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Product</th>
+                                                    <th class="text-center">Qty</th>
+                                                    <th class="text-end">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var item in order.OrderItems)
+                                                {
+                                                    <tr>
+                                                        <td>@(item.Product?.Name ?? "Product")</td>
+                                                        <td class="text-center">@item.Quantity</td>
+                                                        <td class="text-end">৳@item.TotalPrice.ToString("N0")</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <form asp-action="CreateRefund" method="post">
+                        @if (order != null)
+                        {
+                            <input type="hidden" name="orderId" value="@order.Id" />
+                        }
+
+                        <!-- Order Lookup (if no order provided) -->
+                        @if (order == null)
+                        {
+                            <div class="mb-4 p-3 border rounded bg-light">
+                                <h6 class="mb-3">Find Order (Optional)</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Order Number</label>
+                                        <input type="text" name="orderNumber" class="form-control" placeholder="e.g., ORD-20260116-1234">
+                                        <div class="form-text">Enter order number to link refund to an order</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Customer Email</label>
+                                        <input type="email" name="customerEmail" class="form-control" placeholder="customer@email.com">
+                                        <div class="form-text">Or enter customer email for standalone refund</div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Refund Details -->
+                        <div class="mb-3">
+                            <label class="form-label">Refund Amount <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">৳</span>
+                                <input type="number" name="amount" class="form-control" required min="1"
+                                       value="@(order?.TotalAmount ?? 0)" step="1">
+                            </div>
+                            @if (order != null)
+                            {
+                                <div class="form-text">Maximum refundable: ৳@order.TotalAmount.ToString("N0")</div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Reason for Refund <span class="text-danger">*</span></label>
+                            <select name="reason" class="form-select" required>
+                                <option value="">Select a reason...</option>
+                                <option value="Customer Request">Customer Request</option>
+                                <option value="Product Defective">Product Defective</option>
+                                <option value="Wrong Item Shipped">Wrong Item Shipped</option>
+                                <option value="Order Cancelled">Order Cancelled</option>
+                                <option value="Item Not Delivered">Item Not Delivered</option>
+                                <option value="Duplicate Charge">Duplicate Charge</option>
+                                <option value="Price Adjustment">Price Adjustment</option>
+                                <option value="Goodwill Gesture">Goodwill Gesture</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Refund Method <span class="text-danger">*</span></label>
+                            <select name="refundMethod" class="form-select" required id="refundMethodSelect">
+                                @foreach (var method in (List<RefundMethod>)ViewBag.RefundMethods)
+                                {
+                                    <option value="@method">@method</option>
+                                }
+                            </select>
+                        </div>
+
+                        <!-- Bank/Mobile Details (shown based on method) -->
+                        <div id="bankDetailsSection" class="mb-3" style="display: none;">
+                            <div class="p-3 border rounded bg-light">
+                                <h6 class="mb-3">Account Details</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Account Number</label>
+                                        <input type="text" name="refundAccountNumber" class="form-control" placeholder="Account/Mobile Number">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Account Holder Name</label>
+                                        <input type="text" name="refundAccountHolderName" class="form-control" placeholder="Account Holder Name">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Bank Name</label>
+                                        <input type="text" name="refundBankName" class="form-control" placeholder="Bank Name (if applicable)">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Additional Notes</label>
+                            <textarea name="notes" class="form-control" rows="3" placeholder="Any additional notes about this refund..."></textarea>
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a asp-action="RefundRequests" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to process this refund?');">
+                                <i class="fas fa-undo me-1"></i>Process Refund
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const refundMethodSelect = document.getElementById('refundMethodSelect');
+            const bankDetailsSection = document.getElementById('bankDetailsSection');
+
+            function toggleBankDetails() {
+                const method = refundMethodSelect.value;
+                const showDetails = method !== 'WalletCredit' && method !== 'OriginalMethod';
+                bankDetailsSection.style.display = showDetails ? 'block' : 'none';
+            }
+
+            refundMethodSelect.addEventListener('change', toggleBankDetails);
+            toggleBankDetails();
+        });
+    </script>
+}

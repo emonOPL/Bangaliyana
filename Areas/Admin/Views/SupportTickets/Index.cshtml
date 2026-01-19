@@ -1,0 +1,514 @@
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using X.PagedList.Mvc.Core
+@using X.PagedList
+@model IPagedList<Ticket>
+
+@{
+    ViewData["Title"] = Localizer["SupportTickets"].Value;
+}
+
+<div class="container py-4 support-tickets-admin">
+    <!-- Page Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+        <div class="mb-3 mb-md-0">
+            <h1 class="h3 mb-1"><i class="fas fa-headset me-2 text-primary"></i>@Localizer["SupportTickets"]</h1>
+            <p class="text-muted mb-0">@Localizer["ManageSupportTicketsDescription"]</p>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-primary fs-6 d-flex align-items-center">
+                <i class="fas fa-ticket-alt me-2"></i>@Model.TotalItemCount @Localizer["Total"]
+            </span>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="stat-card total">
+                <div class="stat-icon">
+                    <i class="fas fa-ticket-alt"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-number">@ViewBag.TotalTickets</span>
+                    <span class="stat-label">@Localizer["TotalTickets"]</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card open">
+                <div class="stat-icon">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-number">@ViewBag.OpenTickets</span>
+                    <span class="stat-label">@Localizer["Open"]</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card in-progress">
+                <div class="stat-icon">
+                    <i class="fas fa-spinner"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-number">@ViewBag.InProgressTickets</span>
+                    <span class="stat-label">@Localizer["InProgress"]</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card urgent">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-number">@ViewBag.UrgentTickets</span>
+                    <span class="stat-label">@Localizer["Urgent"]</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" asp-action="Index" class="row g-3">
+                <div class="col-md-6 col-lg-2">
+                    <label for="status" class="form-label small fw-semibold text-muted">@Localizer["Status"]</label>
+                    <select name="status" id="status" class="form-select">
+                        <option value="">@Localizer["AllStatuses"]</option>
+                        @foreach (var status in ViewBag.StatusList as List<TicketStatus>)
+                        {
+                            <option value="@status" selected="@(ViewBag.CurrentStatus == status.ToString() ? "selected" : null)">@FormatEnumName(status.ToString())</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-2">
+                    <label for="priority" class="form-label small fw-semibold text-muted">@Localizer["Priority"]</label>
+                    <select name="priority" id="priority" class="form-select">
+                        <option value="">@Localizer["AllPriorities"]</option>
+                        @foreach (var priority in ViewBag.PriorityList as List<TicketPriority>)
+                        {
+                            <option value="@priority" selected="@(ViewBag.CurrentPriority == priority.ToString() ? "selected" : null)">@FormatEnumName(priority.ToString())</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-2">
+                    <label for="category" class="form-label small fw-semibold text-muted">@Localizer["Category"]</label>
+                    <select name="category" id="category" class="form-select">
+                        <option value="">@Localizer["AllCategories"]</option>
+                        @foreach (var category in ViewBag.CategoryList as List<TicketCategory>)
+                        {
+                            <option value="@category" selected="@(ViewBag.CurrentCategory == category.ToString() ? "selected" : null)">@FormatEnumName(category.ToString())</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="search" class="form-label small fw-semibold text-muted">@Localizer["Search"]</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" name="search" id="search" class="form-control" value="@ViewBag.CurrentSearch" placeholder="@Localizer["TicketSearchPlaceholder"]">
+                    </div>
+                </div>
+                <div class="col-md-12 col-lg-3">
+                    <label class="form-label small fw-semibold text-muted invisible">@Localizer["Actions"]</label>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-grow-1">
+                            <i class="fas fa-filter me-1"></i> @Localizer["Filter"]
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary btn-icon-square">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tickets Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">@Localizer["Ticket"]</th>
+                                <th>@Localizer["Customer"]</th>
+                                <th>@Localizer["Subject"]</th>
+                                <th>@Localizer["Category"]</th>
+                                <th>@Localizer["Priority"]</th>
+                                <th>@Localizer["Status"]</th>
+                                <th class="text-center">@Localizer["Messages"]</th>
+                                <th>@Localizer["LastUpdate"]</th>
+                                <th class="text-center pe-4">@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ticket in Model)
+                            {
+                                var rowClass = ticket.Priority == TicketPriority.Urgent ? "ticket-urgent" :
+                                               ticket.Priority == TicketPriority.High ? "ticket-high" : "";
+                                <tr class="@rowClass">
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="ticket-icon me-3">
+                                                <i class="fas fa-ticket-alt"></i>
+                                            </div>
+                                            <div>
+                                                <strong class="d-block">@ticket.TicketNumber</strong>
+                                                <small class="text-muted">@ticket.CreatedAt.ToBangladeshShortDateString()</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (ticket.User != null)
+                                        {
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-sm me-2">
+                                                    <span class="avatar-initials">@(ticket.User.FullName.Length > 0 ? ticket.User.FullName[0].ToString().ToUpper() : "?")</span>
+                                                </div>
+                                                <div>
+                                                    <strong class="d-block">@ticket.User.FullName</strong>
+                                                    <small class="text-muted">@ticket.User.Email</small>
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@Localizer["Unknown"]</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="subject-cell">
+                                            <span class="subject-text" title="@ticket.Subject">
+                                                @(ticket.Subject.Length > 35 ? ticket.Subject.Substring(0, 35) + "..." : ticket.Subject)
+                                            </span>
+                                            @if (ticket.OrderId.HasValue)
+                                            {
+                                                <small class="order-link d-block">
+                                                    <i class="fas fa-shopping-cart"></i> Order #@ticket.OrderId
+                                                </small>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">@ticket.Category.GetDisplayName()</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetPriorityBadgeClass(ticket.Priority)">
+                                            <i class="@GetPriorityIcon(ticket.Priority) me-1"></i>@ticket.Priority.GetDisplayName()
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(ticket.Status)">@ticket.Status.GetDisplayName()</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="message-count">
+                                            <i class="fas fa-comments"></i>
+                                            <span>@ticket.Messages.Count</span>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="time-ago" title="@ticket.UpdatedAt.ToBangladeshString()">
+                                            @GetTimeAgo(ticket.UpdatedAt)
+                                        </span>
+                                    </td>
+                                    <td class="text-center pe-4">
+                                        <a asp-action="Details" asp-route-id="@ticket.Id" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye me-1"></i> @Localizer["View"]
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="empty-state text-center py-5">
+                    <div class="empty-icon mb-3">
+                        <i class="fas fa-inbox"></i>
+                    </div>
+                    <h5>@Localizer["NoTicketsFound"]</h5>
+                    <p class="text-muted mb-0">@Localizer["NoTicketsMatchFilter"]</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.PageCount > 1)
+    {
+        <div class="mt-4 d-flex justify-content-center">
+            @Html.PagedListPager(
+            Model,
+            page => Url.Action("Index", new {
+                page,
+                status = ViewBag.CurrentStatus,
+                priority = ViewBag.CurrentPriority,
+                category = ViewBag.CurrentCategory,
+                search = ViewBag.CurrentSearch
+            }),
+            new PagedListRenderOptions
+            {
+                UlElementClasses = new[] { "pagination", "justify-content-center" },
+                LiElementClasses = new[] { "page-item" },
+                PageClasses = new[] { "page-link" },
+                LinkToPreviousPageFormat = "<i class=\"fas fa-chevron-left\"></i>",
+                LinkToNextPageFormat = "<i class=\"fas fa-chevron-right\"></i>",
+                DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                DisplayLinkToFirstPage = PagedListDisplayMode.Never,
+                DisplayLinkToLastPage = PagedListDisplayMode.Never
+            })
+        </div>
+    }
+</div>
+
+<style>
+    /* Consistent height for all filter form elements */
+    .support-tickets-admin .card-body .form-select,
+    .support-tickets-admin .card-body .form-control,
+    .support-tickets-admin .card-body .input-group-text,
+    .support-tickets-admin .card-body .btn {
+        height: 42px;
+    }
+
+    .support-tickets-admin .card-body .input-group {
+        height: 42px;
+    }
+
+    .support-tickets-admin .card-body .input-group .input-group-text,
+    .support-tickets-admin .card-body .input-group .form-control {
+        height: 100%;
+    }
+
+    /* Filter button - icon square button */
+    .support-tickets-admin .btn-icon-square {
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .support-tickets-admin .stat-card {
+        display: flex;
+        align-items: center;
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        border-left: 4px solid;
+        height: 100%;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .support-tickets-admin .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .support-tickets-admin .stat-card.total { border-color: #6366f1; }
+    .support-tickets-admin .stat-card.open { border-color: #f59e0b; }
+    .support-tickets-admin .stat-card.in-progress { border-color: #3b82f6; }
+    .support-tickets-admin .stat-card.urgent { border-color: #ef4444; }
+
+    .support-tickets-admin .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-size: 1.25rem;
+    }
+    .support-tickets-admin .stat-card.total .stat-icon { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
+    .support-tickets-admin .stat-card.open .stat-icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+    .support-tickets-admin .stat-card.in-progress .stat-icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+    .support-tickets-admin .stat-card.urgent .stat-icon { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+    .support-tickets-admin .stat-content {
+        display: flex;
+        flex-direction: column;
+    }
+    .support-tickets-admin .stat-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+    .support-tickets-admin .stat-label {
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+
+    .support-tickets-admin .ticket-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .support-tickets-admin .avatar-sm {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .support-tickets-admin .avatar-initials {
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .support-tickets-admin .subject-cell .order-link {
+        color: #3b82f6;
+        font-size: 0.75rem;
+        margin-top: 2px;
+    }
+
+    .support-tickets-admin .message-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #f3f4f6;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+
+    .support-tickets-admin .time-ago {
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+
+    .support-tickets-admin .ticket-urgent {
+        background: rgba(239, 68, 68, 0.05) !important;
+    }
+    .support-tickets-admin .ticket-high {
+        background: rgba(245, 158, 11, 0.05) !important;
+    }
+
+    .support-tickets-admin .empty-state .empty-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: #f3f4f6;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: #9ca3af;
+    }
+
+    /* Dark mode support */
+    [data-theme="dark"] .support-tickets-admin .stat-card {
+        background: #1f2937;
+    }
+    [data-theme="dark"] .support-tickets-admin .stat-number {
+        color: #f9fafb;
+    }
+    [data-theme="dark"] .support-tickets-admin .ticket-icon {
+        background: rgba(59, 130, 246, 0.2);
+    }
+    [data-theme="dark"] .support-tickets-admin .avatar-sm {
+        background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+    }
+    [data-theme="dark"] .support-tickets-admin .message-count {
+        background: #374151;
+        color: #9ca3af;
+    }
+    [data-theme="dark"] .support-tickets-admin .empty-state .empty-icon {
+        background: #374151;
+        color: #6b7280;
+    }
+    [data-theme="dark"] .support-tickets-admin .badge.bg-light.text-dark {
+        background: #374151 !important;
+        color: #e5e7eb !important;
+    }
+</style>
+
+@functions {
+    private string FormatEnumName(string enumName)
+    {
+        return System.Text.RegularExpressions.Regex.Replace(enumName, "([a-z])([A-Z])", "$1 $2");
+    }
+
+    private string GetStatusBadgeClass(TicketStatus status)
+    {
+        return status switch
+        {
+            TicketStatus.Open => "bg-primary",
+            TicketStatus.InProgress => "bg-info",
+            TicketStatus.WaitingForCustomer => "bg-warning text-dark",
+            TicketStatus.Resolved => "bg-success",
+            TicketStatus.Closed => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetPriorityBadgeClass(TicketPriority priority)
+    {
+        return priority switch
+        {
+            TicketPriority.Low => "bg-secondary",
+            TicketPriority.Medium => "bg-info",
+            TicketPriority.High => "bg-warning text-dark",
+            TicketPriority.Urgent => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetPriorityIcon(TicketPriority priority)
+    {
+        return priority switch
+        {
+            TicketPriority.Urgent => "fas fa-exclamation-circle",
+            TicketPriority.High => "fas fa-arrow-up",
+            TicketPriority.Medium => "fas fa-minus",
+            TicketPriority.Low => "fas fa-arrow-down",
+            _ => "fas fa-minus"
+        };
+    }
+
+    private string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalMinutes < 1) return "Just now";
+        if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7) return $"{(int)timeSpan.TotalDays}d ago";
+        return dateTime.ToBangladeshString("MMM dd");
+    }
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Show success/error messages from TempData
+            @if (TempData["success"] != null)
+            {
+                <text>alertify.success('@Html.Raw(TempData["success"])');</text>
+            }
+            @if (TempData["error"] != null)
+            {
+                <text>alertify.error('@Html.Raw(TempData["error"])');</text>
+            }
+        });
+    </script>
+}

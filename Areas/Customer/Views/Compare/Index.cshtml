@@ -1,0 +1,596 @@
+@model List<Bangaliyana.Models.Products>
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Localizer["CompareProducts"];
+    var currencySymbol = ViewBag.CurrencySymbol as string ?? "৳";
+}
+
+<div class="compare-page py-5">
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-area="Customer" asp-controller="Home" asp-action="Index">@Localizer["Home"]</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Localizer["CompareProducts"]</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0"><i class="fas fa-balance-scale text-primary me-2"></i>@Localizer["CompareProducts"]</h2>
+            @if (Model.Any())
+            {
+                <button type="button" class="btn btn-outline-danger btn-sm" id="clearCompareBtn">
+                    <i class="fas fa-trash-alt me-1"></i>@Localizer["ClearAll"]
+                </button>
+            }
+        </div>
+
+        @if (!Model.Any())
+        {
+            <!-- Empty Compare -->
+            <div class="empty-compare text-center py-5">
+                <div class="empty-compare-icon mb-4">
+                    <i class="fas fa-balance-scale fa-5x text-muted"></i>
+                </div>
+                <h3 class="mb-3">@Localizer["NoProductsToCompare"]</h3>
+                <p class="text-muted mb-4">@Localizer["AddProductsToCompareMessage"]</p>
+                <a asp-area="Customer" asp-controller="Home" asp-action="Index" class="btn btn-primary btn-lg px-5">
+                    <i class="fas fa-shopping-bag me-2"></i>@Localizer["BrowseProducts"]
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="compare-table-wrapper">
+                <div class="table-responsive">
+                    <table class="table compare-table">
+                        <!-- Product Images & Names Row -->
+                        <thead>
+                            <tr>
+                                <th class="compare-header-cell">@Localizer["Product"]</th>
+                                @foreach (var product in Model)
+                                {
+                                    <td class="compare-product-cell text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-compare-btn position-absolute top-0 end-0 m-2"
+                                                data-product-id="@product.Id" title="@Localizer["RemoveFromCompare"]">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                        <a asp-area="Customer" asp-controller="Home" asp-action="Details" asp-route-id="@product.Id">
+                                            <img src="~/@(!string.IsNullOrEmpty(product.ImageUrl) ? product.ImageUrl : "images/products/noimage.jpg")"
+                                                 alt="@product.Name" class="compare-product-img mb-3">
+                                        </a>
+                                        <h6 class="mb-2">
+                                            <a asp-area="Customer" asp-controller="Home" asp-action="Details" asp-route-id="@product.Id"
+                                               class="text-decoration-none compare-product-name">
+                                                @product.Name
+                                            </a>
+                                        </h6>
+                                        @if (product.Category != null)
+                                        {
+                                            <small class="text-muted">@product.Category.Name</small>
+                                        }
+                                    </td>
+                                }
+                                @for (int i = Model.Count; i < 4; i++)
+                                {
+                                    <td class="compare-product-cell compare-empty-cell text-center">
+                                        <div class="empty-slot">
+                                            <i class="fas fa-plus-circle fa-3x text-muted mb-3"></i>
+                                            <p class="text-muted mb-0">@Localizer["AddAProduct"]</p>
+                                            <a asp-area="Customer" asp-controller="Home" asp-action="Index" class="btn btn-outline-primary btn-sm mt-2">
+                                                @Localizer["Browse"]
+                                            </a>
+                                        </div>
+                                    </td>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Price Row -->
+                            <tr>
+                                <th class="compare-header-cell"><i class="fas fa-tag me-2"></i>@Localizer["Price"]</th>
+                                @foreach (var product in Model)
+                                {
+                                    <td class="text-center">
+                                        @if (product.HasDiscount)
+                                        {
+                                            <div class="d-flex flex-column align-items-center">
+                                                <span class="text-danger fw-bold fs-5">@currencySymbol@product.DiscountPrice?.ToString("N0")</span>
+                                                <small class="text-muted text-decoration-line-through">@currencySymbol@product.Price.ToString("N0")</small>
+                                                <span class="badge bg-danger mt-1">-@product.DiscountPercentage%</span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="fw-bold fs-5">@currencySymbol@product.Price.ToString("N0")</span>
+                                        }
+                                    </td>
+                                }
+                                @for (int i = Model.Count; i < 4; i++)
+                                {
+                                    <td class="compare-empty-cell text-center">-</td>
+                                }
+                            </tr>
+
+                            <!-- Rating Row -->
+                            <tr>
+                                <th class="compare-header-cell"><i class="fas fa-star me-2"></i>@Localizer["Rating"]</th>
+                                @foreach (var product in Model)
+                                {
+                                    var avgRating = product.Reviews?.Any() == true ? product.Reviews.Average(r => r.Rating) : 0;
+                                    var reviewCount = product.Reviews?.Count ?? 0;
+                                    <td class="text-center">
+                                        @if (reviewCount > 0)
+                                        {
+                                            <div class="d-flex flex-column align-items-center">
+                                                <div class="text-warning mb-1">
+                                                    @for (int i = 1; i <= 5; i++)
+                                                    {
+                                                        if (i <= avgRating)
+                                                        {
+                                                            <i class="fas fa-star"></i>
+                                                        }
+                                                        else if (i - 0.5 <= avgRating)
+                                                        {
+                                                            <i class="fas fa-star-half-alt"></i>
+                                                        }
+                                                        else
+                                                        {
+                                                            <i class="far fa-star"></i>
+                                                        }
+                                                    }
+                                                </div>
+                                                <small class="text-muted">@avgRating.ToString("F1") (@Localizer["ReviewsCount", reviewCount])</small>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@Localizer["NoReviewsYetShort"]</span>
+                                        }
+                                    </td>
+                                }
+                                @for (int i = Model.Count; i < 4; i++)
+                                {
+                                    <td class="compare-empty-cell text-center">-</td>
+                                }
+                            </tr>
+
+                            <!-- Sizes Row -->
+                            <tr>
+                                <th class="compare-header-cell"><i class="fas fa-ruler me-2"></i>@Localizer["AvailableSizes"]</th>
+                                @foreach (var product in Model)
+                                {
+                                    var sizes = product.Variants?
+                                        .Where(v => !string.IsNullOrEmpty(v.Size) && v.IsAvailable && v.Stock > 0)
+                                        .Select(v => v.Size)
+                                        .Distinct()
+                                        .ToList() ?? new List<string?>();
+                                    <td class="text-center">
+                                        @if (sizes.Any())
+                                        {
+                                            <div class="d-flex flex-wrap justify-content-center gap-1">
+                                                @foreach (var size in sizes)
+                                                {
+                                                    <span class="badge bg-light text-dark border">@size</span>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@Localizer["OneSizeNA"]</span>
+                                        }
+                                    </td>
+                                }
+                                @for (int i = Model.Count; i < 4; i++)
+                                {
+                                    <td class="compare-empty-cell text-center">-</td>
+                                }
+                            </tr>
+
+                            <!-- Fabric Row -->
+                            <tr>
+                                <th class="compare-header-cell"><i class="fas fa-tshirt me-2"></i>@Localizer["FabricMaterial"]</th>
+                                @foreach (var product in Model)
+                                {
+                                    <td class="text-center">
+                                        @if (!string.IsNullOrEmpty(product.Fabric))
+                                        {
+                                            <span>@product.Fabric</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@Localizer["NotSpecified"]</span>
+                                        }
+                                    </td>
+                                }
+                                @for (int i = Model.Count; i < 4; i++)
+                                {
+                                    <td class="compare-empty-cell text-center">-</td>
+                                }
+                            </tr>
+
+                            <!-- Brand Row -->
+                            <tr>
+                                <th class="compare-header-cell"><i class="fas fa-bookmark me-2"></i>@Localizer["Brand"]</th>
+                                @foreach (var product in Model)
+                                {
+                                    <td class="text-center">
+                                        @if (!string.IsNullOrEmpty(product.Brand))
+                                        {
+                                            <span>@product.Brand</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@Localizer["NotSpecified"]</span>
+                                        }
+                                    </td>
+                                }
+                                @for (int i = Model.Count; i < 4; i++)
+                                {
+                                    <td class="compare-empty-cell text-center">-</td>
+                                }
+                            </tr>
+
+                            <!-- Stock Status Row -->
+                            <tr>
+                                <th class="compare-header-cell"><i class="fas fa-boxes me-2"></i>@Localizer["Availability"]</th>
+                                @foreach (var product in Model)
+                                {
+                                    <td class="text-center">
+                                        @if (product.IsAvailable && product.Stock > 0)
+                                        {
+                                            <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>@Localizer["InStock"]</span>
+                                            @if (product.Stock <= 5)
+                                            {
+                                                <br><small class="text-warning">@Localizer["OnlyXLeft", product.Stock]</small>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>@Localizer["OutOfStock"]</span>
+                                        }
+                                    </td>
+                                }
+                                @for (int i = Model.Count; i < 4; i++)
+                                {
+                                    <td class="compare-empty-cell text-center">-</td>
+                                }
+                            </tr>
+
+                            <!-- Return Policy Row -->
+                            <tr>
+                                <th class="compare-header-cell"><i class="fas fa-undo me-2"></i>@Localizer["ReturnPolicy"]</th>
+                                @foreach (var product in Model)
+                                {
+                                    <td class="text-center">
+                                        @if (product.IsReturnable)
+                                        {
+                                            <span class="text-success"><i class="fas fa-check me-1"></i>@Localizer["DaysReturnPolicy", product.ReturnDays]</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger"><i class="fas fa-times me-1"></i>@Localizer["NoReturns"]</span>
+                                        }
+                                    </td>
+                                }
+                                @for (int i = Model.Count; i < 4; i++)
+                                {
+                                    <td class="compare-empty-cell text-center">-</td>
+                                }
+                            </tr>
+
+                            <!-- COD Row -->
+                            <tr>
+                                <th class="compare-header-cell"><i class="fas fa-money-bill-wave me-2"></i>@Localizer["CashOnDelivery"]</th>
+                                @foreach (var product in Model)
+                                {
+                                    <td class="text-center">
+                                        @if (product.IsCODAvailable)
+                                        {
+                                            <span class="text-success"><i class="fas fa-check me-1"></i>@Localizer["Available"]</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger"><i class="fas fa-times me-1"></i>@Localizer["NotAvailable"]</span>
+                                        }
+                                    </td>
+                                }
+                                @for (int i = Model.Count; i < 4; i++)
+                                {
+                                    <td class="compare-empty-cell text-center">-</td>
+                                }
+                            </tr>
+
+                            <!-- Delivery Time Row -->
+                            <tr>
+                                <th class="compare-header-cell"><i class="fas fa-truck me-2"></i>@Localizer["EstDelivery"]</th>
+                                @foreach (var product in Model)
+                                {
+                                    <td class="text-center">
+                                        @if (!string.IsNullOrEmpty(product.EstimatedDeliveryDays))
+                                        {
+                                            <span>@Localizer["DeliveryDays", product.EstimatedDeliveryDays]</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@Localizer["StandardDelivery"]</span>
+                                        }
+                                    </td>
+                                }
+                                @for (int i = Model.Count; i < 4; i++)
+                                {
+                                    <td class="compare-empty-cell text-center">-</td>
+                                }
+                            </tr>
+
+                            <!-- Add to Cart Row -->
+                            <tr>
+                                <th class="compare-header-cell"><i class="fas fa-shopping-cart me-2"></i>@Localizer["Action"]</th>
+                                @foreach (var product in Model)
+                                {
+                                    <td class="text-center">
+                                        @if (product.IsAvailable && product.Stock > 0)
+                                        {
+                                            <button type="button" class="btn btn-primary add-to-cart-btn" data-product-id="@product.Id">
+                                                <i class="fas fa-cart-plus me-1"></i>@Localizer["AddToCart"]
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-secondary" disabled>
+                                                <i class="fas fa-ban me-1"></i>@Localizer["OutOfStock"]
+                                            </button>
+                                        }
+                                    </td>
+                                }
+                                @for (int i = Model.Count; i < 4; i++)
+                                {
+                                    <td class="compare-empty-cell text-center">-</td>
+                                }
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Continue Shopping -->
+            <div class="mt-5 text-center">
+                <a asp-area="Customer" asp-controller="Home" asp-action="Index" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-arrow-left me-2"></i>@Localizer["ContinueShopping"]
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Compare Page */
+        .compare-page {
+            min-height: 60vh;
+        }
+
+        /* Compare Table */
+        .compare-table-wrapper {
+            background: var(--bg-color);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .compare-table {
+            margin-bottom: 0;
+        }
+
+        .compare-table th,
+        .compare-table td {
+            padding: 1rem;
+            vertical-align: middle;
+            border-color: var(--border-color);
+        }
+
+        .compare-header-cell {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #6366f1 100%);
+            color: white;
+            font-weight: 600;
+            white-space: nowrap;
+            min-width: 160px;
+        }
+
+        .compare-product-cell {
+            position: relative;
+            min-width: 200px;
+            background: var(--bg-color);
+            padding: 1.5rem 1rem !important;
+        }
+
+        .compare-product-img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+            transition: transform 0.3s ease;
+        }
+
+        .compare-product-img:hover {
+            transform: scale(1.05);
+        }
+
+        .compare-product-name {
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .compare-product-name:hover {
+            color: var(--primary-color);
+        }
+
+        .compare-empty-cell {
+            background: var(--bg-secondary);
+            color: var(--text-muted);
+        }
+
+        .empty-slot {
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+        }
+
+        .remove-compare-btn {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            z-index: 10;
+        }
+
+        /* Empty Compare */
+        .empty-compare-icon {
+            opacity: 0.5;
+        }
+
+        /* Dark Mode */
+        [data-theme="dark"] .compare-table-wrapper {
+            background: var(--bg-secondary);
+        }
+
+        [data-theme="dark"] .compare-table th,
+        [data-theme="dark"] .compare-table td {
+            border-color: #374151;
+        }
+
+        [data-theme="dark"] .compare-product-cell {
+            background: #1f2937;
+        }
+
+        [data-theme="dark"] .compare-empty-cell {
+            background: #111827;
+        }
+
+        [data-theme="dark"] .badge.bg-light {
+            background: #374151 !important;
+            color: #e5e7eb !important;
+        }
+
+        [data-theme="dark"] .compare-product-name {
+            color: #f1f5f9;
+        }
+
+        [data-theme="dark"] .text-muted {
+            color: #9ca3af !important;
+        }
+
+        [data-theme="dark"] .empty-slot {
+            color: #9ca3af;
+        }
+
+        /* Responsive */
+        @@media (max-width: 768px) {
+            .compare-product-img {
+                width: 100px;
+                height: 100px;
+            }
+
+            .compare-product-cell {
+                min-width: 150px;
+            }
+
+            .compare-header-cell {
+                min-width: 120px;
+                font-size: 0.85rem;
+            }
+
+            .compare-table th,
+            .compare-table td {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Remove from Compare
+            $('.remove-compare-btn').on('click', function() {
+                var btn = $(this);
+                var productId = btn.data('product-id');
+
+                $.ajax({
+                    url: '@Url.Action("Remove", "Compare", new { area = "Customer" })',
+                    type: 'POST',
+                    data: { productId: productId },
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message || '@Localizer["RemovedFromCompare"]');
+                            location.reload();
+                        } else {
+                            alertify.error(response.message || '@Localizer["FailedToRemove"]');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('@Localizer["AnErrorOccurred"]');
+                    }
+                });
+            });
+
+            // Clear Compare
+            $('#clearCompareBtn').on('click', function() {
+                if (confirm('@Localizer["ClearCompareListConfirm"]')) {
+                    $.ajax({
+                        url: '@Url.Action("Clear", "Compare", new { area = "Customer" })',
+                        type: 'POST',
+                        success: function(response) {
+                            if (response.success) {
+                                alertify.success(response.message || '@Localizer["CompareListCleared"]');
+                                location.reload();
+                            } else {
+                                alertify.error(response.message || '@Localizer["FailedToClear"]');
+                            }
+                        },
+                        error: function() {
+                            alertify.error('@Localizer["AnErrorOccurred"]');
+                        }
+                    });
+                }
+            });
+
+            // Add to Cart
+            $('.add-to-cart-btn').on('click', function() {
+                var btn = $(this);
+                var productId = btn.data('product-id');
+
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>@Localizer["Adding"]');
+
+                $.ajax({
+                    url: '@Url.Action("AddToCart", "Home", new { area = "Customer" })',
+                    type: 'POST',
+                    data: { id: productId, quantity: 1 },
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message || '@Localizer["AddedToCart"]');
+                            btn.html('<i class="fas fa-check me-1"></i>@Localizer["Added"]');
+                            setTimeout(function() {
+                                btn.prop('disabled', false).html('<i class="fas fa-cart-plus me-1"></i>@Localizer["AddToCart"]');
+                            }, 2000);
+                        } else {
+                            alertify.error(response.message || '@Localizer["FailedToAddToCart"]');
+                            btn.prop('disabled', false).html('<i class="fas fa-cart-plus me-1"></i>@Localizer["AddToCart"]');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('@Localizer["AnErrorOccurred"]');
+                        btn.prop('disabled', false).html('<i class="fas fa-cart-plus me-1"></i>@Localizer["AddToCart"]');
+                    }
+                });
+            });
+        });
+    </script>
+}

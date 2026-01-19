@@ -1,0 +1,373 @@
+@model List<Bangaliyana.Services.FollowedShopDto>
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = "Followed Shops";
+    var currentPage = (int)ViewBag.CurrentPage;
+    var totalPages = (int)ViewBag.TotalPages;
+    var totalCount = (int)ViewBag.TotalCount;
+}
+
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home", new { Area = "Customer" })">@Localizer["Home"]</a></li>
+                    <li class="breadcrumb-item active">@Localizer["FollowedShops"]</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2 class="mb-1"><i class="fas fa-store text-primary me-2"></i>@Localizer["FollowedShops"]</h2>
+            <p class="text-muted mb-0">@Localizer["ShopsYouAreFollowing", totalCount]</p>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="@Url.Action("Index", "Home", new { Area = "Customer" })" class="btn btn-outline-primary">
+                <i class="fas fa-store me-1"></i>@Localizer["BrowseShops"]
+            </a>
+        </div>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <div class="mb-4">
+                    <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 100px; height: 100px;">
+                        <i class="fas fa-store text-primary" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">@Localizer["NoFollowedShopsYet"]</h4>
+                <p class="text-muted mb-4">@Localizer["StartFollowingShops"]</p>
+                <a href="@Url.Action("Index", "Home", new { Area = "Customer" })" class="btn btn-primary">
+                    <i class="fas fa-search me-1"></i>@Localizer["DiscoverShops"]
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var shop in Model)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 border-0 shadow-sm shop-card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="shop-logo me-3">
+                                    @if (!string.IsNullOrEmpty(shop.ShopLogoUrl))
+                                    {
+                                        <img src="@shop.ShopLogoUrl" alt="@shop.ShopName" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover;" />
+                                    }
+                                    else
+                                    {
+                                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                                            @shop.ShopName.Substring(0, 1).ToUpper()
+                                        </div>
+                                    }
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="card-title mb-1">
+                                        <a href="@Url.Action("Shop", "Home", new { Area = "Customer", slug = shop.ShopSlug })" class="text-decoration-none text-dark">
+                                            @shop.ShopName
+                                        </a>
+                                    </h5>
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        @if (shop.Rating > 0)
+                                        {
+                                            <span class="text-warning">
+                                                <i class="fas fa-star"></i> @shop.Rating.ToString("F1")
+                                            </span>
+                                            <span class="text-muted small">(@Localizer["ReviewsCount", shop.ReviewCount])</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">@Localizer["NoReviewsYet"]</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(shop.ShopDescription))
+                            {
+                                <p class="text-muted small mb-3">
+                                    @(shop.ShopDescription.Length > 100 ? shop.ShopDescription.Substring(0, 100) + "..." : shop.ShopDescription)
+                                </p>
+                            }
+
+                            <div class="shop-stats d-flex justify-content-between text-muted small mb-3">
+                                <span><i class="fas fa-box me-1"></i>@Localizer["ProductsCount", shop.ProductCount]</span>
+                                <span><i class="fas fa-users me-1"></i>@Localizer["FollowersCount", shop.FollowerCount]</span>
+                            </div>
+
+                            <!-- Notification Settings -->
+                            <div class="notification-settings mb-3 p-2 bg-light rounded">
+                                <small class="text-muted d-block mb-2"><i class="fas fa-bell me-1"></i>@Localizer["NotificationSettings"]</small>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input notify-toggle" type="checkbox" role="switch"
+                                               id="notifyProducts-@shop.SellerId" data-seller-id="@shop.SellerId" data-type="products"
+                                               @(shop.NotifyOnNewProducts ? "checked" : "")>
+                                        <label class="form-check-label small" for="notifyProducts-@shop.SellerId">
+                                            <i class="fas fa-box-open text-primary me-1"></i>@Localizer["NewProducts"]
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input notify-toggle" type="checkbox" role="switch"
+                                               id="notifySales-@shop.SellerId" data-seller-id="@shop.SellerId" data-type="sales"
+                                               @(shop.NotifyOnSales ? "checked" : "")>
+                                        <label class="form-check-label small" for="notifySales-@shop.SellerId">
+                                            <i class="fas fa-tags text-success me-1"></i>@Localizer["PriceDrops"]
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>@Localizer["FollowingSince"] @shop.FollowedAt.ToBangladeshShortDateString()
+                                </small>
+                                <button type="button" class="btn btn-sm btn-outline-danger unfollow-btn" data-seller-id="@shop.SellerId" data-shop-name="@shop.ShopName">
+                                    <i class="fas fa-user-minus me-1"></i>@Localizer["Unfollow"]
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 pt-0">
+                            <a href="@Url.Action("Shop", "Home", new { Area = "Customer", slug = shop.ShopSlug })" class="btn btn-primary btn-sm w-100">
+                                <i class="fas fa-store me-1"></i>@Localizer["VisitShop"]
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (totalPages > 1)
+        {
+            <nav class="mt-5">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("FollowedShops", "Home", new { Area = "Customer", page = currentPage - 1 })">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    @for (int i = 1; i <= totalPages; i++)
+                    {
+                        <li class="page-item @(currentPage == i ? "active" : "")">
+                            <a class="page-link" href="@Url.Action("FollowedShops", "Home", new { Area = "Customer", page = i })">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("FollowedShops", "Home", new { Area = "Customer", page = currentPage + 1 })">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    }
+</div>
+
+<!-- Unfollow Confirmation Modal -->
+<div class="modal fade" id="unfollowModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-user-minus text-danger" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">@Localizer["UnfollowShopQuestion"]</h4>
+                <p class="text-muted mb-1">@Localizer["UnfollowShopConfirm"] "<span id="unfollowShopName" class="fw-semibold"></span>"?</p>
+                <p class="text-muted small mb-0">@Localizer["NoLongerReceiveUpdates"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 py-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmUnfollowBtn">
+                    <i class="fas fa-user-minus me-1"></i>@Localizer["YesUnfollow"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .shop-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .shop-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .card-title a {
+        color: #f3f4f6 !important;
+    }
+
+    .notification-settings {
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    [data-theme="dark"] .notification-settings {
+        background-color: #374151 !important;
+        border-color: #4b5563;
+    }
+
+    .form-check-input:checked {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .notify-toggle {
+        cursor: pointer;
+    }
+
+    .notify-toggle:disabled {
+        opacity: 0.5;
+    }
+</style>
+
+@section Scripts {
+    @Html.AntiForgeryToken()
+    <script>
+        var currentUnfollowSellerId = null;
+        var unfollowModal = new bootstrap.Modal(document.getElementById('unfollowModal'));
+
+        // Unfollow button click handler
+        document.querySelectorAll('.unfollow-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                currentUnfollowSellerId = this.getAttribute('data-seller-id');
+                var shopName = this.getAttribute('data-shop-name');
+                document.getElementById('unfollowShopName').textContent = shopName;
+                unfollowModal.show();
+            });
+        });
+
+        // Confirm unfollow
+        document.getElementById('confirmUnfollowBtn').addEventListener('click', function() {
+            if (!currentUnfollowSellerId) return;
+
+            var btn = this;
+            var originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Unfollowing...';
+
+            fetch('/Customer/Home/UnfollowShop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                },
+                body: 'sellerId=' + currentUnfollowSellerId
+            })
+            .then(response => response.json())
+            .then(data => {
+                unfollowModal.hide();
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+
+                if (data.success) {
+                    // Remove the shop card from UI
+                    var shopCard = document.querySelector('.unfollow-btn[data-seller-id="' + currentUnfollowSellerId + '"]').closest('.col-md-6');
+                    shopCard.remove();
+
+                    if (typeof alertify !== 'undefined') {
+                        alertify.success(data.message);
+                    }
+
+                    // Reload if no more shops
+                    if (document.querySelectorAll('.shop-card').length === 0) {
+                        location.reload();
+                    }
+                } else {
+                    if (typeof alertify !== 'undefined') {
+                        alertify.error(data.message || 'Failed to unfollow shop');
+                    }
+                }
+            })
+            .catch(function() {
+                unfollowModal.hide();
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                if (typeof alertify !== 'undefined') {
+                    alertify.error('An error occurred. Please try again.');
+                }
+            });
+        });
+
+        // Reset modal state when hidden
+        document.getElementById('unfollowModal').addEventListener('hidden.bs.modal', function () {
+            currentUnfollowSellerId = null;
+            var btn = document.getElementById('confirmUnfollowBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-user-minus me-1"></i>Yes, Unfollow';
+        });
+
+        // Notification toggle handler
+        document.querySelectorAll('.notify-toggle').forEach(function(toggle) {
+            toggle.addEventListener('change', function() {
+                var sellerId = this.getAttribute('data-seller-id');
+                var type = this.getAttribute('data-type');
+                var checkbox = this;
+
+                // Get both checkbox values for this seller
+                var productsCheckbox = document.getElementById('notifyProducts-' + sellerId);
+                var salesCheckbox = document.getElementById('notifySales-' + sellerId);
+
+                var notifyOnNewProducts = productsCheckbox.checked;
+                var notifyOnSales = salesCheckbox.checked;
+
+                // Disable both toggles while saving
+                productsCheckbox.disabled = true;
+                salesCheckbox.disabled = true;
+
+                fetch('/Customer/Home/UpdateFollowSettings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: 'sellerId=' + sellerId + '&notifyOnNewProducts=' + notifyOnNewProducts + '&notifyOnSales=' + notifyOnSales
+                })
+                .then(response => response.json())
+                .then(data => {
+                    productsCheckbox.disabled = false;
+                    salesCheckbox.disabled = false;
+
+                    if (data.success) {
+                        if (typeof alertify !== 'undefined') {
+                            alertify.success(data.message);
+                        }
+                    } else {
+                        // Revert the change if failed
+                        checkbox.checked = !checkbox.checked;
+                        if (typeof alertify !== 'undefined') {
+                            alertify.error(data.message || 'Failed to update settings');
+                        }
+                    }
+                })
+                .catch(function() {
+                    productsCheckbox.disabled = false;
+                    salesCheckbox.disabled = false;
+                    // Revert the change if failed
+                    checkbox.checked = !checkbox.checked;
+                    if (typeof alertify !== 'undefined') {
+                        alertify.error('An error occurred. Please try again.');
+                    }
+                });
+            });
+        });
+    </script>
+}

@@ -1,0 +1,420 @@
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = "User Growth Report";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Reports</a></li>
+            <li class="breadcrumb-item active">User Growth Report</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-users text-info me-2"></i>User Growth Report</h1>
+            <p class="text-muted mb-0">Track user registrations and activity trends</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="ExportCsv" asp-route-reportType="users" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" class="btn btn-outline-success">
+                <i class="fas fa-file-csv me-1"></i>Export CSV
+            </a>
+            <a asp-action="ExportPdf" asp-route-reportType="users" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" class="btn btn-outline-danger">
+                <i class="fas fa-file-pdf me-1"></i>Export PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">From Date</label>
+                    <input type="date" name="fromDate" class="form-control" value="@ViewBag.FromDate" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">To Date</label>
+                    <input type="date" name="toDate" class="form-control" value="@ViewBag.ToDate" />
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-1"></i>Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-primary bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-users text-primary fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.TotalUsers</h5>
+                    <small class="text-muted">Total Users</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-success bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-user-plus text-success fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.NewUsers</h5>
+                    <small class="text-muted">New Users</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-info bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-user-check text-info fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.ActiveUsers</h5>
+                    <small class="text-muted">Active Users</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-warning bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-crown text-warning fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.PremiumMembers</h5>
+                    <small class="text-muted">Premium</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-danger bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-store text-danger fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.TotalSellers</h5>
+                    <small class="text-muted">Sellers</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-secondary bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-user-tie text-secondary fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.TotalCustomers</h5>
+                    <small class="text-muted">Customers</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-area text-info me-2"></i>User Registration Trend</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="registrationChart" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie text-primary me-2"></i>User Types</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="userTypesChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-venus-mars text-success me-2"></i>Gender Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="genderChart" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt text-warning me-2"></i>Top Divisions</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="divisionChart" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registration Data Table -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-table text-primary me-2"></i>Registration Data (Monthly)</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (ViewBag.RegistrationData != null && ((IEnumerable<dynamic>)ViewBag.RegistrationData).Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Period</th>
+                                <th class="text-center">New Customers</th>
+                                <th class="text-center">New Sellers</th>
+                                <th class="text-center">Total New</th>
+                                <th class="text-center">Growth</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var data in (IEnumerable<dynamic>)ViewBag.RegistrationData)
+                            {
+                                <tr>
+                                    <td class="fw-bold">@data.Period</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary">@data.Customers</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-danger">@data.Sellers</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success">@data.Total</span>
+                                    </td>
+                                    <td class="text-center">
+                                        @{
+                                            decimal growth = data.Growth ?? 0;
+                                        }
+                                        <span class="@(growth >= 0 ? "text-success" : "text-danger")">
+                                            <i class="fas fa-@(growth >= 0 ? "arrow-up" : "arrow-down")"></i>
+                                            @Math.Abs(growth).ToString("N1")%
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="fas fa-users fa-2x text-muted mb-2"></i>
+                    <p class="text-muted mb-0">No registration data available for the selected period</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Recent Users Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-user-clock text-info me-2"></i>Recently Registered Users</h5>
+            <a asp-area="Admin" asp-controller="UserManagement" asp-action="Index" class="btn btn-sm btn-outline-info">View All</a>
+        </div>
+        <div class="card-body p-0">
+            @if (ViewBag.RecentUsers != null && ((IEnumerable<ApplicationUser>)ViewBag.RecentUsers).Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Type</th>
+                                <th>Gender</th>
+                                <th>Location</th>
+                                <th>Registered</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in (IEnumerable<ApplicationUser>)ViewBag.RecentUsers)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-2">
+                                                <i class="fas fa-user text-primary"></i>
+                                            </div>
+                                            <div>
+                                                <span class="fw-bold">@user.FirstName @user.LastName</span>
+                                                @if (user.IsPremiumMember)
+                                                {
+                                                    <span class="badge bg-warning ms-1"><i class="fas fa-crown"></i></span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td><small>@user.Email</small></td>
+                                    <td>
+                                        @{
+                                            var sellerUserIds = (HashSet<string>)ViewBag.SellerUserIds;
+                                            var isSeller = sellerUserIds.Contains(user.Id);
+                                        }
+                                        @if (isSeller)
+                                        {
+                                            <span class="badge bg-danger">Seller</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-primary">Customer</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (user.Gender != null)
+                                        {
+                                            <span class="badge bg-@(user.Gender == Gender.Male ? "primary" : user.Gender == Gender.Female ? "danger" : "secondary")">
+                                                <i class="fas fa-@(user.Gender == Gender.Male ? "mars" : user.Gender == Gender.Female ? "venus" : "genderless")"></i>
+                                                @user.Gender
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <small class="text-muted">-</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">@(user.Division?.Name ?? "-")</small>
+                                    </td>
+                                    <td>
+                                        <small>@user.CreatedAt.ToString("dd MMM yyyy")</small>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="fas fa-user-plus fa-2x text-muted mb-2"></i>
+                    <p class="text-muted mb-0">No recent user registrations</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fromDate = '@ViewBag.FromDate';
+            const toDate = '@ViewBag.ToDate';
+
+            fetch(`@Url.Action("GetChartData", "Reports", new { area = "Admin" })?reportType=users&fromDate=${fromDate}&toDate=${toDate}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Registration Trend Chart
+                    const regCtx = document.getElementById('registrationChart').getContext('2d');
+                    new Chart(regCtx, {
+                        type: 'line',
+                        data: {
+                            labels: data.labels,
+                            datasets: [
+                                {
+                                    label: 'Customers',
+                                    data: data.customersData,
+                                    borderColor: 'rgb(13, 110, 253)',
+                                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                                    tension: 0.4,
+                                    fill: true
+                                },
+                                {
+                                    label: 'Sellers',
+                                    data: data.sellersData,
+                                    borderColor: 'rgb(220, 53, 69)',
+                                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                                    tension: 0.4,
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { position: 'bottom' } },
+                            scales: { y: { beginAtZero: true } }
+                        }
+                    });
+
+                    // User Types Doughnut Chart
+                    const typesCtx = document.getElementById('userTypesChart').getContext('2d');
+                    new Chart(typesCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Customers', 'Sellers', 'Premium'],
+                            datasets: [{
+                                data: [
+                                    @ViewBag.TotalCustomers,
+                                    @ViewBag.TotalSellers,
+                                    @ViewBag.PremiumMembers
+                                ],
+                                backgroundColor: [
+                                    'rgba(13, 110, 253, 0.8)',
+                                    'rgba(220, 53, 69, 0.8)',
+                                    'rgba(255, 193, 7, 0.8)'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { boxWidth: 12 } }
+                            }
+                        }
+                    });
+
+                    // Gender Distribution
+                    const genderCtx = document.getElementById('genderChart').getContext('2d');
+                    new Chart(genderCtx, {
+                        type: 'pie',
+                        data: {
+                            labels: data.genderLabels || ['Male', 'Female', 'Other', 'Not Specified'],
+                            datasets: [{
+                                data: data.genderData || [0, 0, 0, 0],
+                                backgroundColor: [
+                                    'rgba(13, 110, 253, 0.8)',
+                                    'rgba(233, 30, 99, 0.8)',
+                                    'rgba(156, 39, 176, 0.8)',
+                                    'rgba(108, 117, 125, 0.8)'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { boxWidth: 12 } }
+                            }
+                        }
+                    });
+
+                    // Top Divisions Chart
+                    const divisionCtx = document.getElementById('divisionChart').getContext('2d');
+                    new Chart(divisionCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.divisionLabels || [],
+                            datasets: [{
+                                label: 'Users',
+                                data: data.divisionData || [],
+                                backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                                borderColor: 'rgb(255, 193, 7)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: { y: { beginAtZero: true } }
+                        }
+                    });
+                })
+                .catch(err => console.log('Chart data error:', err));
+        });
+    </script>
+}

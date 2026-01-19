@@ -1,0 +1,157 @@
+@model X.PagedList.IPagedList<Bangaliyana.Models.SellerMonthlyReport>
+@using X.PagedList.Mvc.Core
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = "Seller Report History";
+    var seller = ViewBag.Seller as Bangaliyana.Models.Seller;
+    var pendingBalance = (decimal)ViewBag.PendingBalance;
+}
+
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2">
+                            <li class="breadcrumb-item"><a href="@Url.Action("Index")">Monthly Reports</a></li>
+                            <li class="breadcrumb-item active">@seller?.ShopName</li>
+                        </ol>
+                    </nav>
+                    <h4 class="mb-1">
+                        <i class="fas fa-store text-primary me-2"></i>@seller?.ShopName
+                    </h4>
+                    <p class="text-muted mb-0">Report history for this seller</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back
+                    </a>
+                    <a asp-area="Moderator" asp-controller="Payment" asp-action="SellerPaymentDetails" asp-route-id="@seller?.Id" class="btn btn-primary">
+                        <i class="fas fa-money-bill-wave me-1"></i>Payment Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100 border-start border-primary border-4">
+                <div class="card-body text-center">
+                    <h3 class="text-primary mb-1">@Model.Count()</h3>
+                    <small class="text-muted">Total Reports</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100 border-start border-warning border-4">
+                <div class="card-body text-center">
+                    <h3 class="text-warning mb-1">@pendingBalance.ToString("N0") BDT</h3>
+                    <small class="text-muted">Pending Balance</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100 border-start border-success border-4">
+                <div class="card-body text-center">
+                    <h3 class="text-success mb-1">@Model.Where(r => r.Status == MonthlyReportStatus.Paid).Sum(r => r.PayoutAmount).ToString("N0") BDT</h3>
+                    <small class="text-muted">Total Paid</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent">
+            <h6 class="mb-0"><i class="fas fa-history me-2"></i>Report History</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Report #</th>
+                            <th class="text-end">Sales</th>
+                            <th class="text-end">Commission</th>
+                            <th class="text-end">Net Payable</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            foreach (var report in Model)
+                            {
+                                var statusClass = report.Status switch
+                                {
+                                    MonthlyReportStatus.Open => "bg-primary",
+                                    MonthlyReportStatus.Finalized => "bg-info",
+                                    MonthlyReportStatus.PendingPayout => "bg-warning text-dark",
+                                    MonthlyReportStatus.PayoutCreated => "bg-secondary",
+                                    MonthlyReportStatus.Paid => "bg-success",
+                                    MonthlyReportStatus.CarriedForward => "bg-dark",
+                                    _ => "bg-secondary"
+                                };
+                                <tr>
+                                    <td>
+                                        <strong>@(new DateTime(report.Year, report.Month, 1).ToString("MMMM yyyy"))</strong>
+                                        @if (report.CarryForwardFromPrevious > 0)
+                                        {
+                                            <small class="d-block text-info"><i class="fas fa-arrow-right me-1"></i>+@report.CarryForwardFromPrevious.ToString("N0") CF</small>
+                                        }
+                                    </td>
+                                    <td><span class="text-muted">@report.ReportNumber</span></td>
+                                    <td class="text-end">@report.TotalSales.ToString("N0") BDT</td>
+                                    <td class="text-end text-danger">-@report.CommissionAmount.ToString("N0") BDT</td>
+                                    <td class="text-end fw-bold text-success">@report.NetPayable.ToString("N0") BDT</td>
+                                    <td class="text-center">
+                                        <span class="badge @statusClass">@report.Status.GetDisplayName()</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="@Url.Action("Details", new { id = report.Id })" class="btn btn-outline-primary" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="@Url.Action("PrintReport", new { id = report.Id })" class="btn btn-outline-secondary" target="_blank" title="Print">
+                                                <i class="fas fa-print"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                    No reports found for this seller.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @if (Model.PageCount > 1)
+        {
+            <div class="card-footer bg-transparent">
+                <nav>
+                    @Html.PagedListPager(Model, page => Url.Action("SellerHistory", new { sellerId = seller?.Id, page }),
+                        new PagedListRenderOptions
+                        {
+                            LiElementClasses = new[] { "page-item" },
+                            PageClasses = new[] { "page-link" },
+                            UlElementClasses = new[] { "pagination", "justify-content-center", "mb-0" }
+                        })
+                </nav>
+            </div>
+        }
+    </div>
+</div>

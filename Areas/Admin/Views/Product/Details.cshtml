@@ -1,0 +1,496 @@
+@model Bangaliyana.Models.Products
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+
+@{
+    ViewData["Title"] = Localizer["ProductDetails"];
+    var averageRating = Model.Reviews?.Any() == true ? Model.Reviews.Average(r => r.Rating) : 0;
+    var totalReviews = Model.Reviews?.Count ?? 0;
+}
+
+<div class="container py-5">
+    <div class="row">
+        <!-- Left Column - Product Images -->
+        <div class="col-lg-5 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <img src="~/@Model.ImageUrl" alt="@Model.Name" class="img-fluid rounded-top w-100" style="max-height: 400px; object-fit: contain; background: #f8f9fa;" />
+                </div>
+                @if (Model.Images != null && Model.Images.Any())
+                {
+                    <div class="card-footer bg-light">
+                        <div class="d-flex flex-wrap gap-2 justify-content-center">
+                            @foreach (var img in Model.Images.OrderBy(i => i.DisplayOrder))
+                            {
+                                <img src="~/@img.ImageUrl" alt="Gallery" class="rounded border" style="width: 70px; height: 70px; object-fit: cover; cursor: pointer;" onclick="document.querySelector('.img-fluid').src = '/@img.ImageUrl'" />
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Statistics Card -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-gradient bg-info text-white">
+                    <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>@Localizer["ProductStatistics"]</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fw-bold text-primary fs-3">@Model.ViewCount</div>
+                            <small class="text-muted">@Localizer["TotalViews"]</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold text-success fs-3">@Model.SoldCount</div>
+                            <small class="text-muted">@Localizer["UnitsSold"]</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold text-warning fs-3">@totalReviews</div>
+                            <small class="text-muted">@Localizer["Reviews"]</small>
+                        </div>
+                    </div>
+                    @if (totalReviews > 0)
+                    {
+                        <hr />
+                        <div class="text-center">
+                            <div class="d-flex align-items-center justify-content-center">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    if (i <= averageRating)
+                                    {
+                                        <i class="fas fa-star text-warning"></i>
+                                    }
+                                    else if (i - 0.5 <= averageRating)
+                                    {
+                                        <i class="fas fa-star-half-alt text-warning"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="far fa-star text-warning"></i>
+                                    }
+                                }
+                                <span class="ms-2 fw-bold">@averageRating.ToString("F1")</span>
+                            </div>
+                            <small class="text-muted">@Localizer["AverageRating"]</small>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Product Details -->
+        <div class="col-lg-7">
+            <!-- Header Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h3 class="mb-2">@Model.Name</h3>
+                            @if (!string.IsNullOrEmpty(Model.Brand))
+                            {
+                                <span class="badge bg-secondary me-2">@Model.Brand</span>
+                            }
+                            <span class="badge bg-@(Model.Status == ProductStatus.Active ? "success" : Model.Status == ProductStatus.OutOfStock ? "danger" : "warning")">
+                                @Model.Status.GetDisplayName()
+                            </span>
+                            @if (Model.IsFeatured)
+                            {
+                                <span class="badge bg-info ms-2"><i class="fas fa-star me-1"></i>@Localizer["Featured"]</span>
+                            }
+                        </div>
+                        <div class="text-end">
+                            @if (Model.HasDiscount)
+                            {
+                                <div class="text-muted text-decoration-line-through fs-5">৳@Model.Price.ToString("N0")</div>
+                                <div class="text-success fw-bold fs-3">৳@Model.DiscountPrice?.ToString("N0")</div>
+                                <span class="badge bg-danger">-@Model.DiscountPercentage% OFF</span>
+                            }
+                            else
+                            {
+                                <div class="text-success fw-bold fs-3">৳@Model.Price.ToString("N0")</div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Quick Info -->
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <small class="text-muted">@Localizer["Stock"]</small>
+                            <div class="fw-semibold @(Model.Stock > 0 ? "text-success" : "text-danger")">
+                                @(Model.Stock > 0 ? $"{Model.Stock} {Localizer["Units"]}" : Localizer["OutOfStock"])
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <small class="text-muted">@Localizer["SKU"]</small>
+                            <div class="fw-semibold">@(Model.SKU ?? Localizer["NA"])</div>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <small class="text-muted">@Localizer["Availability"]</small>
+                            <div class="fw-semibold @(Model.IsAvailable ? "text-success" : "text-danger")">
+                                @(Model.IsAvailable ? Localizer["Available"] : Localizer["NotAvailable"])
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Description Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-align-left text-info me-2"></i>@Localizer["Description"]</h6>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.ShortDescription))
+                    {
+                        <p class="fw-semibold text-muted">@Model.ShortDescription</p>
+                        <hr />
+                    }
+                    <p class="mb-0" style="white-space: pre-line;">@Model.Description</p>
+
+                    @if (!string.IsNullOrEmpty(Model.DescriptionBengali))
+                    {
+                        <hr />
+                        <h6 class="text-muted"><i class="fas fa-language me-2"></i>@Localizer["BengaliDescription"]</h6>
+                        <p class="mb-0" style="white-space: pre-line;">@Model.DescriptionBengali</p>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.DescriptionEnglish))
+                    {
+                        <hr />
+                        <h6 class="text-muted"><i class="fas fa-language me-2"></i>@Localizer["EnglishDescription"]</h6>
+                        <p class="mb-0" style="white-space: pre-line;">@Model.DescriptionEnglish</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Highlights Card -->
+            @if (!string.IsNullOrEmpty(Model.Highlights))
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-check-circle text-success me-2"></i>@Localizer["ProductHighlights"]</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            @foreach (var highlight in Model.Highlights.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <li>@highlight.Trim()</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+
+            <!-- Category & Classification Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-folder-open text-primary me-2"></i>@Localizer["CategoryAndClassification"]</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">@Localizer["Category"]</small>
+                            <span class="fw-semibold">@(Model.Category?.Name ?? Localizer["NA"])</span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">@Localizer["Tags"]</small>
+                            <span class="fw-semibold">@(string.IsNullOrEmpty(Model.Tags) ? Localizer["NA"] : Model.Tags)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Details Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-clipboard-list text-warning me-2"></i>@Localizer["ProductDetails"]</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">@Localizer["Brand"]</small>
+                            <span class="fw-semibold">@(Model.Brand ?? Localizer["NA"])</span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">@Localizer["Manufacturer"]</small>
+                            <span class="fw-semibold">@(Model.Manufacturer ?? Localizer["NA"])</span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">@Localizer["CountryOfOrigin"]</small>
+                            <span class="fw-semibold">@(Model.CountryOfOrigin ?? Localizer["NA"])</span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">@Localizer["FabricMaterial"]</small>
+                            <span class="fw-semibold">@(Model.Fabric ?? Localizer["NA"])</span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">@Localizer["Weight"]</small>
+                            <span class="fw-semibold">@(Model.Weight.HasValue ? $"{Model.Weight}g" : Localizer["NA"])</span>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.CareInstructions))
+                    {
+                        <hr />
+                        <h6 class="text-muted"><i class="fas fa-hand-holding-heart me-2"></i>@Localizer["CareInstructions"]</h6>
+                        <p class="mb-0">@Model.CareInstructions</p>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.WarrantyInfo))
+                    {
+                        <hr />
+                        <h6 class="text-muted"><i class="fas fa-shield-alt me-2"></i>@Localizer["WarrantyInformation"]</h6>
+                        <p class="mb-0">@Model.WarrantyInfo</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Product Variants Card -->
+            @if (Model.Variants != null && Model.Variants.Any())
+            {
+                <div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #6f42c1 !important;">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-palette me-2" style="color: #6f42c1;"></i>@Localizer["ProductVariants"] (@Model.Variants.Count)</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>@Localizer["Size"]</th>
+                                        <th>@Localizer["Color"]</th>
+                                        <th>@Localizer["SKU"]</th>
+                                        <th class="text-center">@Localizer["Stock"]</th>
+                                        <th class="text-end">@Localizer["AdditionalPrice"]</th>
+                                        <th class="text-center">@Localizer["Status"]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var variant in Model.Variants.OrderBy(v => v.DisplayOrder))
+                                    {
+                                        <tr>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(variant.Size))
+                                                {
+                                                    <span class="badge bg-secondary">@variant.Size</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(variant.Color))
+                                                {
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        @if (!string.IsNullOrEmpty(variant.ColorCode))
+                                                        {
+                                                            <span style="background-color: @variant.ColorCode; width: 18px; height: 18px; border-radius: 50%; border: 1px solid #ddd; display: inline-block;"></span>
+                                                        }
+                                                        <span>@variant.Color</span>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td><code class="small">@(variant.SKU ?? "-")</code></td>
+                                            <td class="text-center">
+                                                <span class="badge @(variant.Stock > 0 ? "bg-success" : "bg-danger")">@variant.Stock</span>
+                                            </td>
+                                            <td class="text-end">
+                                                @if (variant.AdditionalPrice > 0)
+                                                {
+                                                    <span class="text-success fw-semibold">+৳@variant.AdditionalPrice.ToString("N0")</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                @if (variant.IsAvailable)
+                                                {
+                                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>@Localizer["Available"]</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary"><i class="fas fa-times me-1"></i>@Localizer["Unavailable"]</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Shipping & Returns Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-truck text-info me-2"></i>@Localizer["ShippingAndReturns"]</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">@Localizer["EstimatedDelivery"]</small>
+                            <span class="fw-semibold">@(!string.IsNullOrEmpty(Model.EstimatedDeliveryDays) ? $"{Model.EstimatedDeliveryDays} {Localizer["Days"]}" : $"3-5 {Localizer["Days"]}")</span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">@Localizer["Returnable"]</small>
+                            <span class="fw-semibold @(Model.IsReturnable ? "text-success" : "text-danger")">
+                                @(Model.IsReturnable ? $"{Localizer["Yes"]} ({Model.ReturnDays} {Localizer["Days"]})" : Localizer["No"])
+                            </span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">@Localizer["CashOnDelivery"]</small>
+                            <span class="fw-semibold @(Model.IsCODAvailable ? "text-success" : "text-danger")">
+                                @(Model.IsCODAvailable ? Localizer["Available"] : Localizer["NotAvailable"])
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Media Card -->
+            @if (!string.IsNullOrEmpty(Model.VideoUrl) || Model.Has360View)
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-video text-danger me-2"></i>@Localizer["Media"]</h6>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(Model.VideoUrl))
+                        {
+                            <div class="mb-3">
+                                <small class="text-muted d-block">@Localizer["VideoURL"]</small>
+                                <a href="@Model.VideoUrl" target="_blank" class="text-info">@Model.VideoUrl</a>
+                            </div>
+                        }
+                        @if (Model.Has360View && !string.IsNullOrEmpty(Model.View360Url))
+                        {
+                            <div>
+                                <small class="text-muted d-block">@Localizer["View360URL"]</small>
+                                <a href="@Model.View360Url" target="_blank" class="text-info">@Model.View360Url</a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Seller Info Card -->
+            @if (Model.Seller != null)
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-store text-success me-2"></i>@Localizer["SellerInformation"]</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                <i class="fas fa-store"></i>
+                            </div>
+                            <div class="ms-3">
+                                <h6 class="mb-0">@Model.Seller.ShopName</h6>
+                                <small class="text-muted">@Model.Seller.User?.Email</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Timestamps Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-clock text-secondary me-2"></i>@Localizer["Timestamps"]</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">@Localizer["CreatedAt"]</small>
+                            <span class="fw-semibold">@Model.CreatedAt.ToBangladeshString()</span>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">@Localizer["LastUpdated"]</small>
+                            <span class="fw-semibold">@Model.UpdatedAt.ToBangladeshString()</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex justify-content-between align-items-center">
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>@Localizer["BackToList"]
+                </a>
+                <div>
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-info text-white me-2">
+                        <i class="fas fa-edit me-2"></i>@Localizer["EditProduct"]
+                    </a>
+                    @if (ViewBag.IsAdmin == true)
+                    {
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="fas fa-trash me-2"></i>@Localizer["Delete"]
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>@Localizer["ConfirmDelete"]</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>@Localizer["ConfirmDeleteProduct"] <strong>@Model.Name</strong>?</p>
+                <p class="text-muted small mb-0">@Localizer["ActionCannotBeUndone"]</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>@Localizer["Delete"]
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        [data-theme="dark"] .card {
+            background-color: #1e1e2e;
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] .card-header.bg-light {
+            background-color: #252535 !important;
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] .card-footer.bg-light {
+            background-color: #252535 !important;
+        }
+        [data-theme="dark"] .text-muted {
+            color: #9090a0 !important;
+        }
+        [data-theme="dark"] .modal-content {
+            background-color: #1e1e2e;
+            color: #e0e0e0;
+        }
+    </style>
+}
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

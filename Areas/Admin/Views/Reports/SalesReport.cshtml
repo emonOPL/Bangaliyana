@@ -1,0 +1,412 @@
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = "Sales Report";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Reports</a></li>
+            <li class="breadcrumb-item active">Sales Report</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-chart-line text-success me-2"></i>Sales Report</h1>
+            <p class="text-muted mb-0">Detailed sales analysis and revenue trends</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="ExportCsv" asp-route-reportType="sales" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" class="btn btn-outline-success">
+                <i class="fas fa-file-csv me-1"></i>Export CSV
+            </a>
+            <a asp-action="ExportPdf" asp-route-reportType="sales" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" class="btn btn-outline-danger">
+                <i class="fas fa-file-pdf me-1"></i>Export PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">From Date</label>
+                    <input type="date" name="fromDate" class="form-control" value="@ViewBag.FromDate" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">To Date</label>
+                    <input type="date" name="toDate" class="form-control" value="@ViewBag.ToDate" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Group By</label>
+                    <select name="groupBy" class="form-select">
+                        <option value="day" selected="@(ViewBag.GroupBy == "day")">Daily</option>
+                        <option value="week" selected="@(ViewBag.GroupBy == "week")">Weekly</option>
+                        <option value="month" selected="@(ViewBag.GroupBy == "month")">Monthly</option>
+                        <option value="year" selected="@(ViewBag.GroupBy == "year")">Yearly</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-1"></i>Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-success bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-money-bill-wave text-success fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">৳@(((decimal)ViewBag.TotalRevenue).ToString("N0"))</h5>
+                    <small class="text-muted">Total Revenue</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-primary bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-shopping-cart text-primary fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.TotalOrders</h5>
+                    <small class="text-muted">Total Orders</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-info bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-calculator text-info fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">৳@(((decimal)ViewBag.AverageOrderValue).ToString("N0"))</h5>
+                    <small class="text-muted">Avg. Order Value</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-danger bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-undo text-danger fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">৳@(((decimal)ViewBag.TotalRefunds).ToString("N0"))</h5>
+                    <small class="text-muted">Total Refunds</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-warning bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-chart-line text-warning fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">৳@(((decimal)ViewBag.NetRevenue).ToString("N0"))</h5>
+                    <small class="text-muted">Net Revenue</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-secondary bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-box text-secondary fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.TotalItemsSold</h5>
+                    <small class="text-muted">Items Sold</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-chart-area text-success me-2"></i>Revenue Trend</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary active" data-chart="revenue" data-type="line">Line</button>
+                        <button type="button" class="btn btn-outline-secondary" data-chart="revenue" data-type="bar">Bar</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="revenueChart" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie text-primary me-2"></i>Order Status Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="orderStatusChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-shopping-cart text-info me-2"></i>Orders Trend</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="ordersChart" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-credit-card text-warning me-2"></i>Payment Methods</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="paymentMethodsChart" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Products Table -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-fire text-danger me-2"></i>Top Selling Products</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (ViewBag.TopProducts != null && ((IEnumerable<dynamic>)ViewBag.TopProducts).Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Product</th>
+                                <th class="text-center">Quantity Sold</th>
+                                <th class="text-end">Revenue</th>
+                                <th class="text-center">Orders</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                int rank = 1;
+                            }
+                            @foreach (var product in (IEnumerable<dynamic>)ViewBag.TopProducts)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (rank <= 3)
+                                        {
+                                            <span class="badge bg-@(rank == 1 ? "warning" : rank == 2 ? "secondary" : "danger")">
+                                                <i class="fas fa-trophy"></i> @rank
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@rank</span>
+                                        }
+                                    </td>
+                                    <td class="fw-bold">@product.Name</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary">@product.TotalSold</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="text-success fw-bold">৳@(((decimal)product.Revenue).ToString("N0"))</span>
+                                    </td>
+                                    <td class="text-center">@product.OrderCount</td>
+                                </tr>
+                                rank++;
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="fas fa-box fa-2x text-muted mb-2"></i>
+                    <p class="text-muted mb-0">No product data available for the selected period</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Sales Data Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-table text-primary me-2"></i>Sales Data (@ViewBag.GroupBy.ToString().ToUpper()ly)</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (ViewBag.SalesData != null && ((IEnumerable<dynamic>)ViewBag.SalesData).Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Period</th>
+                                <th class="text-center">Orders</th>
+                                <th class="text-end">Revenue</th>
+                                <th class="text-end">Refunds</th>
+                                <th class="text-end">Net Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var data in (IEnumerable<dynamic>)ViewBag.SalesData)
+                            {
+                                <tr>
+                                    <td class="fw-bold">@data.Period</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary">@data.Orders</span>
+                                    </td>
+                                    <td class="text-end text-success fw-bold">৳@(((decimal)data.Revenue).ToString("N0"))</td>
+                                    <td class="text-end text-danger">৳@(((decimal)data.Refunds).ToString("N0"))</td>
+                                    <td class="text-end fw-bold">৳@(((decimal)data.NetRevenue).ToString("N0"))</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr class="fw-bold">
+                                <td>Total</td>
+                                <td class="text-center">@ViewBag.TotalOrders</td>
+                                <td class="text-end text-success">৳@(((decimal)ViewBag.TotalRevenue).ToString("N0"))</td>
+                                <td class="text-end text-danger">৳@(((decimal)ViewBag.TotalRefunds).ToString("N0"))</td>
+                                <td class="text-end">৳@(((decimal)ViewBag.NetRevenue).ToString("N0"))</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="fas fa-chart-bar fa-2x text-muted mb-2"></i>
+                    <p class="text-muted mb-0">No sales data available for the selected period</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fetch sales chart data
+            const fromDate = '@ViewBag.FromDate';
+            const toDate = '@ViewBag.ToDate';
+            const groupBy = '@ViewBag.GroupBy';
+
+            fetch(`@Url.Action("GetChartData", "Reports", new { area = "Admin" })?reportType=sales&fromDate=${fromDate}&toDate=${toDate}&groupBy=${groupBy}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Revenue Chart
+                    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+                    let revenueChart = new Chart(revenueCtx, {
+                        type: 'line',
+                        data: {
+                            labels: data.labels,
+                            datasets: [{
+                                label: 'Revenue (৳)',
+                                data: data.revenueData,
+                                borderColor: 'rgb(25, 135, 84)',
+                                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) { return '৳' + value.toLocaleString(); }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Orders Chart
+                    const ordersCtx = document.getElementById('ordersChart').getContext('2d');
+                    new Chart(ordersCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.labels,
+                            datasets: [{
+                                label: 'Orders',
+                                data: data.ordersData,
+                                backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                                borderColor: 'rgb(13, 110, 253)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: { y: { beginAtZero: true } }
+                        }
+                    });
+
+                    // Order Status Pie Chart
+                    const statusCtx = document.getElementById('orderStatusChart').getContext('2d');
+                    new Chart(statusCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: data.statusLabels || ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'],
+                            datasets: [{
+                                data: data.statusData || [0, 0, 0, 0, 0],
+                                backgroundColor: [
+                                    'rgba(255, 193, 7, 0.8)',
+                                    'rgba(13, 202, 240, 0.8)',
+                                    'rgba(13, 110, 253, 0.8)',
+                                    'rgba(25, 135, 84, 0.8)',
+                                    'rgba(220, 53, 69, 0.8)'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { boxWidth: 12 } }
+                            }
+                        }
+                    });
+
+                    // Payment Methods Chart
+                    const paymentCtx = document.getElementById('paymentMethodsChart').getContext('2d');
+                    new Chart(paymentCtx, {
+                        type: 'pie',
+                        data: {
+                            labels: data.paymentLabels || ['COD', 'bKash', 'Nagad', 'Card', 'Other'],
+                            datasets: [{
+                                data: data.paymentData || [0, 0, 0, 0, 0],
+                                backgroundColor: [
+                                    'rgba(108, 117, 125, 0.8)',
+                                    'rgba(233, 30, 99, 0.8)',
+                                    'rgba(255, 152, 0, 0.8)',
+                                    'rgba(63, 81, 181, 0.8)',
+                                    'rgba(156, 39, 176, 0.8)'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { boxWidth: 12 } }
+                            }
+                        }
+                    });
+
+                    // Chart type toggle
+                    document.querySelectorAll('[data-chart="revenue"]').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            document.querySelectorAll('[data-chart="revenue"]').forEach(b => b.classList.remove('active'));
+                            this.classList.add('active');
+                            revenueChart.config.type = this.dataset.type;
+                            revenueChart.update();
+                        });
+                    });
+                })
+                .catch(err => console.log('Chart data error:', err));
+        });
+    </script>
+}

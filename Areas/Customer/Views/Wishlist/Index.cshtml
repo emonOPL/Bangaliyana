@@ -1,0 +1,401 @@
+@model List<Bangaliyana.Models.Wishlist>
+@using Bangaliyana.Services
+@inject ISiteSettingsService SiteSettingsService
+@{
+    ViewData["Title"] = Localizer["MyWishlist"].Value;
+    var siteSettings = await SiteSettingsService.GetSiteSettingsAsync();
+    var currencySymbol = siteSettings?.CurrencySymbol ?? "৳";
+}
+
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-area="Customer" asp-controller="Home" asp-action="Index">@Localizer["Home"]</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Localizer["Wishlist"]</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="fas fa-heart text-danger me-2"></i>@Localizer["MyWishlist"]</h2>
+        @if (Model.Any())
+        {
+            <span class="badge bg-danger fs-6">@Model.Count @Localizer["Items"]</span>
+        }
+    </div>
+
+    @if (!Model.Any())
+    {
+        <!-- Empty Wishlist -->
+        <div class="empty-wishlist text-center py-5">
+            <div class="empty-wishlist-icon mb-4">
+                <i class="far fa-heart fa-5x text-muted"></i>
+            </div>
+            <h3 class="mb-3">@Localizer["YourWishlistIsEmpty"]</h3>
+            <p class="text-muted mb-4">@Localizer["WishlistEmptyMessage"]</p>
+            <a asp-area="Customer" asp-controller="Home" asp-action="Index" class="btn btn-success btn-lg px-5">
+                <i class="fas fa-shopping-bag me-2"></i>@Localizer["StartShopping"]
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var item in Model)
+            {
+                var product = item.Product;
+                if (product == null) continue;
+
+                var hasDiscount = product.DiscountPrice.HasValue && product.DiscountPrice < product.Price;
+                var currentPrice = product.DiscountPrice ?? product.Price;
+                var discountPercent = hasDiscount ? Math.Round((1 - (product.DiscountPrice!.Value / product.Price)) * 100) : 0;
+                var avgRating = product.Reviews?.Any() == true ? product.Reviews.Average(r => r.Rating) : 0;
+                var reviewCount = product.Reviews?.Count ?? 0;
+
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="wishlist-card h-100">
+                        <!-- Remove Button -->
+                        <button type="button" class="wishlist-remove-btn" data-product-id="@product.Id" title="@Localizer["RemoveFromWishlist"]">
+                            <i class="fas fa-times"></i>
+                        </button>
+
+                        <!-- Discount Badge -->
+                        @if (hasDiscount)
+                        {
+                            <div class="discount-badge">-@discountPercent%</div>
+                        }
+
+                        <!-- Product Image -->
+                        <a asp-area="Customer" asp-controller="Home" asp-action="Details" asp-route-id="@product.Id" class="product-image-link">
+                            <img src="~/@product.ImageUrl" alt="@product.Name" class="product-image" onerror="this.src='/images/noimage.jpg'">
+                        </a>
+
+                        <!-- Product Info -->
+                        <div class="product-info p-3">
+                            <!-- Category -->
+                            @if (product.Category != null)
+                            {
+                                <span class="product-category text-muted small">@product.Category.Name</span>
+                            }
+
+                            <!-- Product Name -->
+                            <a asp-area="Customer" asp-controller="Home" asp-action="Details" asp-route-id="@product.Id" class="product-name">
+                                @product.Name
+                            </a>
+
+                            <!-- Rating -->
+                            @if (reviewCount > 0)
+                            {
+                                <div class="product-rating mb-2">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        if (i <= avgRating)
+                                        {
+                                            <i class="fas fa-star text-warning"></i>
+                                        }
+                                        else if (i - 0.5 <= avgRating)
+                                        {
+                                            <i class="fas fa-star-half-alt text-warning"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="far fa-star text-warning"></i>
+                                        }
+                                    }
+                                    <span class="text-muted small ms-1">(@reviewCount)</span>
+                                </div>
+                            }
+
+                            <!-- Price -->
+                            <div class="product-price mb-3">
+                                <span class="current-price">@currencySymbol@currentPrice.ToString("N0")</span>
+                                @if (hasDiscount)
+                                {
+                                    <span class="original-price text-muted text-decoration-line-through ms-2">@currencySymbol@product.Price.ToString("N0")</span>
+                                }
+                            </div>
+
+                            <!-- Price Alert Toggle -->
+                            <div class="price-alert-toggle mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input price-notify-toggle" type="checkbox"
+                                           id="priceNotify_@product.Id"
+                                           data-product-id="@product.Id"
+                                           @(item.NotifyOnPriceDrop ? "checked" : "")>
+                                    <label class="form-check-label small text-muted" for="priceNotify_@product.Id">
+                                        <i class="fas fa-bell me-1"></i>@Localizer["NotifyOnPriceDrop"]
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Stock Status -->
+                            @if (product.Stock > 0 && product.IsAvailable)
+                            {
+                                <span class="badge bg-success-subtle text-success mb-3">
+                                    <i class="fas fa-check-circle me-1"></i>@Localizer["InStock"]
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger-subtle text-danger mb-3">
+                                    <i class="fas fa-times-circle me-1"></i>@Localizer["OutOfStock"]
+                                </span>
+                            }
+
+                            <!-- Add to Cart Button -->
+                            @if (product.Stock > 0 && product.IsAvailable)
+                            {
+                                <button type="button" class="btn btn-success w-100 add-to-cart-btn" data-product-id="@product.Id">
+                                    <i class="fas fa-shopping-cart me-2"></i>@Localizer["AddToCart"]
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-secondary w-100" disabled>
+                                    <i class="fas fa-ban me-2"></i>@Localizer["OutOfStock"]
+                                </button>
+                            }
+                        </div>
+
+                        <!-- Added Date -->
+                        <div class="wishlist-added-date text-center py-2 border-top">
+                            <small class="text-muted">
+                                <i class="far fa-clock me-1"></i>@Localizer["Added"] @item.AddedAt.ToString("MMM dd, yyyy")
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Continue Shopping -->
+        <div class="mt-5 text-center">
+            <a asp-area="Customer" asp-controller="Home" asp-action="Index" class="btn btn-outline-success btn-lg">
+                <i class="fas fa-arrow-left me-2"></i>@Localizer["ContinueShopping"]
+            </a>
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        /* Wishlist Card */
+        .wishlist-card {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .wishlist-card:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            transform: translateY(-4px);
+        }
+
+        /* Remove Button */
+        .wishlist-remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            border: none;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .wishlist-remove-btn:hover {
+            background: #dc3545;
+            transform: scale(1.1);
+        }
+
+        /* Discount Badge */
+        .discount-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            z-index: 10;
+        }
+
+        /* Product Image */
+        .product-image-link {
+            display: block;
+            overflow: hidden;
+        }
+        .product-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        .wishlist-card:hover .product-image {
+            transform: scale(1.05);
+        }
+
+        /* Product Info */
+        .product-category {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .product-name {
+            display: block;
+            font-weight: 600;
+            color: var(--text-color);
+            text-decoration: none;
+            margin-bottom: 8px;
+            line-height: 1.4;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        .product-name:hover {
+            color: var(--primary-color);
+        }
+
+        /* Price */
+        .current-price {
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--primary-color);
+        }
+        .original-price {
+            font-size: 0.9rem;
+        }
+
+        /* Price Alert Toggle */
+        .price-alert-toggle .form-check-input {
+            cursor: pointer;
+        }
+        .price-alert-toggle .form-check-input:checked {
+            background-color: #198754;
+            border-color: #198754;
+        }
+
+        /* Added Date */
+        .wishlist-added-date {
+            background: var(--bg-secondary);
+        }
+
+        /* Empty Wishlist */
+        .empty-wishlist-icon {
+            opacity: 0.5;
+        }
+
+        /* Dark Mode */
+        [data-theme="dark"] .wishlist-card {
+            background: var(--bg-secondary);
+            border-color: var(--border-color);
+        }
+        [data-theme="dark"] .wishlist-added-date {
+            background: rgba(0, 0, 0, 0.2);
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Remove from Wishlist
+            $('.wishlist-remove-btn').on('click', function() {
+                var btn = $(this);
+                var productId = btn.data('product-id');
+                var card = btn.closest('.col-6');
+
+                $.ajax({
+                    url: '@Url.Action("Remove", "Wishlist", new { area = "Customer" })',
+                    type: 'POST',
+                    data: { productId: productId },
+                    success: function(response) {
+                        if (response.success) {
+                            card.fadeOut(300, function() {
+                                $(this).remove();
+                                // Check if wishlist is empty
+                                if ($('.wishlist-card').length === 0) {
+                                    location.reload();
+                                }
+                            });
+                            alertify.success(response.message || 'Removed from wishlist');
+                        } else {
+                            alertify.error(response.message || 'Failed to remove');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred');
+                    }
+                });
+            });
+
+            // Add to Cart
+            $('.add-to-cart-btn').on('click', function() {
+                var btn = $(this);
+                var productId = btn.data('product-id');
+
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Adding...');
+
+                $.ajax({
+                    url: '@Url.Action("AddToCart", "Home", new { area = "Customer" })',
+                    type: 'POST',
+                    data: { id: productId, quantity: 1 },
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message || 'Added to cart');
+                            btn.html('<i class="fas fa-check me-2"></i>Added!');
+                            setTimeout(function() {
+                                btn.prop('disabled', false).html('<i class="fas fa-shopping-cart me-2"></i>Add to Cart');
+                            }, 2000);
+                        } else {
+                            alertify.error(response.message || 'Failed to add to cart');
+                            btn.prop('disabled', false).html('<i class="fas fa-shopping-cart me-2"></i>Add to Cart');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred');
+                        btn.prop('disabled', false).html('<i class="fas fa-shopping-cart me-2"></i>Add to Cart');
+                    }
+                });
+            });
+
+            // Toggle Price Notification
+            $('.price-notify-toggle').on('change', function() {
+                var checkbox = $(this);
+                var productId = checkbox.data('product-id');
+
+                $.ajax({
+                    url: '@Url.Action("TogglePriceNotification", "Wishlist", new { area = "Customer" })',
+                    type: 'POST',
+                    data: { productId: productId },
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                        } else {
+                            alertify.error(response.message || 'Failed to update');
+                            checkbox.prop('checked', !checkbox.prop('checked'));
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred');
+                        checkbox.prop('checked', !checkbox.prop('checked'));
+                    }
+                });
+            });
+        });
+    </script>
+}

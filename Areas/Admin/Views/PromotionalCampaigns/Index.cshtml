@@ -1,0 +1,292 @@
+@model List<Bangaliyana.Models.PromotionalCampaign>
+
+@{
+    ViewData["Title"] = "Promotional Campaigns";
+}
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1">
+                <i class="fas fa-bullhorn text-primary me-2"></i>Promotional Campaigns
+            </h4>
+            <p class="text-muted mb-0">Create and manage promotional notifications for users</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>New Campaign
+        </a>
+    </div>
+
+    @if (TempData["success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-bullhorn fa-4x text-muted mb-3"></i>
+                <h5>No Campaigns Yet</h5>
+                <p class="text-muted mb-4">Create your first promotional campaign to engage with your users.</p>
+                <a asp-action="Create" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create Campaign
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">Campaign</th>
+                                <th>Target Audience</th>
+                                <th>Status</th>
+                                <th>Recipients</th>
+                                <th>Engagement</th>
+                                <th>Created</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var campaign in Model)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="campaign-icon me-3">
+                                                <i class="@campaign.IconClass @campaign.IconColor"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0">@campaign.Title</h6>
+                                                <small class="text-muted text-truncate d-block" style="max-width: 250px;">
+                                                    @campaign.Message
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">
+                                            @(campaign.TargetAudience switch
+                                            {
+                                                Bangaliyana.Models.TargetAudience.All => "All Users",
+                                                Bangaliyana.Models.TargetAudience.NewUsers => "New Users",
+                                                Bangaliyana.Models.TargetAudience.ReturningUsers => "Returning",
+                                                Bangaliyana.Models.TargetAudience.PremiumMembers => "Premium",
+                                                Bangaliyana.Models.TargetAudience.InactiveUsers => "Inactive",
+                                                Bangaliyana.Models.TargetAudience.HighSpenders => "High Spenders",
+                                                _ => campaign.TargetAudience.ToString()
+                                            })
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @switch (campaign.Status)
+                                        {
+                                            case Bangaliyana.Models.CampaignStatus.Draft:
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="fas fa-edit me-1"></i>Draft
+                                                </span>
+                                                break;
+                                            case Bangaliyana.Models.CampaignStatus.Scheduled:
+                                                <span class="badge bg-info">
+                                                    <i class="fas fa-clock me-1"></i>Scheduled
+                                                </span>
+                                                @if (campaign.ScheduledAt.HasValue)
+                                                {
+                                                    <br />
+                                                    <small class="text-muted">@campaign.ScheduledAt.Value.ToBangladeshString("MMM dd, hh:mm tt")</small>
+                                                }
+                                                break;
+                                            case Bangaliyana.Models.CampaignStatus.Sending:
+                                                <span class="badge bg-primary">
+                                                    <i class="fas fa-spinner fa-spin me-1"></i>Sending
+                                                </span>
+                                                break;
+                                            case Bangaliyana.Models.CampaignStatus.Sent:
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i>Sent
+                                                </span>
+                                                @if (campaign.SentAt.HasValue)
+                                                {
+                                                    <br />
+                                                    <small class="text-muted">@campaign.SentAt.Value.ToBangladeshString("MMM dd, hh:mm tt")</small>
+                                                }
+                                                break;
+                                            case Bangaliyana.Models.CampaignStatus.Cancelled:
+                                                <span class="badge bg-secondary">
+                                                    <i class="fas fa-ban me-1"></i>Cancelled
+                                                </span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (campaign.Status == Bangaliyana.Models.CampaignStatus.Sent)
+                                        {
+                                            <span class="fw-bold">@campaign.TotalRecipients.ToString("N0")</span>
+                                            @if (campaign.EmailSent)
+                                            {
+                                                <br />
+                                                <small class="text-muted">
+                                                    <i class="fas fa-envelope me-1"></i>Emails sent
+                                                </small>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (campaign.Status == Bangaliyana.Models.CampaignStatus.Sent && campaign.TotalRecipients > 0)
+                                        {
+                                            <div class="small">
+                                                <div class="d-flex justify-content-between">
+                                                    <span>Read:</span>
+                                                    <span class="fw-bold">@campaign.ReadRate.ToString("F1")%</span>
+                                                </div>
+                                                <div class="progress" style="height: 4px;">
+                                                    <div class="progress-bar bg-info" style="width: @campaign.ReadRate%"></div>
+                                                </div>
+                                                <div class="d-flex justify-content-between mt-1">
+                                                    <span>Clicks:</span>
+                                                    <span class="fw-bold">@campaign.ClickRate.ToString("F1")%</span>
+                                                </div>
+                                                <div class="progress" style="height: 4px;">
+                                                    <div class="progress-bar bg-success" style="width: @campaign.ClickRate%"></div>
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>
+                                            @campaign.CreatedAt.ToBangladeshShortDateString()
+                                            <br />
+                                            <span class="text-muted">by @(campaign.CreatedBy?.FullName ?? "Admin")</span>
+                                        </small>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group">
+                                            @if (campaign.Status == Bangaliyana.Models.CampaignStatus.Sent)
+                                            {
+                                                <a asp-action="Analytics" asp-route-id="@campaign.Id"
+                                                   class="btn btn-sm btn-outline-info" title="View Analytics">
+                                                    <i class="fas fa-chart-bar"></i>
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <a asp-action="Edit" asp-route-id="@campaign.Id"
+                                                   class="btn btn-sm btn-outline-primary" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a asp-action="Send" asp-route-id="@campaign.Id"
+                                                   class="btn btn-sm btn-outline-success" title="Send Now">
+                                                    <i class="fas fa-paper-plane"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
+                                                        data-bs-toggle="modal" data-bs-target="#deleteCampaignModal"
+                                                        data-campaign-id="@campaign.Id" data-campaign-name="@campaign.Title">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Delete Campaign Confirmation Modal -->
+<div class="modal fade" id="deleteCampaignModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-trash-alt text-danger" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">Delete Campaign?</h4>
+                <p class="text-muted mb-1">Are you sure you want to delete "<span id="deleteCampaignName" class="fw-semibold"></span>"?</p>
+                <p class="text-muted small mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 py-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <form id="deleteCampaignForm" method="post" class="m-0 d-inline-flex">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .campaign-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    [data-theme="dark"] .campaign-icon {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .card {
+        background-color: #252538;
+    }
+
+    [data-theme="dark"] .table {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .bg-light {
+        background-color: #1e1e2d !important;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        var deleteCampaignModal = document.getElementById('deleteCampaignModal');
+        deleteCampaignModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var campaignId = button.getAttribute('data-campaign-id');
+            var campaignName = button.getAttribute('data-campaign-name');
+            document.getElementById('deleteCampaignName').textContent = campaignName;
+            document.getElementById('deleteCampaignForm').action = '@Url.Action("Delete", "PromotionalCampaigns", new { area = "Admin" })/' + campaignId;
+        });
+    </script>
+}

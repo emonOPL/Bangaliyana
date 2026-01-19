@@ -1,0 +1,406 @@
+@using Bangaliyana.Models
+@{
+    Layout = null;
+    var completedPayouts = ViewBag.CompletedPayouts as IEnumerable<ManualSellerPayout>;
+    var month = (int)ViewBag.Month;
+    var year = (int)ViewBag.Year;
+    var printDate = (DateTime)ViewBag.PrintDate;
+    var generatedBy = ViewBag.GeneratedBy as string;
+    var monthName = new DateTime(year, month, 1).ToString("MMMM yyyy");
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Completed Seller Payouts - @monthName</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 10px;
+            line-height: 1.4;
+            color: #333;
+            padding: 15px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #27ae60;
+        }
+        .header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+            color: #27ae60;
+        }
+        .header h2 {
+            font-size: 14px;
+            font-weight: normal;
+            color: #666;
+        }
+        .meta-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 10px;
+            color: #666;
+        }
+        .meta-info span {
+            background: #e8f5e9;
+            padding: 4px 8px;
+            border-radius: 3px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px 4px;
+            text-align: left;
+            font-size: 9px;
+        }
+        th {
+            background: #27ae60;
+            color: white;
+            font-weight: 600;
+            font-size: 9px;
+            text-transform: uppercase;
+        }
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        tr:hover {
+            background: #f0f0f0;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .amount {
+            font-weight: bold;
+            color: #27ae60;
+        }
+        .shop-name {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 9px;
+        }
+        .contact-info {
+            font-size: 8px;
+            color: #666;
+        }
+        .bank-info, .mobile-info {
+            font-size: 8px;
+            color: #555;
+            line-height: 1.2;
+        }
+        .payment-details {
+            font-size: 8px;
+            color: #333;
+            line-height: 1.2;
+        }
+        .payment-method {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .transaction-id {
+            font-family: monospace;
+            font-size: 8px;
+            background: #f5f5f5;
+            padding: 1px 3px;
+            border-radius: 2px;
+        }
+        .summary-row {
+            background: #e8f5e9 !important;
+            font-weight: bold;
+        }
+        .summary-row td {
+            border-top: 2px solid #27ae60;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            font-size: 9px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+        .signature-section {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .signature-box {
+            width: 200px;
+            text-align: center;
+        }
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 40px;
+            padding-top: 5px;
+            font-size: 10px;
+        }
+        .no-print {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+        .btn {
+            padding: 8px 16px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        .btn:hover {
+            background: #219a52;
+        }
+        .btn-secondary {
+            background: #6c757d;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 600;
+        }
+        .status-completed {
+            background: #27ae60;
+            color: white;
+        }
+        .summary-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-item .label {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .summary-item .value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .summary-item .value.success {
+            color: #27ae60;
+        }
+        @@media print {
+            .no-print {
+                display: none;
+            }
+            body {
+                padding: 0;
+            }
+            table {
+                page-break-inside: auto;
+            }
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button class="btn" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+        <button class="btn btn-secondary" onclick="window.close()"><i class="fas fa-times"></i> Close</button>
+    </div>
+
+    <div class="header">
+        <h1>Bangaliyana - Completed Seller Payouts</h1>
+        <h2>Payment Report for @monthName</h2>
+    </div>
+
+    <div class="meta-info">
+        <span>Generated: @printDate.ToString("dd MMM yyyy HH:mm")</span>
+        <span>Generated By: @generatedBy</span>
+        <span>Total Payouts: @(completedPayouts?.Count() ?? 0)</span>
+    </div>
+
+    @if (completedPayouts != null && completedPayouts.Any())
+    {
+        var totalAmount = completedPayouts.Sum(p => p.Amount);
+        var totalSales = completedPayouts.Sum(p => p.TotalSales);
+        var totalCommission = completedPayouts.Sum(p => p.CommissionAmount);
+        var bankTransferCount = completedPayouts.Count(p => p.IsBankTransfer);
+        var mobileBankingCount = completedPayouts.Count(p => p.IsMobileBanking);
+        var cashCount = completedPayouts.Count(p => p.IsCash);
+
+        <div class="summary-section">
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="label">Total Payouts</div>
+                    <div class="value">@completedPayouts.Count()</div>
+                </div>
+                <div class="summary-item">
+                    <div class="label">Total Amount Paid</div>
+                    <div class="value success">৳@totalAmount.ToString("N0")</div>
+                </div>
+                <div class="summary-item">
+                    <div class="label">Total Sales</div>
+                    <div class="value">৳@totalSales.ToString("N0")</div>
+                </div>
+                <div class="summary-item">
+                    <div class="label">Total Commission</div>
+                    <div class="value">৳@totalCommission.ToString("N0")</div>
+                </div>
+            </div>
+            <div style="margin-top: 10px; font-size: 9px; color: #666; text-align: center;">
+                Bank Transfers: @bankTransferCount | Mobile Banking: @mobileBankingCount | Cash: @cashCount
+            </div>
+        </div>
+    }
+
+    <table style="margin-top: 20px;">
+        <thead>
+            <tr>
+                <th style="width: 25px">#</th>
+                <th style="width: 60px">Payout No</th>
+                <th style="width: 120px">Seller Info</th>
+                <th style="width: 80px">Method</th>
+                <th style="width: 140px">Payment Details</th>
+                <th class="text-right" style="width: 70px">Sales</th>
+                <th class="text-right" style="width: 60px">Comm.</th>
+                <th class="text-right" style="width: 70px">Paid</th>
+                <th style="width: 70px">Date</th>
+                <th style="width: 80px">Processed By</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (completedPayouts != null && completedPayouts.Any())
+            {
+                var index = 1;
+                decimal grandTotalSales = 0;
+                decimal grandTotalCommission = 0;
+                decimal grandTotalPaid = 0;
+
+                foreach (var payout in completedPayouts)
+                {
+                    grandTotalSales += payout.TotalSales;
+                    grandTotalCommission += payout.CommissionAmount;
+                    grandTotalPaid += payout.Amount;
+
+                    <tr>
+                        <td class="text-center">@index</td>
+                        <td><span class="transaction-id">@payout.PayoutNumber</span></td>
+                        <td>
+                            <div class="shop-name">@payout.Seller?.ShopName</div>
+                            <div class="contact-info">
+                                @payout.Seller?.User?.PhoneNumber
+                            </div>
+                        </td>
+                        <td>
+                            <span class="payment-method">@payout.PaymentMethodDisplay</span>
+                        </td>
+                        <td>
+                            @if (payout.IsBankTransfer)
+                            {
+                                <div class="bank-info">
+                                    <strong>@payout.BankName</strong><br />
+                                    A/C: @payout.BankAccountNumber<br />
+                                    @if (!string.IsNullOrEmpty(payout.BankTransactionReference))
+                                    {
+                                        <span>Ref: @payout.BankTransactionReference</span>
+                                    }
+                                </div>
+                            }
+                            else if (payout.IsMobileBanking)
+                            {
+                                <div class="mobile-info">
+                                    Sender: @payout.SenderMobileNumber<br />
+                                    Receiver: @payout.ReceiverMobileNumber<br />
+                                    @if (!string.IsNullOrEmpty(payout.MobileTransactionId))
+                                    {
+                                        <span>TxnID: @payout.MobileTransactionId</span>
+                                    }
+                                </div>
+                            }
+                            else if (payout.IsCash)
+                            {
+                                <div class="payment-details">
+                                    Cash Payment<br />
+                                    @if (!string.IsNullOrEmpty(payout.Notes))
+                                    {
+                                        <span>@payout.Notes</span>
+                                    }
+                                </div>
+                            }
+                        </td>
+                        <td class="text-right">@payout.TotalSales.ToString("N0")</td>
+                        <td class="text-right" style="color: #e74c3c;">@payout.CommissionAmount.ToString("N0")</td>
+                        <td class="text-right amount">@payout.Amount.ToString("N0")</td>
+                        <td class="text-center">@payout.PaymentDate?.ToString("dd/MM/yy")</td>
+                        <td>
+                            <div style="font-size: 8px;">@payout.ProcessedByName</div>
+                        </td>
+                    </tr>
+                    index++;
+                }
+
+                <tr class="summary-row">
+                    <td colspan="5" class="text-right"><strong>GRAND TOTAL:</strong></td>
+                    <td class="text-right">@grandTotalSales.ToString("N0")</td>
+                    <td class="text-right" style="color: #e74c3c;">@grandTotalCommission.ToString("N0")</td>
+                    <td class="text-right amount">@grandTotalPaid.ToString("N0")</td>
+                    <td colspan="2"></td>
+                </tr>
+            }
+            else
+            {
+                <tr>
+                    <td colspan="10" class="text-center" style="padding: 30px; color: #666;">No completed payouts found for this period</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="signature-section">
+        <div class="signature-box">
+            <div class="signature-line">Prepared By</div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line">Verified By</div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line">Approved By</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <span>Bangaliyana E-commerce Platform</span>
+        <span>Confidential - For Accounting Use Only</span>
+        <span>Page 1 of 1</span>
+    </div>
+</body>
+</html>

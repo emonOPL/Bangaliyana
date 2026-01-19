@@ -1,0 +1,305 @@
+@page
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@model ReferralsModel
+@{
+    ViewData["Title"] = Localizer["Referrals"].Value;
+    ViewData["ActivePage"] = ManageNavPages.Referrals;
+}
+
+<div class="container px-0">
+    <div class="row g-4">
+        <!-- Page Header -->
+        <div class="col-12">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+                <div>
+                    <h4 class="mb-1"><i class="fas fa-user-friends me-2"></i>@Localizer["ReferralProgram"]</h4>
+                    <p class="text-muted mb-0">@Localizer["ReferralProgramDescription"]</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Message -->
+        @if (!string.IsNullOrEmpty(Model.StatusMessage))
+        {
+            var alertClass = Model.StatusMessage.StartsWith("Error") ? "alert-danger" : "alert-success";
+            <div class="col-12">
+                <div class="alert @alertClass alert-dismissible fade show" role="alert">
+                    <i class="fas @(Model.StatusMessage.StartsWith("Error") ? "fa-exclamation-circle" : "fa-check-circle") me-2"></i>
+                    @Model.StatusMessage
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            </div>
+        }
+
+        <!-- Stats Cards -->
+        <div class="col-12">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body text-center">
+                            <div class="rounded-circle bg-primary bg-opacity-10 d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                <i class="fas fa-users text-primary fa-2x"></i>
+                            </div>
+                            <h2 class="mb-1">@Model.TotalReferrals</h2>
+                            <p class="text-muted mb-0">@Localizer["TotalReferrals"]</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body text-center">
+                            <div class="rounded-circle bg-success bg-opacity-10 d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                <i class="fas fa-coins text-success fa-2x"></i>
+                            </div>
+                            <h2 class="mb-1">@Model.TotalReferralPointsEarned</h2>
+                            <p class="text-muted mb-0">@Localizer["PointsEarned"]</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body text-center">
+                            <div class="rounded-circle bg-warning bg-opacity-10 d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                <i class="fas fa-gift text-warning fa-2x"></i>
+                            </div>
+                            <h2 class="mb-1">100</h2>
+                            <p class="text-muted mb-0">@Localizer["PointsPerReferral"]</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Your Referral Code -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-bottom">
+                    <h5 class="mb-0"><i class="fas fa-share-alt me-2 text-primary"></i>@Localizer["YourReferralCode"]</h5>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.ReferralCode))
+                    {
+                        <p class="text-muted mb-3">@Localizer["ShareReferralCodeDescription"]</p>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">@Localizer["YourCode"]</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control form-control-lg text-center fw-bold" id="referralCode" value="@Model.ReferralCode" readonly />
+                                <button class="btn btn-primary" type="button" onclick="copyCode()">
+                                    <i class="fas fa-copy me-1"></i> @Localizer["Copy"]
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">@Localizer["ShareableLink"]</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="referralLink" value="@Model.ReferralLink" readonly />
+                                <button class="btn btn-outline-primary" type="button" onclick="copyLink()">
+                                    <i class="fas fa-link me-1"></i> @Localizer["CopyLink"]
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Share buttons -->
+                        <div class="mt-4">
+                            <p class="text-muted small mb-2">@Localizer["ShareVia"]</p>
+                            <div class="d-flex gap-2">
+                                <a href="https://wa.me/?text=Join%20using%20my%20referral%20code%20@(Model.ReferralCode)%20and%20get%20200%20bonus%20points!%20@(System.Net.WebUtility.UrlEncode(Model.ReferralLink))" target="_blank" class="btn btn-success btn-sm">
+                                    <i class="fab fa-whatsapp me-1"></i> WhatsApp
+                                </a>
+                                <a href="https://www.facebook.com/sharer/sharer.php?u=@(System.Net.WebUtility.UrlEncode(Model.ReferralLink))" target="_blank" class="btn btn-primary btn-sm">
+                                    <i class="fab fa-facebook-f me-1"></i> Facebook
+                                </a>
+                                <a href="mailto:?subject=Join%20with%20my%20referral%20code&body=Use%20my%20referral%20code%20@(Model.ReferralCode)%20to%20get%20200%20bonus%20points!%20@(Model.ReferralLink)" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-envelope me-1"></i> Email
+                                </a>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <div class="mb-4">
+                                <i class="fas fa-qrcode fa-4x text-muted"></i>
+                            </div>
+                            <p class="text-muted mb-4">@Localizer["NoReferralCodeYet"]</p>
+                            <form method="post" asp-page-handler="GenerateCode">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-magic me-2"></i>@Localizer["GenerateReferralCode"]
+                                </button>
+                            </form>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Use a Referral Code -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-bottom">
+                    <h5 class="mb-0"><i class="fas fa-ticket-alt me-2 text-warning"></i>@Localizer["UseAReferralCode"]</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.HasUsedReferralCode)
+                    {
+                        <div class="text-center py-4">
+                            <div class="mb-4">
+                                <i class="fas fa-check-circle fa-4x text-success"></i>
+                            </div>
+                            <h5 class="text-success">@Localizer["ReferralCodeApplied"]</h5>
+                            <p class="text-muted mb-0">@Localizer["AlreadyUsedReferralCode"]</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-3">@Localizer["HaveReferralCodeQuestion"]</p>
+
+                        <div class="alert alert-info border-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>@Localizer["Bonus"]:</strong> @Localizer["BonusPointsDescription"]
+                        </div>
+
+                        <form method="post" asp-page-handler="ApplyCode">
+                            <div class="mb-3">
+                                <label asp-for="Input.ReferralCode" class="form-label">@Localizer["EnterReferralCode"]</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-gift"></i></span>
+                                    <input asp-for="Input.ReferralCode" class="form-control form-control-lg text-center"
+                                           placeholder="@Localizer["Enter8DigitCode"].Value" maxlength="8" style="letter-spacing: 2px;" />
+                                </div>
+                                <span asp-validation-for="Input.ReferralCode" class="text-danger small"></span>
+                            </div>
+                            <button type="submit" class="btn btn-warning w-100">
+                                <i class="fas fa-check me-2"></i>@Localizer["ApplyReferralCode"]
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom">
+                    <h5 class="mb-0"><i class="fas fa-question-circle me-2 text-info"></i>@Localizer["HowItWorks"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                        <strong>1</strong>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">@Localizer["ShareYourCode"]</h6>
+                                    <p class="text-muted mb-0 small">@Localizer["ShareYourCodeDescription"]</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                        <strong>2</strong>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">@Localizer["TheySignUp"]</h6>
+                                    <p class="text-muted mb-0 small">@Localizer["TheySignUpDescription"]</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                        <strong>3</strong>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">@Localizer["YouEarnPoints"]</h6>
+                                    <p class="text-muted mb-0 small">@Localizer["YouEarnPointsDescription"]</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Localized strings
+        var localizedStrings = {
+            codeCopied: '@Localizer["ReferralCodeCopied"].Value',
+            linkCopied: '@Localizer["ReferralLinkCopied"].Value',
+            success: '@Localizer["Success"].Value'
+        };
+
+        function copyCode() {
+            var code = document.getElementById('referralCode');
+            code.select();
+            code.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(code.value);
+
+            // Show toast or alert
+            showToast(localizedStrings.codeCopied);
+        }
+
+        function copyLink() {
+            var link = document.getElementById('referralLink');
+            link.select();
+            link.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(link.value);
+
+            // Show toast or alert
+            showToast(localizedStrings.linkCopied);
+        }
+
+        function showToast(message) {
+            // Detect dark mode
+            var isDarkMode = document.documentElement.getAttribute('data-bs-theme') === 'dark' ||
+                             document.body.classList.contains('dark-mode') ||
+                             window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            var bgColor = isDarkMode ? '#000000' : '#ffffff';
+            var textColor = isDarkMode ? '#ffffff' : '#000000';
+            var headerBg = isDarkMode ? '#1a1a1a' : '#f8f9fa';
+
+            // Create toast element
+            var toastHtml = `
+                <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999">
+                    <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true" style="background-color: ${bgColor}; color: ${textColor}; border: 1px solid ${isDarkMode ? '#333' : '#dee2e6'};">
+                        <div class="toast-header" style="background-color: ${headerBg}; color: ${textColor}; border-bottom: 1px solid ${isDarkMode ? '#333' : '#dee2e6'};">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <strong class="me-auto" style="color: ${textColor};">${localizedStrings.success}</strong>
+                            <button type="button" class="btn-close ${isDarkMode ? 'btn-close-white' : ''}" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                        <div class="toast-body" style="color: ${textColor};">
+                            ${message}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Add to body
+            var div = document.createElement('div');
+            div.innerHTML = toastHtml;
+            document.body.appendChild(div);
+
+            // Remove after 3 seconds
+            setTimeout(function() {
+                div.remove();
+            }, 3000);
+        }
+    </script>
+}

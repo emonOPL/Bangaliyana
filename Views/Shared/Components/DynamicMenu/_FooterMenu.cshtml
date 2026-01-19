@@ -1,0 +1,33 @@
+@using Bangaliyana.Services
+@model List<MenuItemViewModel>
+
+<ul class="list-unstyled footer-menu">
+    @foreach (var item in Model)
+    {
+        <li class="mb-2">
+            @if (!string.IsNullOrEmpty(item.Url))
+            {
+                <a class="text-decoration-none text-muted-footer" href="@item.Url">
+                    @if (!string.IsNullOrEmpty(item.Icon))
+                    {
+                        <i class="@item.Icon me-2"></i>
+                    }
+                    @item.Name
+                </a>
+            }
+            else
+            {
+                <a class="text-decoration-none text-muted-footer"
+                   asp-area="@item.Area"
+                   asp-controller="@item.Controller"
+                   asp-action="@item.Action">
+                    @if (!string.IsNullOrEmpty(item.Icon))
+                    {
+                        <i class="@item.Icon me-2"></i>
+                    }
+                    @item.Name
+                </a>
+            }
+        </li>
+    }
+</ul>

@@ -1,0 +1,21 @@
+@* AI-Powered Search Component Partial View *@
+
+<div id="aiSearchContainer" class="ai-search-container">
+    <form id="aiSearchForm" class="ai-search-form" autocomplete="off">
+        <input type="text"
+               id="aiSearchInput"
+               class="ai-search-input"
+               placeholder="Search products, categories..."
+               aria-label="Search"
+               autocomplete="off"
+               spellcheck="false" />
+        <i class="fas fa-search ai-search-icon"></i>
+        <button type="button" id="clearSearchBtn" class="ai-search-clear" aria-label="Clear search">
+            <i class="fas fa-times"></i>
+        </button>
+    </form>
+
+    <div id="aiSearchDropdown" class="ai-search-dropdown">
+        <!-- Dynamic content will be loaded here -->
+    </div>
+</div>

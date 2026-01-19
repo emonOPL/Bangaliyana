@@ -1,0 +1,886 @@
+@page
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@model NotificationsModel
+@{
+    ViewData["Title"] = Localizer["Notifications"].Value;
+    ViewData["ActivePage"] = ManageNavPages.Notifications;
+}
+
+<div class="notifications-container">
+    <!-- Header Section -->
+    <div class="page-header mb-4">
+        <div class="header-content">
+            <div class="header-left">
+                <h4 class="mb-1"><i class="fas fa-bell me-2"></i>@Localizer["Notifications"]</h4>
+                <p class="text-muted mb-0">@Localizer["NotificationsDescription"]</p>
+            </div>
+            <div class="header-right">
+                @if (Model.UnreadCount > 0)
+                {
+                    <span class="unread-badge">
+                        <i class="fas fa-circle me-1"></i>@Model.UnreadCount @Localizer["New"]
+                    </span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Message -->
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Notifications List -->
+        <div class="col-lg-8">
+            <div class="section-card">
+                <div class="section-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-inbox me-2 text-primary"></i>@Localizer["AllNotifications"]
+                    </h5>
+                    @if (Model.Notifications.Any(n => n.IsNew))
+                    {
+                        <form method="post" asp-page-handler="MarkAllRead" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-check-double me-1"></i>@Localizer["MarkAllAsRead"]
+                            </button>
+                        </form>
+                    }
+                </div>
+                <div class="section-body p-0">
+                    @if (Model.Notifications.Any())
+                    {
+                        <div class="notification-list">
+                            @foreach (var notification in Model.Notifications)
+                            {
+                                var timeAgo = GetTimeAgo(notification.CreatedAt);
+                                var notificationLink = notification.IsNew
+                                    ? $"?markRead={notification.Id}" + (!string.IsNullOrEmpty(notification.Link) ? $"&redirect={Uri.EscapeDataString(notification.Link)}" : "")
+                                    : notification.Link ?? "#";
+                                <a href="@notificationLink" class="notification-item @(notification.IsNew ? "is-new" : "")">
+                                    @if (notification.IsNew)
+                                    {
+                                        <span class="new-indicator"></span>
+                                    }
+                                    <div class="notification-icon @notification.IconColor">
+                                        <i class="fas @notification.Icon"></i>
+                                    </div>
+                                    <div class="notification-content">
+                                        <div class="notification-header">
+                                            <span class="notification-title">@notification.Title</span>
+                                            <span class="notification-time">@timeAgo</span>
+                                        </div>
+                                        @{
+                                            // Fix order number display if missing in stored message
+                                            var displayMessage = notification.Message;
+                                            if (notification.Type == "order" && notification.OrderId.HasValue &&
+                                                (displayMessage.Contains("Order #") && !System.Text.RegularExpressions.Regex.IsMatch(displayMessage, @"Order #\d+")))
+                                            {
+                                                displayMessage = System.Text.RegularExpressions.Regex.Replace(displayMessage, @"Order #(\s|$)", $"Order #{notification.OrderId}$1");
+                                            }
+                                        }
+                                        <p class="notification-message">@displayMessage</p>
+                                        @if (!string.IsNullOrEmpty(notification.PromoCode))
+                                        {
+                                            <div class="promo-code-display">
+                                                <span class="promo-label">@Localizer["PromoCode"]:</span>
+                                                <span class="promo-code" id="promo-@notification.Id">@notification.PromoCode</span>
+                                                <button type="button" class="btn btn-sm btn-outline-primary copy-btn" data-code="@notification.PromoCode" title="@Localizer["CopyCode"]">
+                                                    <i class="fas fa-copy copy-icon"></i>
+                                                    <i class="fas fa-check check-icon" style="display:none;"></i>
+                                                    <span class="copy-tooltip">@Localizer["Copied"]</span>
+                                                </button>
+                                            </div>
+                                        }
+                                        <span class="notification-type">
+                                            @switch (notification.Type)
+                                            {
+                                                case "order":
+                                                    <span class="type-badge type-order"><i class="fas fa-shopping-bag me-1"></i>Order @(notification.OrderId.HasValue ? $"#{notification.OrderId}" : "")</span>
+                                                    break;
+                                                case "support":
+                                                    <span class="type-badge type-support"><i class="fas fa-headset me-1"></i>Ticket @(notification.TicketId.HasValue ? $"#{notification.TicketId}" : "")</span>
+                                                    break;
+                                                case "promo":
+                                                    <span class="type-badge type-promo"><i class="fas fa-tag me-1"></i>First Order Offer</span>
+                                                    break;
+                                                case "festival":
+                                                    <span class="type-badge type-festival"><i class="fas fa-star me-1"></i>Festival Offer</span>
+                                                    break;
+                                                case "welcome":
+                                                    <span class="type-badge type-welcome"><i class="fas fa-gift me-1"></i>Welcome</span>
+                                                    break;
+                                                case "seller":
+                                                    <span class="type-badge type-seller"><i class="fas fa-store me-1"></i>Seller Message</span>
+                                                    break;
+                                                case "pricedrop":
+                                                    <span class="type-badge type-pricedrop"><i class="fas fa-arrow-down me-1"></i>Price Drop</span>
+                                                    break;
+                                                default:
+                                                    <span class="type-badge type-general"><i class="fas fa-info me-1"></i>General</span>
+                                                    break;
+                                            }
+                                        </span>
+                                    </div>
+                                    <div class="notification-arrow">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </div>
+                                </a>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="fas fa-bell-slash"></i>
+                            </div>
+                            <h5>@Localizer["NoNotifications"]</h5>
+                            <p class="text-muted">@Localizer["NoNotificationsDescription"]</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Settings -->
+        <div class="col-lg-4">
+            <div class="settings-sidebar-wrapper">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cog me-2 text-secondary"></i>@Localizer["NotificationSettings"]
+                        </h5>
+                    </div>
+                    <div class="section-body">
+                        <form method="post" asp-page-handler="SavePreferences">
+                            <div class="preference-group">
+                                <h6 class="preference-title">
+                                    <i class="fas fa-shopping-cart me-2 text-primary"></i>@Localizer["Orders"]
+                                </h6>
+                                <div class="form-check form-switch mb-2">
+                                    <input asp-for="PreferencesInput.OrderUpdates" class="form-check-input" />
+                                    <label asp-for="PreferencesInput.OrderUpdates" class="form-check-label">
+                                        @Localizer["OrderStatusUpdates"]
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-3">
+                                    <input asp-for="PreferencesInput.DeliveryAlerts" class="form-check-input" />
+                                    <label asp-for="PreferencesInput.DeliveryAlerts" class="form-check-label">
+                                        @Localizer["DeliveryAlerts"]
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="preference-group">
+                                <h6 class="preference-title">
+                                    <i class="fas fa-percentage me-2 text-danger"></i>@Localizer["Promotions"]
+                                </h6>
+                                <div class="form-check form-switch mb-2">
+                                    <input asp-for="PreferencesInput.Promotions" class="form-check-input" />
+                                    <label asp-for="PreferencesInput.Promotions" class="form-check-label">
+                                        @Localizer["ExclusiveOffersDeals"]
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input asp-for="PreferencesInput.PriceDrops" class="form-check-input" />
+                                    <label asp-for="PreferencesInput.PriceDrops" class="form-check-label">
+                                        @Localizer["PriceDropAlerts"]
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-3">
+                                    <input asp-for="PreferencesInput.FestivalOffers" class="form-check-input" />
+                                    <label asp-for="PreferencesInput.FestivalOffers" class="form-check-label">
+                                        @Localizer["FestivalOffers"]
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="preference-group">
+                                <h6 class="preference-title">
+                                    <i class="fas fa-headset me-2 text-info"></i>@Localizer["Support"]
+                                </h6>
+                                <div class="form-check form-switch mb-2">
+                                    <input asp-for="PreferencesInput.SupportReplies" class="form-check-input" />
+                                    <label asp-for="PreferencesInput.SupportReplies" class="form-check-label">
+                                        @Localizer["SupportTicketReplies"]
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-3">
+                                    <input asp-for="PreferencesInput.SellerMessages" class="form-check-input" />
+                                    <label asp-for="PreferencesInput.SellerMessages" class="form-check-label">
+                                        @Localizer["MessagesFromSellers"]
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="preference-group">
+                                <h6 class="preference-title">
+                                    <i class="fas fa-store me-2 text-primary"></i>@Localizer["FollowedShops"]
+                                </h6>
+                                <div class="form-check form-switch mb-2">
+                                    <input asp-for="PreferencesInput.FollowedShopNewProducts" class="form-check-input" />
+                                    <label asp-for="PreferencesInput.FollowedShopNewProducts" class="form-check-label">
+                                        @Localizer["NewProductsFromFollowedShops"]
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-3">
+                                    <input asp-for="PreferencesInput.FollowedShopPriceDrops" class="form-check-input" />
+                                    <label asp-for="PreferencesInput.FollowedShopPriceDrops" class="form-check-label">
+                                        @Localizer["PriceDropsFromFollowedShops"]
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="preference-group mb-0">
+                                <h6 class="preference-title">
+                                    <i class="fas fa-envelope me-2 text-success"></i>@Localizer["Email"]
+                                </h6>
+                                <div class="form-check form-switch mb-2">
+                                    <input asp-for="PreferencesInput.ReceiveEmails" class="form-check-input" id="masterEmailToggle" />
+                                    <label asp-for="PreferencesInput.ReceiveEmails" class="form-check-label">
+                                        @Localizer["ReceivePromotionalEmails"]
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-3">
+                                    <input asp-for="PreferencesInput.Newsletter" class="form-check-input" />
+                                    <label asp-for="PreferencesInput.Newsletter" class="form-check-label">
+                                        @Localizer["WeeklyNewsletter"]
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-save me-1"></i>@Localizer["SavePreferences"]
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="section-card mt-3">
+                    <div class="section-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie me-2 text-purple"></i>@Localizer["ActivitySummary"]
+                        </h5>
+                    </div>
+                    <div class="section-body">
+                        @{
+                            var orderNotifs = Model.Notifications.Count(n => n.Type == "order");
+                            var supportNotifs = Model.Notifications.Count(n => n.Type == "support");
+                            var promoNotifs = Model.Notifications.Count(n => n.Type == "promo" || n.Type == "festival");
+                            var welcomeNotifs = Model.Notifications.Count(n => n.Type == "welcome");
+                        }
+                        <div class="activity-stats">
+                            <div class="activity-stat">
+                                <div class="stat-bar">
+                                    <div class="stat-fill bg-primary" style="width: @(Model.Notifications.Any() ? (orderNotifs * 100 / Model.Notifications.Count) : 0)%"></div>
+                                </div>
+                                <div class="stat-label">
+                                    <span>@Localizer["Orders"]</span>
+                                    <span class="stat-count">@orderNotifs</span>
+                                </div>
+                            </div>
+                            <div class="activity-stat">
+                                <div class="stat-bar">
+                                    <div class="stat-fill bg-info" style="width: @(Model.Notifications.Any() ? (supportNotifs * 100 / Model.Notifications.Count) : 0)%"></div>
+                                </div>
+                                <div class="stat-label">
+                                    <span>@Localizer["Support"]</span>
+                                    <span class="stat-count">@supportNotifs</span>
+                                </div>
+                            </div>
+                            <div class="activity-stat">
+                                <div class="stat-bar">
+                                    <div class="stat-fill bg-danger" style="width: @(Model.Notifications.Any() ? (promoNotifs * 100 / Model.Notifications.Count) : 0)%"></div>
+                                </div>
+                                <div class="stat-label">
+                                    <span>@Localizer["PromotionsFestivals"]</span>
+                                    <span class="stat-count">@promoNotifs</span>
+                                </div>
+                            </div>
+                            <div class="activity-stat">
+                                <div class="stat-bar">
+                                    <div class="stat-fill bg-purple" style="width: @(Model.Notifications.Any() ? (welcomeNotifs * 100 / Model.Notifications.Count) : 0)%"></div>
+                                </div>
+                                <div class="stat-label">
+                                    <span>@Localizer["WelcomeFirstOrder"]</span>
+                                    <span class="stat-count">@welcomeNotifs</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalMinutes < 1)
+            return "Just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)}w ago";
+
+        return dateTime.ToBangladeshString("dd MMM");
+    }
+}
+
+<style>
+    .notifications-container {
+        max-width: 100%;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 16px;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header h4, .page-header p {
+        color: white !important;
+    }
+
+    .unread-badge {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .unread-badge i {
+        color: #fbbf24;
+        font-size: 0.5rem;
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    /* Section Cards */
+    .section-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .section-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+
+    .section-body {
+        padding: 1.5rem;
+    }
+
+    /* Notification List */
+    .notification-list {
+        max-height: 750px;
+        overflow-y: auto;
+    }
+
+    .notification-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid #f3f4f6;
+        text-decoration: none;
+        color: inherit;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .notification-item:hover {
+        background: #f9fafb;
+    }
+
+    .notification-item.is-new {
+        background: linear-gradient(90deg, #eff6ff 0%, white 100%);
+    }
+
+    .notification-item.is-new:hover {
+        background: linear-gradient(90deg, #dbeafe 0%, #f9fafb 100%);
+    }
+
+    .new-indicator {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+    }
+
+    .notification-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        background: #f3f4f6;
+        flex-shrink: 0;
+    }
+
+    .notification-icon.text-success { background: #d1fae5; }
+    .notification-icon.text-primary { background: #dbeafe; }
+    .notification-icon.text-warning { background: #fef3c7; }
+    .notification-icon.text-danger { background: #fee2e2; }
+    .notification-icon.text-info { background: #e0f2fe; }
+    .notification-icon.text-purple { background: #ede9fe; color: #7c3aed; }
+
+    .notification-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.25rem;
+    }
+
+    .notification-title {
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .notification-time {
+        font-size: 0.8rem;
+        color: #9ca3af;
+    }
+
+    .notification-message {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin: 0 0 0.5rem 0;
+        line-height: 1.4;
+    }
+
+    .type-badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+    }
+
+    .type-order { background: #dbeafe; color: #1e40af; }
+    .type-support { background: #e0f2fe; color: #0369a1; }
+    .type-promo { background: #fee2e2; color: #991b1b; }
+    .type-festival { background: #fef3c7; color: #92400e; }
+    .type-welcome { background: #ede9fe; color: #6d28d9; }
+    .type-general { background: #f3f4f6; color: #4b5563; }
+    .type-seller { background: #fef3c7; color: #b45309; }
+    .type-pricedrop { background: #d1fae5; color: #047857; }
+
+    /* Promo Code Display */
+    .promo-code-display {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 1px dashed #f59e0b;
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        margin: 0.5rem 0;
+    }
+
+    .promo-label {
+        font-size: 0.75rem;
+        color: #92400e;
+        font-weight: 500;
+    }
+
+    .promo-code {
+        font-family: 'Courier New', monospace;
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: #d97706;
+        background: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        letter-spacing: 1px;
+    }
+
+    .copy-btn {
+        padding: 0.15rem 0.4rem;
+        font-size: 0.7rem;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .copy-btn .check-icon {
+        color: #10b981;
+    }
+
+    .copy-btn.copied {
+        background-color: #10b981;
+        border-color: #10b981;
+        color: white;
+    }
+
+    .copy-btn.copied .check-icon {
+        color: white;
+    }
+
+    /* Custom copy success tooltip */
+    .copy-tooltip {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #10b981;
+        color: white;
+        padding: 0.35rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s, visibility 0.2s;
+        z-index: 1000;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        margin-bottom: 5px;
+    }
+
+    .copy-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: #10b981;
+    }
+
+    .copy-tooltip.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Sticky Sidebar Wrapper */
+    .settings-sidebar-wrapper {
+        position: sticky;
+        top: 1rem;
+    }
+
+    .bg-purple {
+        background-color: #8b5cf6 !important;
+    }
+
+    .notification-arrow {
+        color: #d1d5db;
+        align-self: center;
+    }
+
+    /* Preferences */
+    .preference-group {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .preference-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.75rem;
+    }
+
+    .form-check-label {
+        font-size: 0.9rem;
+        color: #4b5563;
+    }
+
+    /* Activity Stats */
+    .activity-stats {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .activity-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .stat-bar {
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .stat-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.5s ease;
+    }
+
+    .stat-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+
+    .stat-count {
+        font-weight: 600;
+        color: #374151;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+
+    .empty-icon {
+        width: 80px;
+        height: 80px;
+        background: #dbeafe;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 2rem;
+        color: #3b82f6;
+    }
+
+    /* Dark Mode Styles */
+    [data-theme="dark"] .section-card {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .section-header {
+        background: #111827;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .section-header h5 {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .notification-item {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .notification-item:hover {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .notification-item.is-new {
+        background: linear-gradient(90deg, #1e3a5f 0%, #1f2937 100%);
+    }
+
+    [data-theme="dark"] .notification-item.is-new:hover {
+        background: linear-gradient(90deg, #1e40af 0%, #374151 100%);
+    }
+
+    [data-theme="dark"] .notification-icon {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .notification-icon.text-success { background: rgba(16, 185, 129, 0.2); }
+    [data-theme="dark"] .notification-icon.text-primary { background: rgba(59, 130, 246, 0.2); }
+    [data-theme="dark"] .notification-icon.text-warning { background: rgba(245, 158, 11, 0.2); }
+    [data-theme="dark"] .notification-icon.text-danger { background: rgba(239, 68, 68, 0.2); }
+    [data-theme="dark"] .notification-icon.text-info { background: rgba(14, 165, 233, 0.2); }
+    [data-theme="dark"] .notification-icon.text-purple { background: rgba(139, 92, 246, 0.2); }
+
+    [data-theme="dark"] .notification-title {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .notification-message {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .preference-group {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .preference-title {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .form-check-label {
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .stat-bar {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .stat-label {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .stat-count {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .empty-state h5 {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .empty-icon {
+        background: rgba(59, 130, 246, 0.2);
+    }
+
+    /* Dark mode for promo code display */
+    [data-theme="dark"] .promo-code-display {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%);
+        border-color: #d97706;
+    }
+
+    [data-theme="dark"] .promo-label {
+        color: #fbbf24;
+    }
+
+    [data-theme="dark"] .promo-code {
+        background: #374151;
+        color: #fbbf24;
+    }
+
+    [data-theme="dark"] .type-festival {
+        background: rgba(251, 191, 36, 0.2);
+        color: #fbbf24;
+    }
+
+    /* Responsive */
+    @@media (max-width: 767.98px) {
+        .header-content {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .notification-item {
+            padding: 1rem;
+        }
+
+        .notification-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
+        }
+
+        .notification-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
+        }
+
+        .settings-sidebar-wrapper {
+            position: static;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Event delegation for copy buttons - much more reliable than inline onclick
+        document.addEventListener('click', function(e) {
+            // Find if clicked element is a copy button or inside one
+            var button = e.target.closest('.copy-btn');
+            if (!button) return;
+
+            // Prevent the click from bubbling to the parent <a> tag
+            e.preventDefault();
+            e.stopPropagation();
+
+            var code = button.getAttribute('data-code');
+            if (!code) return;
+
+            var copyIcon = button.querySelector('.copy-icon');
+            var checkIcon = button.querySelector('.check-icon');
+            var tooltip = button.querySelector('.copy-tooltip');
+
+            // Show feedback immediately (synchronously) before async clipboard operation
+            function showSuccess() {
+                if (copyIcon) copyIcon.style.display = 'none';
+                if (checkIcon) checkIcon.style.display = 'inline';
+                button.classList.add('copied');
+                if (tooltip) tooltip.classList.add('show');
+
+                setTimeout(function() {
+                    if (copyIcon) copyIcon.style.display = 'inline';
+                    if (checkIcon) checkIcon.style.display = 'none';
+                    button.classList.remove('copied');
+                    if (tooltip) tooltip.classList.remove('show');
+                }, 2000);
+            }
+
+            // Try modern clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(code).then(function() {
+                    showSuccess();
+                }).catch(function(err) {
+                    console.error('Clipboard API failed:', err);
+                    // Fallback to execCommand
+                    fallbackCopy(code);
+                    showSuccess();
+                });
+            } else {
+                // Fallback for older browsers
+                fallbackCopy(code);
+                showSuccess();
+            }
+        });
+
+        // Fallback copy method using execCommand
+        function fallbackCopy(text) {
+            var textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            textArea.style.top = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('Fallback copy failed:', err);
+            }
+            document.body.removeChild(textArea);
+        }
+    });
+</script>

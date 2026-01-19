@@ -1,0 +1,261 @@
+@model IEnumerable<Bangaliyana.Models.SupportChatSession>
+@using Bangaliyana.Models
+@using Bangaliyana.Services
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = Localizer["ChatHistory"].Value;
+    var page = (int)ViewBag.Page;
+    var statistics = ViewBag.Statistics as ChatStatistics;
+    var areaName = ViewBag.AreaName as string ?? "Admin";
+    var controllerName = ViewBag.ControllerName as string ?? "SupportChat";
+}
+
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="fas fa-history text-primary me-2"></i>@Localizer["ChatHistory"]
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a asp-area="@areaName" asp-action="Index" asp-controller="Dashboard">@Localizer["Dashboard"]</a></li>
+                    <li class="breadcrumb-item"><a asp-area="@areaName" asp-controller="@controllerName" asp-action="Index">@Localizer["LiveChat"]</a></li>
+                    <li class="breadcrumb-item active">@Localizer["History"]</li>
+                </ol>
+            </nav>
+        </div>
+        <a asp-area="@areaName" asp-controller="@controllerName" asp-action="Chat" class="btn btn-primary">
+            <i class="fas fa-headset me-1"></i>@Localizer["AgentConsole"]
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">@Localizer["TotalSessions"]</h6>
+                            <h3 class="mb-0">@(statistics?.TotalSessions ?? 0)</h3>
+                        </div>
+                        <div class="stat-icon bg-primary-soft">
+                            <i class="fas fa-comments text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">@Localizer["ClosedToday"]</h6>
+                            <h3 class="mb-0 text-success">@(statistics?.ClosedToday ?? 0)</h3>
+                        </div>
+                        <div class="stat-icon bg-success-soft">
+                            <i class="fas fa-check-circle text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">@Localizer["AvgResponse"]</h6>
+                            <h3 class="mb-0 text-info">
+                                @(statistics?.AverageResponseTimeMinutes.ToString("F1") ?? "0") @Localizer["MinutesShort"]
+                            </h3>
+                        </div>
+                        <div class="stat-icon bg-info-soft">
+                            <i class="fas fa-clock text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">@Localizer["AvgRating"]</h6>
+                            <h3 class="mb-0 text-warning">
+                                @(statistics?.AverageRating.ToString("F1") ?? "0")
+                                <i class="fas fa-star small"></i>
+                            </h3>
+                        </div>
+                        <div class="stat-icon bg-warning-soft">
+                            <i class="fas fa-star text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">@Localizer["AllChatSessions"]</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>@Localizer["Session"]</th>
+                                <th>@Localizer["Visitor"]</th>
+                                <th>@Localizer["Agent"]</th>
+                                <th>@Localizer["Department"]</th>
+                                <th>@Localizer["Status"]</th>
+                                <th>@Localizer["Duration"]</th>
+                                <th>@Localizer["Rating"]</th>
+                                <th>@Localizer["Date"]</th>
+                                <th style="width: 80px;">@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var session in Model)
+                            {
+                                <tr>
+                                    <td><code class="small">@session.SessionCode</code></td>
+                                    <td>
+                                        <div>
+                                            <div class="fw-semibold">@session.VisitorName</div>
+                                            <small class="text-muted">@session.VisitorEmail</small>
+                                        </div>
+                                    </td>
+                                    <td>@(session.Agent?.FullName ?? "<span class='text-muted'>-</span>")</td>
+                                    <td><span class="badge bg-secondary">@session.Department</span></td>
+                                    <td>
+                                        @switch (session.Status)
+                                        {
+                                            case ChatSessionStatus.Waiting:
+                                                <span class="badge bg-warning text-dark">@Localizer["Waiting"]</span>
+                                                break;
+                                            case ChatSessionStatus.Active:
+                                                <span class="badge bg-success">@Localizer["Active"]</span>
+                                                break;
+                                            case ChatSessionStatus.OnHold:
+                                                <span class="badge bg-info">@Localizer["OnHold"]</span>
+                                                break;
+                                            case ChatSessionStatus.Closed:
+                                                <span class="badge bg-secondary">@Localizer["Closed"]</span>
+                                                break;
+                                            case ChatSessionStatus.Abandoned:
+                                                <span class="badge bg-danger">@Localizer["Abandoned"]</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (session.ClosedAt.HasValue)
+                                        {
+                                            var duration = session.ClosedAt.Value - session.CreatedAt;
+                                            <span>@duration.TotalMinutes.ToString("F0") @Localizer["MinutesShort"]</span>
+                                        }
+                                        else if (session.Status == ChatSessionStatus.Active)
+                                        {
+                                            <span class="text-success">@Localizer["Ongoing"]</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (session.Rating.HasValue)
+                                        {
+                                            @for (int i = 0; i < session.Rating.Value; i++)
+                                            {
+                                                <i class="fas fa-star text-warning small"></i>
+                                            }
+                                            @for (int i = session.Rating.Value; i < 5; i++)
+                                            {
+                                                <i class="far fa-star text-muted small"></i>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@Localizer["NoRating"]</span>
+                                        }
+                                    </td>
+                                    <td><small>@session.CreatedAt.ToBangladeshDateString()</small></td>
+                                    <td>
+                                        <a asp-area="@areaName" asp-controller="@controllerName" asp-action="SessionDetails" asp-route-id="@session.Id"
+                                           class="btn btn-sm btn-outline-primary" title="@Localizer["ViewDetails"]">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <div class="text-muted small">@Localizer["Page"] @(page)</div>
+                    <div class="btn-group">
+                        @if (page > 1)
+                        {
+                            <a asp-area="@areaName" asp-controller="@controllerName" asp-action="History" asp-route-page="@(page - 1)" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-chevron-left me-1"></i>@Localizer["Previous"]
+                            </a>
+                        }
+                        <a asp-area="@areaName" asp-controller="@controllerName" asp-action="History" asp-route-page="@(page + 1)" class="btn btn-sm btn-outline-primary">
+                            @Localizer["Next"]<i class="fas fa-chevron-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-history fa-4x text-muted mb-3"></i>
+                    <h5>@Localizer["NoChatHistory"]</h5>
+                    <p class="text-muted">@Localizer["NoChatSessionsRecorded"]</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .stat-card {
+        transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .bg-primary-soft { background: rgba(99, 102, 241, 0.1); }
+    .bg-success-soft { background: rgba(16, 185, 129, 0.1); }
+    .bg-info-soft { background: rgba(6, 182, 212, 0.1); }
+    .bg-warning-soft { background: rgba(245, 158, 11, 0.1); }
+
+    /* Dark mode */
+    [data-theme="dark"] .card {
+        background: #1f2937;
+        border-color: #374151;
+    }
+</style>

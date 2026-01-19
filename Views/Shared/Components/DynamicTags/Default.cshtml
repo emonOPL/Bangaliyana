@@ -1,0 +1,564 @@
+@using Bangaliyana.Models
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<SharedResources> Localizer
+@model IEnumerable<Category>
+
+@if (Model?.Any() == true)
+{
+    <!-- Categories Dropdown - Clean Style like Seller/Admin dropdown -->
+    <div class="dropdown categories-dropdown">
+        <a class="nav-link categories-trigger"
+           href="#" id="categoriesDropdown"
+           role="button" data-bs-toggle="dropdown"
+           data-bs-auto-close="outside"
+           aria-expanded="false">
+            <i class="fas fa-th-large"></i>
+            <span class="ms-1">@Localizer["Categories"]</span>
+            <i class="fas fa-chevron-right ms-1 dropdown-arrow icon-right"></i>
+            <i class="fas fa-chevron-down ms-1 dropdown-arrow icon-down" style="display: none;"></i>
+        </a>
+        <div class="dropdown-menu categories-menu" aria-labelledby="categoriesDropdown">
+            @foreach (var category in Model)
+            {
+                var hasChildren = category.Children?.Any(c => c.IsActive) == true;
+                var activeChildren = category.Children?.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ThenBy(c => c.Name).ToList() ?? new List<Category>();
+
+                <div class="category-item @(hasChildren ? "has-subcategories" : "")" data-category-id="@category.Id">
+                    <a class="category-link" asp-area="Customer" asp-controller="Home" asp-action="Category" asp-route-id="@category.Id">
+                        <span class="category-icon">
+                            @if (!string.IsNullOrEmpty(category.IconClass))
+                            {
+                                <i class="@category.IconClass"></i>
+                            }
+                            else
+                            {
+                                <i class="fas fa-folder"></i>
+                            }
+                        </span>
+                        <span class="category-name">@category.Name</span>
+                        @if (hasChildren)
+                        {
+                            <i class="fas fa-chevron-right arrow-icon"></i>
+                        }
+                    </a>
+
+                    @if (hasChildren)
+                    {
+                        <div class="subcategories-panel">
+                            <div class="subcategories-header">
+                                <span>@category.Name</span>
+                                <a class="view-all-link" asp-area="Customer" asp-controller="Home" asp-action="Category" asp-route-id="@category.Id">
+                                    @Localizer["ViewAll"] <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                            <div class="subcategories-list">
+                                @foreach (var child in activeChildren.Take(10))
+                                {
+                                    <a class="subcategory-link" asp-area="Customer" asp-controller="Home" asp-action="Category" asp-route-id="@child.Id">
+                                        <i class="fas fa-angle-right"></i>
+                                        <span>@child.Name</span>
+                                    </a>
+                                }
+                                @if (activeChildren.Count > 10)
+                                {
+                                    <a class="subcategory-link more-link" asp-area="Customer" asp-controller="Home" asp-action="Category" asp-route-id="@category.Id">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                        <span>+@(activeChildren.Count - 10) @Localizer["More"]</span>
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            <!-- View All Categories - Last item in the list -->
+            <div class="category-item view-all-item">
+                <a class="category-link view-all-categories" asp-area="Customer" asp-controller="Home" asp-action="Categories">
+                    <span class="category-icon">
+                        <i class="fas fa-th"></i>
+                    </span>
+                    <span class="category-name">@Localizer["ViewAllCategories"]</span>
+                </a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <a class="nav-link categories-trigger" asp-area="Customer" asp-controller="Home" asp-action="Categories">
+        <i class="fas fa-th-large"></i>
+        <span class="ms-1">@Localizer["Categories"]</span>
+    </a>
+}
+
+<style>
+/* =============================================
+   CATEGORIES DROPDOWN - Clean Style
+   Similar to Seller/Admin dropdown
+   ============================================= */
+
+.categories-dropdown {
+    position: relative;
+}
+
+.categories-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.875rem !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    color: var(--text-color, #212529) !important;
+    text-decoration: none !important;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    background: transparent;
+    border: none;
+}
+
+.categories-trigger:hover {
+    color: #198754 !important;
+    background-color: rgba(25, 135, 84, 0.08);
+}
+
+.categories-trigger .dropdown-arrow {
+    font-size: 0.65rem;
+    transition: transform 0.2s ease;
+    opacity: 0.7;
+}
+
+/* Arrow icons toggle handled by JavaScript */
+.categories-trigger .dropdown-arrow {
+    transition: none;
+}
+
+/* Dropdown Menu */
+.categories-menu {
+    min-width: 280px;
+    max-width: 320px;
+    padding: 0.5rem 0 !important;
+    border: none !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12),
+                0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    background: #ffffff !important;
+    overflow: visible;
+    margin-top: 0.5rem !important;
+}
+
+.categories-menu::-webkit-scrollbar {
+    width: 5px;
+}
+
+.categories-menu::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.categories-menu::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+/* Category Item */
+.category-item {
+    position: relative;
+}
+
+.category-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 1rem;
+    text-decoration: none !important;
+    color: #374151 !important;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.category-link:hover {
+    background: rgba(25, 135, 84, 0.06);
+    color: #198754 !important;
+}
+
+.category-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #f0fdf4;
+    border-radius: 0.5rem;
+    color: #198754;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.category-link:hover .category-icon {
+    background: #198754;
+    color: #ffffff;
+}
+
+.category-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.arrow-icon {
+    font-size: 0.65rem;
+    color: #9ca3af;
+    transition: all 0.15s ease;
+}
+
+.category-link:hover .arrow-icon {
+    color: #198754;
+    transform: translateX(2px);
+}
+
+/* View All Categories - Special styling */
+.view-all-item {
+    border-top: 1px solid #f3f4f6;
+    margin-top: 0.25rem;
+}
+
+.view-all-categories {
+    color: #198754 !important;
+    font-weight: 600 !important;
+}
+
+.view-all-categories .category-icon {
+    background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+    color: #ffffff;
+}
+
+.view-all-categories:hover {
+    background: rgba(25, 135, 84, 0.1);
+}
+
+.view-all-categories:hover .category-icon {
+    background: linear-gradient(135deg, #146c43 0%, #198754 100%);
+}
+
+/* Subcategories Panel (Flyout) */
+.subcategories-panel {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    min-width: 250px;
+    max-width: 300px;
+    background: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-8px);
+    transition: all 0.2s ease;
+    z-index: 1000;
+    margin-left: 0.25rem;
+}
+
+.category-item.has-subcategories:hover .subcategories-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+}
+
+.subcategories-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #1f2937;
+}
+
+.view-all-link {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #198754 !important;
+    text-decoration: none !important;
+    display: flex;
+    align-items: center;
+    transition: all 0.15s ease;
+}
+
+.view-all-link:hover {
+    color: #146c43 !important;
+}
+
+.view-all-link i {
+    font-size: 0.6rem;
+}
+
+.subcategories-list {
+    padding: 0.5rem 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.subcategory-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    text-decoration: none !important;
+    color: #4b5563 !important;
+    font-size: 0.85rem;
+    transition: all 0.15s ease;
+}
+
+.subcategory-link:hover {
+    background: #f0fdf4;
+    color: #198754 !important;
+}
+
+.subcategory-link i {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    width: 16px;
+}
+
+.subcategory-link:hover i {
+    color: #198754;
+}
+
+.subcategory-link.more-link {
+    color: #198754 !important;
+    font-weight: 500;
+}
+
+/* =============================================
+   DARK MODE
+   ============================================= */
+[data-theme="dark"] .categories-trigger {
+    color: #e5e7eb !important;
+}
+
+[data-theme="dark"] .categories-trigger:hover {
+    color: #4ade80 !important;
+    background-color: rgba(74, 222, 128, 0.1);
+}
+
+[data-theme="dark"] .categories-menu {
+    background: #1f2937 !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .categories-menu::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+[data-theme="dark"] .categories-menu::-webkit-scrollbar-thumb {
+    background: #4b5563;
+}
+
+[data-theme="dark"] .category-link {
+    color: #e5e7eb !important;
+}
+
+[data-theme="dark"] .category-link:hover {
+    background: rgba(74, 222, 128, 0.08);
+    color: #4ade80 !important;
+}
+
+[data-theme="dark"] .category-icon {
+    background: #064e3b;
+    color: #4ade80;
+}
+
+[data-theme="dark"] .category-link:hover .category-icon {
+    background: #059669;
+    color: #ffffff;
+}
+
+[data-theme="dark"] .arrow-icon {
+    color: #6b7280;
+}
+
+[data-theme="dark"] .category-link:hover .arrow-icon {
+    color: #4ade80;
+}
+
+[data-theme="dark"] .view-all-item {
+    border-top-color: #374151;
+}
+
+[data-theme="dark"] .view-all-categories {
+    color: #4ade80 !important;
+}
+
+[data-theme="dark"] .view-all-categories .category-icon {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+}
+
+[data-theme="dark"] .view-all-categories:hover .category-icon {
+    background: linear-gradient(135deg, #047857 0%, #059669 100%);
+}
+
+[data-theme="dark"] .subcategories-panel {
+    background: #1f2937;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .subcategories-header {
+    border-bottom-color: #374151;
+    color: #f3f4f6;
+}
+
+[data-theme="dark"] .view-all-link {
+    color: #4ade80 !important;
+}
+
+[data-theme="dark"] .view-all-link:hover {
+    color: #86efac !important;
+}
+
+[data-theme="dark"] .subcategory-link {
+    color: #d1d5db !important;
+}
+
+[data-theme="dark"] .subcategory-link:hover {
+    background: rgba(74, 222, 128, 0.08);
+    color: #4ade80 !important;
+}
+
+[data-theme="dark"] .subcategory-link i {
+    color: #6b7280;
+}
+
+[data-theme="dark"] .subcategory-link:hover i {
+    color: #4ade80;
+}
+
+[data-theme="dark"] .subcategory-link.more-link {
+    color: #4ade80 !important;
+}
+
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+@@media (max-width: 991.98px) {
+    .categories-menu {
+        min-width: 260px;
+        max-width: 280px;
+    }
+
+    .subcategories-panel {
+        position: fixed;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) scale(0.95) !important;
+        min-width: 85vw;
+        max-width: 300px;
+        max-height: 60vh;
+        overflow-y: auto;
+        margin-left: 0;
+    }
+
+    .category-item.has-subcategories:hover .subcategories-panel {
+        transform: translate(-50%, -50%) scale(1) !important;
+    }
+}
+
+@@media (max-width: 575.98px) {
+    .categories-menu {
+        min-width: 240px;
+        max-width: calc(100vw - 2rem);
+    }
+
+    .category-link {
+        padding: 0.5rem 0.875rem;
+    }
+
+    .category-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 0.8rem;
+    }
+}
+
+/* Animation */
+@@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.categories-menu.show {
+    animation: fadeIn 0.15s ease forwards;
+}
+</style>
+
+<script>
+(function() {
+    if (window.categoriesMenuInit) return;
+    window.categoriesMenuInit = true;
+
+    var isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    // Toggle dropdown arrow icons when dropdown shows/hides
+    var categoriesDropdown = document.querySelector('.categories-dropdown');
+    if (categoriesDropdown) {
+        categoriesDropdown.addEventListener('shown.bs.dropdown', function() {
+            var iconRight = categoriesDropdown.querySelector('.categories-trigger .icon-right');
+            var iconDown = categoriesDropdown.querySelector('.categories-trigger .icon-down');
+            if (iconRight) iconRight.style.display = 'none';
+            if (iconDown) iconDown.style.display = 'inline';
+        });
+
+        categoriesDropdown.addEventListener('hidden.bs.dropdown', function() {
+            var iconRight = categoriesDropdown.querySelector('.categories-trigger .icon-right');
+            var iconDown = categoriesDropdown.querySelector('.categories-trigger .icon-down');
+            if (iconRight) iconRight.style.display = 'inline';
+            if (iconDown) iconDown.style.display = 'none';
+        });
+    }
+
+    if (isTouchDevice) {
+        document.addEventListener('click', function(e) {
+            var categoryItem = e.target.closest('.category-item.has-subcategories');
+
+            if (categoryItem) {
+                var link = e.target.closest('.category-link');
+                var panel = categoryItem.querySelector('.subcategories-panel');
+
+                if (link && panel) {
+                    var isVisible = panel.style.opacity === '1';
+
+                    document.querySelectorAll('.subcategories-panel').forEach(function(p) {
+                        p.style.opacity = '0';
+                        p.style.visibility = 'hidden';
+                    });
+
+                    if (!isVisible) {
+                        e.preventDefault();
+                        panel.style.opacity = '1';
+                        panel.style.visibility = 'visible';
+                    }
+                }
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.category-item')) {
+                document.querySelectorAll('.subcategories-panel').forEach(function(p) {
+                    p.style.opacity = '0';
+                    p.style.visibility = 'hidden';
+                });
+            }
+        });
+    }
+
+    document.addEventListener('hidden.bs.dropdown', function(e) {
+        if (e.target.closest('.categories-dropdown')) {
+            document.querySelectorAll('.subcategories-panel').forEach(function(p) {
+                p.style.opacity = '';
+                p.style.visibility = '';
+            });
+        }
+    });
+})();
+</script>

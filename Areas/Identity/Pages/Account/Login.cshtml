@@ -1,0 +1,1347 @@
+@page
+@model LoginModel
+@using Bangaliyana.Services
+@using Bangaliyana.Models
+@inject ISiteSettingsService SiteSettingsService
+
+@{
+    ViewData["Title"] = Localizer["SignIn"].Value;
+    var siteSettings = await SiteSettingsService.GetSiteSettingsAsync();
+    var loginFeatures = await SiteSettingsService.GetActiveFeaturesBySectionAsync(FeatureSection.LoginPage);
+    var testimonials = await SiteSettingsService.GetFeaturedTestimonialsAsync();
+    var testimonial = testimonials.FirstOrDefault();
+}
+
+<div class="auth-wrapper">
+    <div class="container">
+        <div class="row min-vh-100 align-items-center justify-content-center">
+            <div class="col-xl-10 col-xxl-9 mx-auto">
+                <div class="row g-0 auth-card shadow-lg">
+                    <!-- Left Panel - Form -->
+                    <div class="col-lg-6">
+                        <div class="auth-form-panel">
+                            <div class="auth-header text-center mb-4">
+                                <div class="auth-logo mb-3">
+                                    @if (!string.IsNullOrEmpty(siteSettings.LogoUrl) || !string.IsNullOrEmpty(siteSettings.DarkModeLogoUrl))
+                                    {
+                                        @if (!string.IsNullOrEmpty(siteSettings.LogoUrl))
+                                        {
+                                            <img src="~/@siteSettings.LogoUrl" alt="@siteSettings.SiteName" style="max-height: 60px;" class="logo-light" />
+                                        }
+                                        @if (!string.IsNullOrEmpty(siteSettings.DarkModeLogoUrl))
+                                        {
+                                            <img src="~/@siteSettings.DarkModeLogoUrl" alt="@siteSettings.SiteName" style="max-height: 60px;" class="logo-dark" />
+                                        }
+                                        else if (!string.IsNullOrEmpty(siteSettings.LogoUrl))
+                                        {
+                                            <!-- Fallback: use light logo for dark mode if no dark logo -->
+                                            <img src="~/@siteSettings.LogoUrl" alt="@siteSettings.SiteName" style="max-height: 60px;" class="logo-dark" />
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-store fa-3x text-primary"></i>
+                                    }
+                                </div>
+                                <h1 class="auth-title">@Localizer["WelcomeBack"]</h1>
+                                <p class="auth-subtitle text-muted">@Localizer["SignInToContinue", siteSettings.SiteName]</p>
+                            </div>
+
+                            <!-- Success Message -->
+                            @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+                            {
+                                <div class="alert alert-success fade show" role="alert">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    @Model.SuccessMessage
+                                </div>
+                            }
+
+                            <!-- Validation Summary - Only show when there are errors -->
+                            @if (!ViewData.ModelState.IsValid && ViewData.ModelState.Keys.Any(k => string.IsNullOrEmpty(k)))
+                            {
+                                <div class="alert alert-danger fade show" role="alert">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    @foreach (var error in ViewData.ModelState[string.Empty]?.Errors ?? new Microsoft.AspNetCore.Mvc.ModelBinding.ModelErrorCollection())
+                                    {
+                                        <span>@error.ErrorMessage</span>
+                                    }
+                                </div>
+                            }
+
+                            <!-- Login Method Tabs -->
+                            <ul class="nav nav-pills nav-fill mb-4 login-tabs" id="loginTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link @(Model.ActiveTab == "email" ? "active" : "")" id="email-tab" data-bs-toggle="pill" data-bs-target="#email-login" type="button" role="tab">
+                                        <i class="fas fa-envelope me-1"></i><span class="d-none d-sm-inline"> @Localizer["Email"]</span>
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link @(Model.ActiveTab == "phone" ? "active" : "")" id="phone-tab" data-bs-toggle="pill" data-bs-target="#phone-login" type="button" role="tab">
+                                        <i class="fas fa-phone me-1"></i><span class="d-none d-sm-inline"> @Localizer["Phone"]</span>
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link @(Model.ActiveTab == "otp" ? "active" : "")" id="otp-tab" data-bs-toggle="pill" data-bs-target="#otp-login" type="button" role="tab">
+                                        <i class="fas fa-key me-1"></i><span class="d-none d-sm-inline"> @Localizer["OTP"]</span>
+                                    </button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content" id="loginTabsContent">
+                                <!-- Email Login Tab -->
+                                <div class="tab-pane fade @(Model.ActiveTab == "email" ? "show active" : "")" id="email-login" role="tabpanel">
+                                    <form id="email-form" asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="auth-form">
+                                        <div class="form-group mb-3">
+                                            <label asp-for="Input.Email" class="form-label">@Localizer["EmailAddress"]</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                                <input asp-for="Input.Email" class="form-control" autocomplete="username" placeholder="@Localizer["EnterYourEmail"]">
+                                            </div>
+                                            <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                                        </div>
+                                        <div class="form-group mb-3">
+                                            <label asp-for="Input.Password" class="form-label">@Localizer["Password"]</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                                <input asp-for="Input.Password" class="form-control" type="password" autocomplete="current-password" placeholder="@Localizer["EnterYourPassword"]">
+                                                <button class="btn btn-outline-secondary password-toggle" type="button"><i class="fas fa-eye"></i></button>
+                                            </div>
+                                            <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                                        </div>
+                                        <div class="form-group mb-3">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div class="form-check">
+                                                    <input asp-for="Input.RememberMe" class="form-check-input" type="checkbox">
+                                                    <label asp-for="Input.RememberMe" class="form-check-label">@Localizer["RememberMe"]</label>
+                                                </div>
+                                                <a asp-page="./ForgotPassword" class="text-decoration-none small">@Localizer["ForgotPassword"]</a>
+                                            </div>
+                                        </div>
+                                        <div class="login-btn-group mb-3" role="group">
+                                            <button type="submit" class="btn btn-primary btn-lg login-submit login-btn-main">
+                                                <i class="fas fa-sign-in-alt me-2"></i><span class="btn-text">@Localizer["SignIn"]</span>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-primary btn-lg biometric-trigger login-btn-biometric d-none" data-bs-toggle="modal" data-bs-target="#biometricModal" title="Sign in with Fingerprint/Face ID">
+                                                <i class="fas fa-fingerprint"></i>
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <!-- Phone Login Tab -->
+                                <div class="tab-pane fade @(Model.ActiveTab == "phone" ? "show active" : "")" id="phone-login" role="tabpanel">
+                                    <form id="phone-form" asp-page="./Login" asp-page-handler="PhoneLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="auth-form">
+                                        <div class="form-group mb-3">
+                                            <label asp-for="PhoneInput.PhoneNumber" class="form-label">Phone Number</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                                <input asp-for="PhoneInput.PhoneNumber" class="form-control" autocomplete="tel" placeholder="Enter your phone number">
+                                            </div>
+                                            <span asp-validation-for="PhoneInput.PhoneNumber" class="text-danger small"></span>
+                                        </div>
+                                        <div class="form-group mb-3">
+                                            <label asp-for="PhoneInput.Password" class="form-label">Password</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                                <input asp-for="PhoneInput.Password" class="form-control" type="password" placeholder="Enter your password">
+                                                <button class="btn btn-outline-secondary password-toggle" type="button"><i class="fas fa-eye"></i></button>
+                                            </div>
+                                            <span asp-validation-for="PhoneInput.Password" class="text-danger small"></span>
+                                        </div>
+                                        <div class="form-group mb-3">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div class="form-check">
+                                                    <input asp-for="PhoneInput.RememberMe" class="form-check-input" type="checkbox">
+                                                    <label asp-for="PhoneInput.RememberMe" class="form-check-label">Remember me</label>
+                                                </div>
+                                                <a asp-page="./ForgotPassword" class="text-decoration-none small">Forgot password?</a>
+                                            </div>
+                                        </div>
+                                        <div class="login-btn-group mb-3" role="group">
+                                            <button type="submit" class="btn btn-primary btn-lg login-submit login-btn-main">
+                                                <i class="fas fa-sign-in-alt me-2"></i><span class="btn-text">Sign In with Phone</span>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-primary btn-lg biometric-trigger login-btn-biometric d-none" data-bs-toggle="modal" data-bs-target="#biometricModal" title="Sign in with Fingerprint/Face ID">
+                                                <i class="fas fa-fingerprint"></i>
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <!-- OTP Login Tab -->
+                                <div class="tab-pane fade @(Model.ActiveTab == "otp" ? "show active" : "")" id="otp-login" role="tabpanel">
+                                    @if (!Model.ShowOtpField && TempData["OtpSent"] == null)
+                                    {
+                                        <form id="otp-request-form" asp-page="./Login" asp-page-handler="RequestOtp" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="auth-form">
+                                            <div class="form-group mb-3">
+                                                <label asp-for="OtpInput.Identifier" class="form-label">Email or Phone</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                                    <input asp-for="OtpInput.Identifier" class="form-control" placeholder="Enter email or phone">
+                                                </div>
+                                                <span asp-validation-for="OtpInput.Identifier" class="text-danger small"></span>
+                                                <small class="text-muted">We'll send a one-time password.</small>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary w-100 btn-lg mb-3 login-submit">
+                                                <i class="fas fa-paper-plane me-2"></i><span class="btn-text">Send OTP</span>
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form id="otp-verify-form" asp-page="./Login" asp-page-handler="VerifyOtp" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="auth-form">
+                                            <div class="form-group mb-3">
+                                                <label asp-for="OtpInput.Identifier" class="form-label">Email or Phone</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                                    <input asp-for="OtpInput.Identifier" class="form-control" value="@(TempData["OtpIdentifier"] ?? Model.OtpInput?.Identifier)" placeholder="Enter email or phone">
+                                                </div>
+                                            </div>
+                                            <div class="form-group mb-3">
+                                                <label asp-for="OtpInput.OtpCode" class="form-label">OTP Code</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-key"></i></span>
+                                                    <input asp-for="OtpInput.OtpCode" class="form-control text-center otp-input" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" placeholder="Enter 6-digit OTP" autofocus>
+                                                </div>
+                                                <span asp-validation-for="OtpInput.OtpCode" class="text-danger small"></span>
+                                            </div>
+                                            <div class="form-group mb-3">
+                                                <div class="form-check">
+                                                    <input asp-for="OtpInput.RememberMe" class="form-check-input" type="checkbox">
+                                                    <label asp-for="OtpInput.RememberMe" class="form-check-label">Remember me</label>
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary w-100 btn-lg mb-3 login-submit">
+                                                <i class="fas fa-sign-in-alt me-2"></i><span class="btn-text">Verify & Sign In</span>
+                                            </button>
+                                        </form>
+                                        <!-- Resend OTP Form - Separate from verify form to avoid nesting -->
+                                        <div class="text-center">
+                                            <form id="resend-otp-form" asp-page="./Login" asp-page-handler="RequestOtp" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+                                                <input type="hidden" name="OtpInput.Identifier" value="@(TempData["OtpIdentifier"] ?? Model.OtpInput?.Identifier)" />
+                                                <button type="submit" class="btn btn-link p-0"><i class="fas fa-redo me-1"></i> Resend OTP</button>
+                                            </form>
+                                        </div>
+                                    }
+                                </div>
+
+                            </div>
+
+                            <div class="text-center mt-3">
+                                <p class="mb-0 text-muted">
+                                    @Localizer["DontHaveAccount"]
+                                    <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="text-decoration-none fw-semibold">@Localizer["CreateAccount"]</a>
+                                </p>
+                            </div>
+
+                            <div class="auth-links mt-3 text-center">
+                                <a asp-page="./ResendEmailConfirmation" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-envelope me-1"></i>@Localizer["ResendEmailConfirmation"]
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel - Info/External Logins -->
+                    <div class="col-lg-6">
+                        <div class="auth-info-panel">
+                            <div class="auth-info-content">
+                                <!-- Features with fixed height to prevent layout shift during testimonial rotation -->
+                                <div class="features-list mb-5" style="min-height: 200px;">
+                                    <h3 class="text-white mb-4">Why Choose @siteSettings.SiteName?</h3>
+                                    @if (loginFeatures.Any())
+                                    {
+                                        @foreach (var feature in loginFeatures.Take(3))
+                                        {
+                                            <div class="feature-item mb-3">
+                                                <i class="@feature.IconClass text-warning me-3"></i>
+                                                <div>
+                                                    <h5 class="text-white mb-1">@feature.Title</h5>
+                                                    <p class="text-white-50 mb-0 small">@feature.Description</p>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="feature-item mb-3">
+                                            <i class="fas fa-shield-alt text-warning me-3"></i>
+                                            <div>
+                                                <h5 class="text-white mb-1">Secure Shopping</h5>
+                                                <p class="text-white-50 mb-0 small">Your data is protected with enterprise-grade security</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item mb-3">
+                                            <i class="fas fa-truck text-warning me-3"></i>
+                                            <div>
+                                                <h5 class="text-white mb-1">Fast Delivery</h5>
+                                                <p class="text-white-50 mb-0 small">Quick and reliable delivery to your doorstep</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item mb-3">
+                                            <i class="fas fa-headset text-warning me-3"></i>
+                                            <div>
+                                                <h5 class="text-white mb-1">24/7 Support</h5>
+                                                <p class="text-white-50 mb-0 small">Always here to help with any questions</p>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- External Logins -->
+                                @if ((Model.ExternalLogins?.Count ?? 0) > 0)
+                                {
+                                    <div class="external-auth">
+                                        <h4 class="text-white mb-3">Quick Login</h4>
+                                        <form id="external-account" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+                                            <div class="d-grid gap-2">
+                                                @foreach (var provider in Model.ExternalLogins!)
+                                                {
+                                                    <button type="submit" 
+                                                            class="btn btn-light btn-external" 
+                                                            name="provider" 
+                                                            value="@provider.Name" 
+                                                            title="Log in using your @provider.DisplayName account">
+                                                        <i class="fab fa-@provider.Name.ToLower() me-2"></i>
+                                                        Continue with @provider.DisplayName
+                                                    </button>
+                                                }
+                                            </div>
+                                        </form>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <!-- Dynamic Testimonials -->
+                                    <div class="testimonial" id="testimonialContainer">
+                                        <div class="testimonial-content text-center">
+                                            <i class="fas fa-quote-left fa-2x text-warning mb-3"></i>
+                                            <p class="text-white mb-4" id="testimonialText">
+                                                "@(testimonial?.Content ?? $"{siteSettings.SiteName} has transformed my shopping experience. Quality products, fast delivery, and excellent customer service!")"
+                                            </p>
+                                            <div class="testimonial-author">
+                                                <div id="testimonialAvatar">
+                                                    @if (testimonial != null && !string.IsNullOrEmpty(testimonial.PhotoUrl))
+                                                    {
+                                                        <img src="~/@testimonial.PhotoUrl" alt="@testimonial.CustomerName" class="rounded-circle mb-2" style="width: 3rem; height: 3rem; object-fit: cover;" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="author-avatar bg-warning text-dark rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 3rem; height: 3rem;">
+                                                            <i class="fas fa-user"></i>
+                                                        </div>
+                                                    }
+                                                </div>
+                                                <h6 class="text-white mb-0" id="testimonialName">@(testimonial?.CustomerName ?? "Happy Customer")</h6>
+                                                <small class="text-white-50" id="testimonialTitle">@(testimonial?.CustomerTitle ?? "Verified Customer")</small>
+                                                <div class="mt-2" id="testimonialRating">
+                                                    @for (int i = 0; i < (testimonial?.Rating ?? 5); i++)
+                                                    {
+                                                        <i class="fas fa-star text-warning"></i>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Biometric Login Modal -->
+<div class="modal fade" id="biometricModal" tabindex="-1" aria-labelledby="biometricModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="biometricModalLabel">
+                    <i class="fas fa-fingerprint text-primary me-2"></i>Biometric Login
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="biometric-icon mb-4">
+                    <i class="fas fa-fingerprint fa-4x text-primary"></i>
+                </div>
+                <p class="text-muted mb-4">Use your fingerprint or Face ID to quickly sign in to your account.</p>
+
+                <div class="form-group mb-3 text-start">
+                    <label for="biometricEmail" class="form-label">Email Address</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                        <input type="email" id="biometricEmail" class="form-control" placeholder="Enter your email" autocomplete="username">
+                    </div>
+                    <small class="text-muted">Enter the email associated with your biometric login</small>
+                </div>
+
+                <div class="form-group mb-3 text-start">
+                    <div class="form-check">
+                        <input type="checkbox" id="biometricRememberMe" class="form-check-input">
+                        <label for="biometricRememberMe" class="form-check-label">Remember me</label>
+                    </div>
+                </div>
+
+                <button type="button" id="biometricLoginBtn" class="btn btn-primary w-100 btn-lg mb-3" disabled>
+                    <i class="fas fa-fingerprint me-2"></i><span class="btn-text">Sign In with Biometric</span>
+                </button>
+
+                <div id="biometricStatus" class="text-muted small">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Enter your email to check for registered biometric credentials
+                </div>
+
+                <div id="biometricNotSupported" class="alert alert-warning mt-3 d-none">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Biometric authentication is not supported on this device/browser.
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center">
+                <small class="text-muted">
+                    <i class="fas fa-shield-alt me-1"></i>
+                    Secured by WebAuthn/FIDO2
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Login page initialized');
+
+            // Password toggle functionality using event delegation
+            document.addEventListener('click', function(e) {
+                // Check if clicked element is a password toggle button or its child
+                const toggleBtn = e.target.closest('.password-toggle');
+                if (!toggleBtn) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const inputGroup = toggleBtn.closest('.input-group');
+                if (!inputGroup) return;
+
+                // Find the password/text input by name (handles both password and text states)
+                const input = inputGroup.querySelector('input[name*="Password"]') ||
+                              inputGroup.querySelector('input[type="password"]');
+
+                if (!input) return;
+
+                // Find icon - could be <i>, <svg>, or FontAwesome might use data attributes
+                const icon = toggleBtn.querySelector('i, svg, [data-icon]');
+
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    // Update icon - handle both <i> class-based and SVG data-icon based
+                    if (icon) {
+                        if (icon.tagName === 'I') {
+                            icon.classList.remove('fa-eye');
+                            icon.classList.add('fa-eye-slash');
+                        } else if (icon.getAttribute('data-icon')) {
+                            icon.setAttribute('data-icon', 'eye-slash');
+                        }
+                    }
+                    // Also update button innerHTML as fallback
+                    if (!icon || icon.tagName === 'SVG') {
+                        toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i>';
+                    }
+                    toggleBtn.title = 'Hide Password';
+                } else {
+                    input.type = 'password';
+                    if (icon) {
+                        if (icon.tagName === 'I') {
+                            icon.classList.remove('fa-eye-slash');
+                            icon.classList.add('fa-eye');
+                        } else if (icon.getAttribute('data-icon')) {
+                            icon.setAttribute('data-icon', 'eye');
+                        }
+                    }
+                    // Also update button innerHTML as fallback
+                    if (!icon || icon.tagName === 'SVG') {
+                        toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
+                    }
+                    toggleBtn.title = 'Show Password';
+                }
+            });
+
+            // Remember Me - Load from localStorage
+            const rememberMeCheckboxes = document.querySelectorAll('input[type="checkbox"][name*="RememberMe"]');
+            rememberMeCheckboxes.forEach(checkbox => {
+                // Load saved state
+                const savedState = localStorage.getItem('rememberMe');
+                if (savedState === 'true') {
+                    checkbox.checked = true;
+                }
+
+                // Save state on change
+                checkbox.addEventListener('change', function() {
+                    localStorage.setItem('rememberMe', this.checked.toString());
+                });
+            });
+
+            // Form submission loading state for all forms
+            const forms = document.querySelectorAll('.auth-form');
+            console.log('Found forms:', forms.length);
+
+            forms.forEach((form, index) => {
+                console.log('Form ' + index + ':', form.id, 'action:', form.action);
+
+                // Add click handler to submit buttons for debugging
+                const submitBtn = form.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.addEventListener('click', function(e) {
+                        console.log('Submit button clicked for form:', form.id);
+
+                        // Check if jQuery validation exists and form is valid
+                        if (typeof $ !== 'undefined' && $(form).valid) {
+                            const isValid = $(form).valid();
+                            console.log('jQuery validation result:', isValid);
+                            if (!isValid) {
+                                console.log('Form validation failed - check validation errors');
+                                return;
+                            }
+                        }
+                    });
+                }
+
+                form.addEventListener('submit', function(e) {
+                    console.log('Form submit event triggered for:', form.id);
+                    const submitBtn = this.querySelector('.login-submit');
+                    if (submitBtn) {
+                        const originalText = submitBtn.innerHTML;
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i><span class="btn-text">Please wait...</span>';
+
+                        // Re-enable after 5 seconds (fallback)
+                        setTimeout(() => {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalText;
+                        }, 5000);
+                    }
+                });
+            });
+
+            // Initialize tooltips
+            const tooltips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltips.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // OTP input - only allow numbers
+            const otpInput = document.querySelector('.otp-input');
+            if (otpInput) {
+                otpInput.addEventListener('input', function(e) {
+                    this.value = this.value.replace(/[^0-9]/g, '');
+                });
+            }
+
+            // Dynamic Testimonials - Fetch platform reviews and rotate every 15 seconds
+            initTestimonialRotation();
+
+            // Initialize biometric login
+            initBiometricLogin();
+        });
+
+        // Biometric Login Functionality
+        async function initBiometricLogin() {
+            const biometricTriggers = document.querySelectorAll('.biometric-trigger');
+            const biometricNotSupported = document.getElementById('biometricNotSupported');
+            const biometricEmail = document.getElementById('biometricEmail');
+            const biometricLoginBtn = document.getElementById('biometricLoginBtn');
+            const biometricStatus = document.getElementById('biometricStatus');
+            const biometricRememberMe = document.getElementById('biometricRememberMe');
+
+            // Check if WebAuthn is supported
+            if (!window.PublicKeyCredential) {
+                if (biometricNotSupported) biometricNotSupported.classList.remove('d-none');
+                return;
+            }
+
+            // Check for platform authenticator
+            try {
+                const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+                if (available) {
+                    // Show biometric trigger buttons
+                    biometricTriggers.forEach(btn => btn.classList.remove('d-none'));
+                } else {
+                    if (biometricNotSupported) biometricNotSupported.classList.remove('d-none');
+                    return;
+                }
+            } catch (error) {
+                console.log('Platform authenticator check failed:', error);
+                return;
+            }
+
+            // Debounce function
+            let debounceTimer;
+            function debounce(func, delay) {
+                return function(...args) {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => func.apply(this, args), delay);
+                };
+            }
+
+            // Check if user has credentials when email changes
+            const checkCredentials = debounce(async function(email) {
+                if (!email || !email.includes('@@')) {
+                    biometricLoginBtn.disabled = true;
+                    biometricStatus.innerHTML = '<i class="fas fa-info-circle me-1"></i>Enter a valid email address';
+                    return;
+                }
+
+                biometricStatus.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Checking credentials...';
+
+                try {
+                    const response = await fetch(`/api/BiometricAuth/has-credentials?email=${encodeURIComponent(email)}`);
+                    const data = await response.json();
+
+                    if (data.hasCredentials) {
+                        biometricLoginBtn.disabled = false;
+                        biometricStatus.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Biometric credential found! Click to sign in.';
+                    } else {
+                        biometricLoginBtn.disabled = true;
+                        biometricStatus.innerHTML = '<i class="fas fa-info-circle text-warning me-1"></i>No biometric credential registered for this email. <a href="/Identity/Account/Login">Login with password</a> and set up biometric in your profile.';
+                    }
+                } catch (error) {
+                    biometricStatus.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Error checking credentials';
+                    biometricLoginBtn.disabled = true;
+                }
+            }, 500);
+
+            biometricEmail.addEventListener('input', function() {
+                checkCredentials(this.value);
+            });
+
+            // Handle biometric login
+            biometricLoginBtn.addEventListener('click', async function() {
+                const email = biometricEmail.value;
+                if (!email) {
+                    biometricStatus.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Please enter your email';
+                    return;
+                }
+
+                biometricLoginBtn.disabled = true;
+                biometricLoginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i><span class="btn-text">Authenticating...</span>';
+
+                try {
+                    // Get authentication options from server
+                    const optionsResponse = await fetch('/api/BiometricAuth/login/options', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: email })
+                    });
+
+                    if (!optionsResponse.ok) {
+                        const error = await optionsResponse.json();
+                        throw new Error(error.error || 'Failed to get authentication options');
+                    }
+
+                    const options = await optionsResponse.json();
+
+                    // Convert base64url to ArrayBuffer
+                    options.challenge = base64UrlToArrayBuffer(options.challenge);
+                    if (options.allowCredentials) {
+                        options.allowCredentials = options.allowCredentials.map(cred => ({
+                            ...cred,
+                            id: base64UrlToArrayBuffer(cred.id)
+                        }));
+                    }
+
+                    // Request credential from authenticator
+                    const credential = await navigator.credentials.get({ publicKey: options });
+
+                    // Prepare response for server
+                    const credentialData = {
+                        id: arrayBufferToBase64Url(credential.rawId),
+                        rawId: arrayBufferToBase64Url(credential.rawId),
+                        type: credential.type,
+                        response: {
+                            clientDataJSON: arrayBufferToBase64Url(credential.response.clientDataJSON),
+                            authenticatorData: arrayBufferToBase64Url(credential.response.authenticatorData),
+                            signature: arrayBufferToBase64Url(credential.response.signature),
+                            userHandle: credential.response.userHandle ? arrayBufferToBase64Url(credential.response.userHandle) : null
+                        },
+                        rememberMe: biometricRememberMe.checked,
+                        returnUrl: new URLSearchParams(window.location.search).get('ReturnUrl') || '/'
+                    };
+
+                    // Send to server
+                    const completeResponse = await fetch('/api/BiometricAuth/login/complete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(credentialData)
+                    });
+
+                    if (!completeResponse.ok) {
+                        const error = await completeResponse.json();
+                        throw new Error(error.error || 'Authentication failed');
+                    }
+
+                    const result = await completeResponse.json();
+
+                    // Redirect on success
+                    biometricStatus.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Authentication successful! Redirecting...';
+                    window.location.href = result.returnUrl || '/';
+
+                } catch (error) {
+                    console.error('Biometric login error:', error);
+                    if (error.name === 'NotAllowedError') {
+                        biometricStatus.innerHTML = '<i class="fas fa-exclamation-circle text-warning me-1"></i>Authentication was cancelled or timed out';
+                    } else {
+                        biometricStatus.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Error: ' + error.message;
+                    }
+                    biometricLoginBtn.disabled = false;
+                    biometricLoginBtn.innerHTML = '<i class="fas fa-fingerprint me-2"></i><span class="btn-text">Sign In with Biometric</span>';
+                }
+            });
+        }
+
+        // Helper functions for WebAuthn
+        function base64UrlToArrayBuffer(base64url) {
+            const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+            const padding = '='.repeat((4 - base64.length % 4) % 4);
+            const binary = atob(base64 + padding);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function arrayBufferToBase64Url(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        }
+
+        // Testimonial rotation functionality
+        let testimonials = [];
+        let currentTestimonialIndex = 0;
+
+        async function initTestimonialRotation() {
+            const container = document.getElementById('testimonialContainer');
+            if (!container) return;
+
+            try {
+                // Fetch platform reviews from API (prioritize user reviews)
+                const response = await fetch('/api/testimonials/platform-reviews');
+                if (response.ok) {
+                    testimonials = await response.json();
+                    if (testimonials.length > 0) {
+                        // Show first review immediately
+                        rotateTestimonial();
+                        // Start rotation every 15 seconds
+                        if (testimonials.length > 1) {
+                            setInterval(rotateTestimonial, 15000);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('Using static testimonial');
+            }
+        }
+
+        function rotateTestimonial() {
+            if (testimonials.length === 0) return;
+
+            // Get next random testimonial (different from current)
+            let nextIndex;
+            do {
+                nextIndex = Math.floor(Math.random() * testimonials.length);
+            } while (nextIndex === currentTestimonialIndex && testimonials.length > 1);
+
+            currentTestimonialIndex = nextIndex;
+            const testimonial = testimonials[currentTestimonialIndex];
+
+            // Animate out
+            const container = document.getElementById('testimonialContainer');
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(10px)';
+
+            setTimeout(() => {
+                // Update content
+                document.getElementById('testimonialText').innerHTML = `"${testimonial.content}"`;
+                document.getElementById('testimonialName').textContent = testimonial.customerName;
+                document.getElementById('testimonialTitle').textContent = testimonial.customerTitle || 'Verified Customer';
+
+                // Update avatar
+                const avatarContainer = document.getElementById('testimonialAvatar');
+                if (testimonial.photoUrl) {
+                    avatarContainer.innerHTML = `<img src="/${testimonial.photoUrl}" alt="${testimonial.customerName}" class="rounded-circle mb-2" style="width: 3rem; height: 3rem; object-fit: cover;" />`;
+                } else {
+                    avatarContainer.innerHTML = `<div class="author-avatar bg-warning text-dark rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 3rem; height: 3rem;"><i class="fas fa-user"></i></div>`;
+                }
+
+                // Update rating
+                const ratingContainer = document.getElementById('testimonialRating');
+                let stars = '';
+                for (let i = 0; i < testimonial.rating; i++) {
+                    stars += '<i class="fas fa-star text-warning"></i>';
+                }
+                for (let i = testimonial.rating; i < 5; i++) {
+                    stars += '<i class="far fa-star text-warning"></i>';
+                }
+                ratingContainer.innerHTML = stars;
+
+                // Animate in
+                container.style.opacity = '1';
+                container.style.transform = 'translateY(0)';
+            }, 300);
+        }
+    </script>
+}
+
+@section Styles {
+<style>
+/* Logo visibility based on theme */
+.logo-light { display: inline-block; }
+.logo-dark { display: none; }
+[data-theme="dark"] .logo-light { display: none; }
+[data-theme="dark"] .logo-dark { display: inline-block; }
+
+/* Modern Authentication Styles */
+.auth-wrapper {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="auth-pattern" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23auth-pattern)"/></svg>');
+    pointer-events: none;
+    animation: patternMove 20s linear infinite;
+}
+
+@@keyframes patternMove {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(20px, 20px); }
+}
+
+.auth-card {
+    background: var(--bg-color);
+    border-radius: var(--border-radius-xl);
+    overflow: hidden;
+    box-shadow: var(--card-shadow-lg);
+}
+
+.auth-form-panel {
+    padding: 3rem 2.5rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.auth-info-panel {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(245, 158, 11, 0.9) 100%);
+    padding: 3rem 2.5rem;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-info-panel::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: float 6s ease-in-out infinite;
+}
+
+.auth-header {
+    margin-bottom: 2rem;
+}
+
+.auth-logo {
+    margin-bottom: 1rem;
+}
+
+.auth-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+.auth-subtitle {
+    font-size: 1rem;
+    margin-bottom: 0;
+}
+
+.auth-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.auth-form .form-label {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+.auth-form .input-group {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    transition: all var(--transition-fast);
+}
+
+.auth-form .input-group:focus-within {
+    box-shadow: 0 0 0 0.125rem rgba(99, 102, 241, 0.25);
+    transform: translateY(-1px);
+}
+
+.auth-form .input-group-text {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-right: none;
+    color: var(--text-muted);
+    width: 3rem;
+    justify-content: center;
+}
+
+.auth-form .form-control {
+    border: 1px solid var(--border-color);
+    border-left: none;
+    padding: 0.75rem 1rem;
+    background: var(--bg-color);
+    color: var(--text-color);
+    transition: all var(--transition-fast);
+}
+
+.auth-form .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: none;
+    background: var(--bg-color);
+}
+
+.password-toggle {
+    border: 1px solid var(--border-color) !important;
+    border-left: none !important;
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    transition: all var(--transition-fast);
+    z-index: 5;
+    cursor: pointer;
+}
+
+.password-toggle:hover {
+    background: var(--primary-light);
+    color: var(--primary-color);
+}
+
+.password-toggle:focus {
+    box-shadow: none;
+    outline: none;
+}
+
+/* Ensure input field doesn't overlap the toggle button */
+.auth-form .input-group .form-control.password-input,
+.auth-form .input-group input[type="password"],
+.auth-form .input-group input[type="text"] + .password-toggle {
+    border-right: none !important;
+}
+
+.auth-form .input-group:has(.password-toggle) .form-control {
+    border-right: none !important;
+}
+
+[data-theme="dark"] .password-toggle:hover {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-lg {
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.btn-external {
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.btn-external:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.auth-links .btn {
+    font-size: 0.875rem;
+}
+
+/* Info Panel Styles */
+.auth-info-content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+}
+
+.feature-item {
+    display: flex;
+    align-items-start;
+}
+
+.feature-item i {
+    font-size: 1.5rem;
+    margin-top: 0.25rem;
+}
+
+.testimonial {
+    text-align: center;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.testimonial-content {
+    position: relative;
+}
+
+/* Remove extra space from main content */
+.auth-wrapper .container {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.auth-wrapper .row.min-vh-100 {
+    margin: 0;
+    padding: 1rem 0;
+}
+
+.author-avatar {
+    font-size: 1.2rem;
+}
+
+/* Floating label effect */
+.form-group.focused .form-label {
+    color: var(--primary-color);
+    transform: scale(0.9);
+}
+
+/* Loading states */
+.btn[disabled] {
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.btn .fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* Validation styles */
+.text-danger {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.alert {
+    border-radius: var(--border-radius);
+    border: none;
+    font-size: 0.875rem;
+}
+
+/* Login Tabs Styles */
+.login-tabs {
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    padding: 0.25rem;
+}
+
+.login-tabs .nav-link {
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    transition: all var(--transition-fast);
+    padding: 0.5rem 1rem;
+}
+
+.login-tabs .nav-link span {
+    color: inherit;
+}
+
+.login-tabs .nav-link:hover {
+    color: var(--primary-color);
+    background: transparent;
+}
+
+.login-tabs .nav-link.active {
+    background: var(--primary-color);
+    color: white !important;
+}
+
+.login-tabs .nav-link.active span,
+.login-tabs .nav-link.active i {
+    color: white !important;
+}
+
+.otp-input {
+    font-size: 1.5rem;
+    letter-spacing: 0.5rem;
+    font-weight: 600;
+}
+
+/* Responsive Design */
+@@media (max-width: 992px) {
+    .auth-card {
+        margin: 1rem;
+    }
+    
+    .auth-form-panel,
+    .auth-info-panel {
+        padding: 2rem 1.5rem;
+    }
+    
+    .auth-title {
+        font-size: 1.75rem;
+    }
+}
+
+@@media (max-width: 768px) {
+    .auth-wrapper {
+        padding: 1rem 0;
+    }
+    
+    .auth-form-panel,
+    .auth-info-panel {
+        padding: 1.5rem;
+    }
+    
+    .auth-title {
+        font-size: 1.5rem;
+    }
+    
+    .feature-item {
+        text-align: center;
+        flex-direction: column;
+    }
+    
+    .feature-item i {
+        margin-bottom: 0.5rem;
+        margin-right: 0;
+    }
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .auth-card {
+    background: var(--bg-color);
+}
+
+[data-theme="dark"] .auth-form .input-group-text {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .auth-form .form-control {
+    background: var(--bg-color);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+/* Biometric Modal Dark Mode Styles */
+[data-theme="dark"] #biometricModal .modal-content {
+    background-color: #1e1e2d;
+    border: 1px solid #3d3d5c;
+}
+
+[data-theme="dark"] #biometricModal .modal-header {
+    background-color: #1e1e2d;
+}
+
+[data-theme="dark"] #biometricModal .modal-title {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] #biometricModal .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-theme="dark"] #biometricModal .modal-body {
+    background-color: #1e1e2d;
+}
+
+[data-theme="dark"] #biometricModal .modal-body p,
+[data-theme="dark"] #biometricModal .text-muted {
+    color: #a0a0a0 !important;
+}
+
+[data-theme="dark"] #biometricModal .form-label {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] #biometricModal .input-group-text {
+    background-color: #2a2a40;
+    border-color: #3d3d5c;
+    color: #a0a0a0;
+}
+
+[data-theme="dark"] #biometricModal .form-control {
+    background-color: #1e1e2d;
+    border-color: #3d3d5c;
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] #biometricModal .form-control::placeholder {
+    color: #6c6c8a;
+}
+
+[data-theme="dark"] #biometricModal .form-control:focus {
+    background-color: #2a2a40;
+    border-color: #4a6cf7;
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] #biometricModal .form-check-label {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] #biometricModal .modal-footer {
+    background-color: #1e1e2d;
+    border-top: 1px solid #3d3d5c;
+}
+
+[data-theme="dark"] #biometricModal .biometric-icon i {
+    color: #6366f1 !important;
+}
+
+[data-theme="dark"] #biometricModal .alert-warning {
+    background-color: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #fbbf24;
+}
+
+/* Login Button Group Styles - Responsive */
+.login-btn-group {
+    display: flex;
+    width: 100%;
+    gap: 0;
+}
+
+.login-btn-group .login-btn-main {
+    flex: 1;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.login-btn-group .login-btn-biometric {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: none;
+    flex-shrink: 0;
+}
+
+/* Larger screens (sm and up): fingerprint button is 1/3 width of login button */
+@@media (min-width: 576px) {
+    .login-btn-group .login-btn-main {
+        flex: 3;
+    }
+
+    .login-btn-group .login-btn-biometric {
+        flex: 1;
+        min-width: auto;
+    }
+}
+
+/* Small/Mobile screens: equal width buttons */
+@@media (max-width: 575.98px) {
+    .login-btn-group {
+        flex-direction: row;
+    }
+
+    .login-btn-group .login-btn-main {
+        flex: 1;
+    }
+
+    .login-btn-group .login-btn-biometric {
+        flex: 1;
+        min-width: auto;
+    }
+
+    .login-btn-group .login-btn-main .btn-text {
+        font-size: 0.875rem;
+    }
+}
+
+/* Animation improvements */
+.auth-card {
+    animation: slideInUp 0.6s ease-out;
+}
+
+@@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Accessibility improvements */
+@@media (prefers-reduced-motion: reduce) {
+    .auth-wrapper::before,
+    .auth-info-panel::before,
+    .auth-card {
+        animation: none;
+    }
+    
+    .auth-form .input-group,
+    .btn-external {
+        transition: none;
+    }
+}
+
+@@media (prefers-contrast: high) {
+    .auth-form .form-control,
+    .auth-form .input-group-text {
+        border-width: 2px;
+    }
+}
+
+/* Fix for empty space at top/bottom - Override layout container padding */
+.content-wrapper:has(.auth-wrapper) {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* Fallback for browsers without :has() support */
+.auth-wrapper {
+    margin-top: -1.5rem;
+    @* margin-bottom: -2rem; *@
+    min-height: calc(100vh - 76px);
+}
+
+@@media (max-width: 991.98px) {
+    .auth-wrapper {
+        min-height: calc(100vh - 60px);
+    }
+}
+</style>
+}

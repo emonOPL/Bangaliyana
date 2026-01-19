@@ -1,0 +1,259 @@
+@model Bangaliyana.Models.AdminRole
+@using Bangaliyana.Services
+
+@{
+    ViewData["Title"] = "Edit Admin Role";
+    var modules = ViewBag.Modules as string[] ?? Array.Empty<string>();
+    var existingPermissions = Model.Permissions?.ToDictionary(p => p.Module, p => p) ?? new Dictionary<string, Bangaliyana.Models.AdminPermission>();
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Admin Roles</a></li>
+            <li class="breadcrumb-item active">Edit</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-edit text-primary me-2"></i>Edit Admin Role</h1>
+            <p class="text-muted mb-0">Modify role permissions and settings</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="ManageAssignments" asp-route-id="@Model.Id" class="btn btn-outline-success">
+                <i class="fas fa-users me-1"></i> Manage Users
+            </a>
+        </div>
+    </div>
+
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="IsSystemRole" />
+
+        <div class="row">
+            <div class="col-lg-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Role Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label asp-for="Name" class="form-label">Role Name <span class="text-danger">*</span></label>
+                            @if (Model.IsSystemRole)
+                            {
+                                <input asp-for="Name" class="form-control" readonly />
+                                <small class="text-muted"><i class="fas fa-lock me-1"></i>System role names cannot be changed</small>
+                            }
+                            else
+                            {
+                                <input asp-for="Name" class="form-control" />
+                            }
+                            <span asp-validation-for="Name" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label">Description</label>
+                            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Created</label>
+                            <p class="form-control-plaintext">@Model.CreatedAt.ToString("dd MMM yyyy HH:mm")</p>
+                        </div>
+                        @if (Model.IsSystemRole)
+                        {
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle me-1"></i>
+                                This is a system role. You can modify permissions but cannot delete it.
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (Model.Assignments?.Any() == true)
+                {
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="fas fa-users me-2"></i>Assigned Users (@Model.Assignments.Count)</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <ul class="list-group list-group-flush">
+                                @foreach (var assignment in Model.Assignments.Take(5))
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="fas fa-user text-muted me-2"></i>
+                                            @(assignment.User?.Email ?? "Unknown")
+                                        </div>
+                                        <small class="text-muted">@assignment.AssignedAt.ToString("dd MMM")</small>
+                                    </li>
+                                }
+                                @if (Model.Assignments.Count > 5)
+                                {
+                                    <li class="list-group-item text-center">
+                                        <a asp-action="ManageAssignments" asp-route-id="@Model.Id" class="text-decoration-none">
+                                            View all @Model.Assignments.Count users...
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="col-lg-8">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-key me-2"></i>Module Permissions</h5>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-success" id="selectAllBtn">
+                                <i class="fas fa-check-double me-1"></i>Select All View
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="clearAllBtn">
+                                <i class="fas fa-times me-1"></i>Clear All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Module</th>
+                                        <th class="text-center" style="width: 80px;">
+                                            <span class="badge bg-success">View</span>
+                                        </th>
+                                        <th class="text-center" style="width: 80px;">
+                                            <span class="badge bg-primary">Create</span>
+                                        </th>
+                                        <th class="text-center" style="width: 80px;">
+                                            <span class="badge bg-warning text-dark">Edit</span>
+                                        </th>
+                                        <th class="text-center" style="width: 80px;">
+                                            <span class="badge bg-danger">Delete</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var module in modules)
+                                    {
+                                        existingPermissions.TryGetValue(module, out var perm);
+                                        var moduleIcon = module switch
+                                        {
+                                            "Dashboard" => "fas fa-tachometer-alt",
+                                            "Products" => "fas fa-box",
+                                            "Categories" => "fas fa-folder",
+                                            "Inventory" => "fas fa-warehouse",
+                                            "Reviews" => "fas fa-star",
+                                            "Orders" => "fas fa-shopping-cart",
+                                            "Transactions" => "fas fa-receipt",
+                                            "DeliveryCharges" => "fas fa-truck",
+                                            "SupportTickets" => "fas fa-ticket-alt",
+                                            "SupportChat" => "fas fa-comments",
+                                            "ContactInquiries" => "fas fa-envelope",
+                                            "Blog" => "fas fa-blog",
+                                            "StylingGuides" => "fas fa-palette",
+                                            "SeasonalCollections" => "fas fa-snowflake",
+                                            "SiteSettings" => "fas fa-cog",
+                                            "MenuManagement" => "fas fa-bars",
+                                            "Users" => "fas fa-users",
+                                            "Roles" => "fas fa-user-tag",
+                                            "Sellers" => "fas fa-store",
+                                            "SellerPayments" => "fas fa-money-bill",
+                                            "SellerMessages" => "fas fa-comments-dollar",
+                                            "Coupons" => "fas fa-tags",
+                                            "FlashSales" => "fas fa-bolt",
+                                            "PromotionalCampaigns" => "fas fa-bullhorn",
+                                            "CategoryPromotions" => "fas fa-percent",
+                                            "Reports" => "fas fa-chart-bar",
+                                            "BusinessTypes" => "fas fa-building",
+                                            "QA" => "fas fa-question-circle",
+                                            _ => "fas fa-cube"
+                                        };
+                                        <tr>
+                                            <td>
+                                                <i class="@moduleIcon text-muted me-2"></i>
+                                                <strong>@module</strong>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="form-check d-flex justify-content-center">
+                                                    <input type="checkbox" name="permissions[@module]" value="View"
+                                                           class="form-check-input perm-checkbox view-checkbox"
+                                                           @(perm?.CanView == true ? "checked" : "") />
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="form-check d-flex justify-content-center">
+                                                    <input type="checkbox" name="permissions[@module]" value="Create"
+                                                           class="form-check-input perm-checkbox"
+                                                           @(perm?.CanCreate == true ? "checked" : "") />
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="form-check d-flex justify-content-center">
+                                                    <input type="checkbox" name="permissions[@module]" value="Edit"
+                                                           class="form-check-input perm-checkbox"
+                                                           @(perm?.CanEdit == true ? "checked" : "") />
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="form-check d-flex justify-content-center">
+                                                    <input type="checkbox" name="permissions[@module]" value="Delete"
+                                                           class="form-check-input perm-checkbox"
+                                                           @(perm?.CanDelete == true ? "checked" : "") />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Save Changes
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i> Cancel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Styles {
+    <style>
+        .form-check-input:checked {
+            background-color: var(--bs-primary);
+            border-color: var(--bs-primary);
+        }
+        .perm-checkbox {
+            width: 1.25rem;
+            height: 1.25rem;
+            cursor: pointer;
+        }
+        [data-theme="dark"] .card { background-color: var(--bs-dark); border-color: var(--bs-gray-700); }
+        [data-theme="dark"] .card-header.bg-light { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] .table { color: var(--bs-light); }
+        [data-theme="dark"] .table-light { background-color: var(--bs-gray-800) !important; }
+        [data-theme="dark"] .table-light th { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] .form-control { background-color: var(--bs-gray-800); color: var(--bs-light); border-color: var(--bs-gray-600); }
+        [data-theme="dark"] .list-group-item { background-color: var(--bs-gray-800); color: var(--bs-light); border-color: var(--bs-gray-700); }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.getElementById('selectAllBtn')?.addEventListener('click', function() {
+            document.querySelectorAll('.view-checkbox').forEach(cb => cb.checked = true);
+        });
+
+        document.getElementById('clearAllBtn')?.addEventListener('click', function() {
+            document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
+        });
+    </script>
+}

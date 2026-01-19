@@ -1,0 +1,629 @@
+@using System.Globalization
+@using Bangaliyana.Models
+@using Bangaliyana.Models.ViewModels
+@using X.PagedList.Mvc.Core
+@using X.PagedList
+@model HomePageViewModel
+
+@{
+    ViewData["Title"] = "Home";
+    var currentPage = Model.AllProducts.PageNumber;
+    var totalPages = Model.AllProducts.PageCount;
+    var hasProducts = Model.AllProducts.Any();
+    var siteSettings = Model.SiteSettings;
+    var currencySymbol = siteSettings.CurrencySymbol ?? "৳";
+}
+
+<!-- Hero Slider Section - Full Width Background -->
+<section class="hero-section mb-5" style="margin-top: -76px; width: 100%; position: relative; left: 50%; right: 50%; margin-left: -50%; margin-right: -50%;">
+    @if (Model.HeroBanners.Any())
+    {
+        <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
+            <div class="carousel-indicators" style="bottom: 15px; margin-bottom: 0;">
+                @for (int i = 0; i < Model.HeroBanners.Count(); i++)
+                {
+                    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="@i" class="@(i == 0 ? "active" : "")" style="width: 10px !important; height: 10px !important; border-radius: 50% !important; border: none !important; padding: 0 !important; margin: 0 5px !important; background-color: @(i == 0 ? "#fff" : "rgba(255,255,255,0.5)"); opacity: 1 !important;" aria-current="@(i == 0 ? "true" : "false")"></button>
+                }
+            </div>
+            <div class="carousel-inner">
+                @{ var bannerIndex = 0; }
+                @foreach (var banner in Model.HeroBanners)
+                {
+                    <div class="carousel-item @(bannerIndex == 0 ? "active" : "")">
+                        <div class="position-relative d-flex align-items-center" style="min-height: 70vh; background: @(!string.IsNullOrEmpty(banner.ImageUrl) ? $"url('/{banner.ImageUrl}') center/cover" : banner.BackgroundColor ?? "linear-gradient(135deg, #198754, #0d6efd)");">
+                            <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50"></div>
+                            <div class="container position-relative">
+                                <div class="row">
+                                    <div class="col-lg-6">
+                                        <div class="text-white">
+                                            @if (!string.IsNullOrEmpty(banner.Subtitle))
+                                            {
+                                                <span class="badge bg-success rounded-pill px-3 py-2 mb-3 d-inline-block">@banner.Subtitle</span>
+                                            }
+                                            <h1 class="display-4 fw-bold mb-3" style="color: @(banner.TextColor ?? "white"); text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">@Html.Raw(banner.Title ?? "Welcome to " + siteSettings.SiteName)</h1>
+                                            @if (!string.IsNullOrEmpty(banner.Description))
+                                            {
+                                                <p class="lead mb-4 text-white" style="opacity: 0.9; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">@banner.Description</p>
+                                            }
+                                            @if (!string.IsNullOrEmpty(banner.ButtonText))
+                                            {
+                                                <a href="#products-section" class="btn btn-lg px-5 py-3 fw-bold shadow-lg scroll-to shop-now-btn shop-now-btn-gradient" style="font-size: 1.25rem; letter-spacing: 0.5px; color: white !important; border: 2px solid rgba(255,255,255,0.3); border-radius: 50px;">
+                                                    <i class="fas fa-shopping-bag me-2" style="color: white;"></i><span style="color: white;">@banner.ButtonText</span>
+                                                </a>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    bannerIndex++;
+                }
+            </div>
+            <button class="carousel-control-prev d-none d-lg-flex" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" style="width: 5%;">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">@Localizer["Previous"]</span>
+            </button>
+            <button class="carousel-control-next d-none d-lg-flex" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" style="width: 5%;">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">@Localizer["Next"]</span>
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Default Hero -->
+        <div class="position-relative d-flex align-items-center bg-gradient hero-gradient" style="min-height: 70vh;">
+            <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-25"></div>
+            <div class="container position-relative">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <h1 class="display-4 fw-bold mb-4 text-white">@Localizer["WelcomeTo"] <span class="text-warning">@siteSettings.SiteName</span></h1>
+                        <p class="lead mb-4 text-white-50">@(siteSettings.SiteTagline ?? "Discover authentic Bangladeshi fashion")</p>
+                        <a href="#products-section" class="btn btn-lg px-5 py-3 fw-bold shadow-lg scroll-to shop-now-btn shop-now-btn-gradient" style="font-size: 1.25rem; letter-spacing: 0.5px; color: white; border: 2px solid rgba(255,255,255,0.3); border-radius: 50px;">
+                            <i class="fas fa-shopping-bag me-2"></i>@Localizer["ShopNow"]
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</section>
+
+<!-- Features Bar -->
+@if (Model.HomeFeatures.Any())
+{
+    <section class="py-4 bg-light border-bottom">
+        <div class="container">
+            <div class="row g-3">
+                @foreach (var feature in Model.HomeFeatures.Take(4))
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="d-flex align-items-center p-2">
+                            <div class="fs-4 me-3" style="color: @(feature.IconColor ?? "#198754")">
+                                <i class="@feature.IconClass"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold">@feature.Title</h6>
+                                <small class="text-muted">@feature.Description</small>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<!-- Categories Section -->
+@if (Model.Categories.Any())
+{
+    <section class="py-5">
+        <div class="container">
+            <div class="text-center mb-4">
+                <h2 class="fw-bold">@Localizer["ShopByCategory"]</h2>
+                <p class="text-muted">@Localizer["BrowseCategoriesDescription"]</p>
+            </div>
+            <div class="row g-4">
+                @{ var categoriesToShow = Model.Categories.Take(5); }
+                @foreach (var category in categoriesToShow)
+                {
+                    var hasSubcategories = category.Children?.Any(c => c.IsActive) == true;
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="@Url.Action("Category", "Home", new { area = "Customer", id = category.Id })" class="card h-100 text-decoration-none border text-center p-3 category-card">
+                            <div class="d-flex align-items-center justify-content-center position-relative" style="height: 80px;">
+                                @if (!string.IsNullOrEmpty(category.ImageUrl))
+                                {
+                                    <img src="~/@category.ImageUrl" alt="@category.Name" class="img-fluid" style="max-height: 100%; object-fit: contain;" />
+                                }
+                                else
+                                {
+                                    <i class="@(category.IconClass ?? "fas fa-folder") fs-1 text-success"></i>
+                                }
+                                @if (hasSubcategories)
+                                {
+                                    <span class="position-absolute top-0 end-0 badge bg-success rounded-pill" style="font-size: 0.65rem;">
+                                        @category.Children!.Count(c => c.IsActive) <i class="fas fa-sitemap ms-1"></i>
+                                    </span>
+                                }
+                            </div>
+                            <h6 class="mt-2 mb-0 fw-semibold category-name">@category.Name</h6>
+                        </a>
+                    </div>
+                }
+                <!-- See All Categories Card -->
+                <div class="col-6 col-md-4 col-lg-2">
+                    <a href="@Url.Action("Categories", "Home", new { area = "Customer" })" class="card h-100 text-decoration-none border text-center p-3 category-card see-all-card">
+                        <div class="d-flex align-items-center justify-content-center" style="height: 80px;">
+                            <i class="fas fa-th-large fs-1 text-success"></i>
+                        </div>
+                        <h6 class="mt-2 mb-0 fw-semibold category-name">@Localizer["SeeAll"]</h6>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+}
+
+<!-- Flash Sale Section -->
+@if (Model.FlashSaleProducts.Any() && Model.HasActiveFlashSale)
+{
+    <section class="py-5 bg-danger bg-opacity-10">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                <div>
+                    <h2 class="fw-bold mb-0">
+                        <i class="fas fa-bolt text-warning me-2"></i>@Localizer["FlashSale"]
+                    </h2>
+                    <p class="text-muted mb-0">@Localizer["FlashSaleDescription"]</p>
+                </div>
+                <div class="d-flex gap-2 align-items-center countdown-timer" data-end-time="@Model.FlashSaleEndTime?.ToString("o")">
+                    <div class="bg-danger text-white text-center rounded px-3 py-2" style="min-width: 60px;">
+                        <span class="fs-4 fw-bold d-block" id="hours">00</span>
+                        <small class="text-uppercase" style="font-size: 0.65rem;">@Localizer["Hours"]</small>
+                    </div>
+                    <span class="fs-4 fw-bold text-danger">:</span>
+                    <div class="bg-danger text-white text-center rounded px-3 py-2" style="min-width: 60px;">
+                        <span class="fs-4 fw-bold d-block" id="minutes">00</span>
+                        <small class="text-uppercase" style="font-size: 0.65rem;">@Localizer["Minutes"]</small>
+                    </div>
+                    <span class="fs-4 fw-bold text-danger">:</span>
+                    <div class="bg-danger text-white text-center rounded px-3 py-2" style="min-width: 60px;">
+                        <span class="fs-4 fw-bold d-block" id="seconds">00</span>
+                        <small class="text-uppercase" style="font-size: 0.65rem;">@Localizer["Seconds"]</small>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-3">
+                @foreach (var product in Model.FlashSaleProducts.Take(4))
+                {
+                    <div class="col-6 col-md-4 col-lg-3">
+                        @await Html.PartialAsync("_ProductCard", product, new ViewDataDictionary(ViewData) { { "IsFlashSale", true }, { "CurrencySymbol", currencySymbol } })
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<!-- Trending Products Section -->
+@if (Model.TrendingProducts.Any())
+{
+    <section class="py-5">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold mb-0">
+                        <i class="fas fa-fire text-danger me-2"></i>@Localizer["TrendingNow"]
+                    </h2>
+                    <p class="text-muted mb-0">@Localizer["TrendingDescription"]</p>
+                </div>
+                <a href="@Url.Action("Index", "Home", new { sort = "trending" })" class="btn btn-outline-success">@Localizer["ViewAll"]</a>
+            </div>
+            <div class="row g-4">
+                @foreach (var product in Model.TrendingProducts.Take(4))
+                {
+                    <div class="col-6 col-md-4 col-lg-3">
+                        @await Html.PartialAsync("_ProductCard", product, new ViewDataDictionary(ViewData) { { "CurrencySymbol", currencySymbol } })
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<!-- Promotional Banners -->
+@if (Model.PromotionalBanners.Any())
+{
+    <section class="py-4">
+        <div class="container">
+            <div class="row g-4">
+                @foreach (var banner in Model.PromotionalBanners.Take(2))
+                {
+                    <div class="col-md-6">
+                        <div class="card border-0 overflow-hidden position-relative rounded-3" style="min-height: 200px; background: @(!string.IsNullOrEmpty(banner.ImageUrl) ? $"url('/{banner.ImageUrl}') center/cover" : banner.BackgroundColor ?? "linear-gradient(135deg, #198754, #0d6efd)");">
+                            <div class="position-absolute bottom-0 start-0 end-0 p-4 text-white overlay-gradient">
+                                <h3 class="fw-bold mb-2" style="color: @(banner.TextColor ?? "white")">@banner.Title</h3>
+                                @if (!string.IsNullOrEmpty(banner.Subtitle))
+                                {
+                                    <p class="mb-3 opacity-75">@banner.Subtitle</p>
+                                }
+                                @if (!string.IsNullOrEmpty(banner.LinkUrl) && !string.IsNullOrEmpty(banner.ButtonText))
+                                {
+                                    <a href="@banner.LinkUrl" class="btn @(banner.ButtonStyle ?? "btn-light") btn-sm">@banner.ButtonText</a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<!-- Best Selling Products -->
+@if (Model.BestSellingProducts.Any())
+{
+    <section class="py-5 bg-light">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold mb-0">
+                        <i class="fas fa-crown text-warning me-2"></i>@Localizer["BestSellers"]
+                    </h2>
+                    <p class="text-muted mb-0">@Localizer["BestSellersDescription"]</p>
+                </div>
+                <a href="@Url.Action("Index", "Home", new { sort = "bestselling" })" class="btn btn-outline-success">@Localizer["ViewAll"]</a>
+            </div>
+            <div class="row g-4">
+                @foreach (var product in Model.BestSellingProducts.Take(4))
+                {
+                    <div class="col-6 col-md-4 col-lg-3">
+                        @await Html.PartialAsync("_ProductCard", product, new ViewDataDictionary(ViewData) { { "CurrencySymbol", currencySymbol } })
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<!-- New Arrivals Section -->
+@if (Model.NewArrivals.Any())
+{
+    <section class="py-5">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold mb-0">
+                        <i class="fas fa-bolt text-info me-2"></i>@Localizer["NewArrivals"]
+                    </h2>
+                    <p class="text-muted mb-0">@Localizer["NewArrivalsDescription"]</p>
+                </div>
+                <a href="@Url.Action("Index", "Home", new { sort = "newest" })" class="btn btn-outline-success">@Localizer["ViewAll"]</a>
+            </div>
+            <div class="row g-4">
+                @foreach (var product in Model.NewArrivals.Take(4))
+                {
+                    <div class="col-6 col-md-4 col-lg-3">
+                        @await Html.PartialAsync("_ProductCard", product, new ViewDataDictionary(ViewData) { { "CurrencySymbol", currencySymbol } })
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<!-- Personalized Section (For You) -->
+@if (Model.PersonalizedProducts.Any())
+{
+    <section class="py-5 bg-light">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold mb-0">
+                        <i class="fas fa-heart text-danger me-2"></i>@Localizer["RecommendedForYou"]
+                    </h2>
+                    <p class="text-muted mb-0">@Localizer["RecommendedDescription"]</p>
+                </div>
+                <a href="@Url.Action("Index", "Home")" class="btn btn-outline-success">@Localizer["ExploreMore"]</a>
+            </div>
+            <div class="row g-4">
+                @foreach (var product in Model.PersonalizedProducts.Take(4))
+                {
+                    <div class="col-6 col-md-4 col-lg-3">
+                        @await Html.PartialAsync("_ProductCard", product, new ViewDataDictionary(ViewData) { { "CurrencySymbol", currencySymbol } })
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<!-- All Products Section -->
+<section id="products-section" class="py-5">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div class="text-center text-md-start">
+                <h2 class="fw-bold mb-0">
+                    <i class="fas fa-tshirt text-primary me-2"></i>@Localizer["AllProducts"]
+                </h2>
+                <p class="text-muted mb-0">@Localizer["AllProductsDescription"]</p>
+            </div>
+            <a href="@Url.Action("Index", "Home", new { area = "Customer" })#products-section" class="btn btn-outline-success">@Localizer["ViewAllProducts"]</a>
+        </div>
+
+        @if (hasProducts)
+        {
+            <div class="row g-4">
+                @foreach (var product in Model.AllProducts)
+                {
+                    <div class="col-6 col-md-4 col-lg-3">
+                        @await Html.PartialAsync("_ProductCard", product, new ViewDataDictionary(ViewData) { { "CurrencySymbol", currencySymbol } })
+                    </div>
+                }
+            </div>
+
+            <!-- Pagination -->
+            <div class="mt-5">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <p class="text-muted mb-0">
+                        @Localizer["ShowingProducts"] <strong>@Model.AllProducts.FirstItemOnPage - @Model.AllProducts.LastItemOnPage</strong> @Localizer["Of"] <strong>@Model.AllProducts.TotalItemCount</strong> @Localizer["Products"]
+                    </p>
+                    <nav>
+                        @Html.PagedListPager(Model.AllProducts, page => Url.Action("Index", new { page }),
+                            new PagedListRenderOptions
+                            {
+                                UlElementClasses = new[] { "pagination", "mb-0" },
+                                LiElementClasses = new[] { "page-item" },
+                                PageClasses = new[] { "page-link" },
+                                LinkToPreviousPageFormat = "<i class=\"fas fa-chevron-left\"></i>",
+                                LinkToNextPageFormat = "<i class=\"fas fa-chevron-right\"></i>",
+                                DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                                DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                                MaximumPageNumbersToDisplay = 5
+                            })
+                    </nav>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-box-open fa-4x text-muted mb-4"></i>
+                <h3 class="text-muted mb-3">@Localizer["NoProductsFound"]</h3>
+                <p class="text-muted mb-4">@Localizer["NoProductsFoundDescription"]</p>
+            </div>
+        }
+    </div>
+</section>
+
+<!-- Newsletter Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="rounded-4 p-4 p-lg-5 text-white newsletter-gradient">
+            <div class="row align-items-center">
+                <div class="col-lg-6 mb-4 mb-lg-0">
+                    <h3 class="fw-bold mb-2">
+                        <i class="fas fa-envelope-open-text me-2"></i>@Localizer["SubscribeNewsletter"]
+                    </h3>
+                    <p class="mb-0 text-white" style="opacity: 0.9;">@Localizer["NewsletterDescription"]</p>
+                </div>
+                <div class="col-lg-6">
+                    <form id="newsletterForm">
+                        @Html.AntiForgeryToken()
+                        <div class="input-group input-group-lg">
+                            <input type="email" class="form-control border-0 rounded-start-pill py-3" id="newsletterEmail" name="email" placeholder="@Localizer["EnterEmail"]" required />
+                            <button type="submit" class="btn btn-warning rounded-end-pill px-4" id="subscribeBtn">
+                                <span class="btn-text fw-semibold">@Localizer["Subscribe"]</span>
+                                <span class="btn-loading d-none"><i class="fas fa-spinner fa-spin"></i></span>
+                            </button>
+                        </div>
+                        <div id="newsletterMessage" class="mt-2"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials Section -->
+@if (Model.Testimonials.Any())
+{
+    <section class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-4">
+                <h2 class="fw-bold">@Localizer["CustomerTestimonials"]</h2>
+                <p class="text-muted">@Localizer["TestimonialsDescription"]</p>
+            </div>
+            <div class="row g-4">
+                @foreach (var testimonial in Model.Testimonials.Take(3))
+                {
+                    <div class="col-md-4">
+                        <div class="card h-100 border shadow-sm p-4">
+                            <div class="mb-3">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <i class="fas fa-star @(i <= testimonial.Rating ? "text-warning" : "text-muted")"></i>
+                                }
+                            </div>
+                            <p class="text-muted fst-italic">"@testimonial.Content"</p>
+                            <div class="d-flex align-items-center mt-auto">
+                                @if (!string.IsNullOrEmpty(testimonial.PhotoUrl))
+                                {
+                                    <img src="~/@testimonial.PhotoUrl" alt="@testimonial.CustomerName" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover;" />
+                                }
+                                else
+                                {
+                                    <div class="rounded-circle bg-success bg-opacity-25 d-flex align-items-center justify-content-center me-3 text-success" style="width: 50px; height: 50px;">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                }
+                                <div>
+                                    <h6 class="mb-0 fw-semibold">@testimonial.CustomerName</h6>
+                                    @if (!string.IsNullOrEmpty(testimonial.CustomerLocation))
+                                    {
+                                        <small class="text-muted">@testimonial.CustomerLocation</small>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<!-- Scroll to Top Button -->
+@* <button id="scrollToTop" class="btn btn-success rounded-circle shadow-lg position-fixed" style="bottom: 30px; right: 30px; width: 50px; height: 50px; display: none; z-index: 1050;">
+    <i class="fas fa-arrow-up"></i>
+</button> *@
+
+@section Scripts {
+    <script>
+        // Localized strings for JavaScript
+        var localizedStrings = {
+            saleEnded: '@Localizer["SaleEnded"].Value',
+            errorOccurred: '@Localizer["ErrorOccurred"].Value'
+        };
+
+        $(document).ready(function() {
+            // Scroll to top functionality
+            $(window).scroll(function() {
+                if ($(this).scrollTop() > 300) {
+                    $('#scrollToTop').fadeIn();
+                } else {
+                    $('#scrollToTop').fadeOut();
+                }
+            });
+
+            $('#scrollToTop').click(function() {
+                $('html, body').animate({ scrollTop: 0 }, 500);
+                return false;
+            });
+
+            // Newsletter subscription
+            $('#newsletterForm').on('submit', function(e) {
+                e.preventDefault();
+                var btn = $('#subscribeBtn');
+                var btnText = btn.find('.btn-text');
+                var btnLoading = btn.find('.btn-loading');
+                var messageDiv = $('#newsletterMessage');
+
+                btn.prop('disabled', true);
+                btnText.addClass('d-none');
+                btnLoading.removeClass('d-none');
+
+                $.ajax({
+                    url: '@Url.Action("SubscribeNewsletter", "Home")',
+                    type: 'POST',
+                    data: $(this).serialize(),
+                    success: function(response) {
+                        if (response.success) {
+                            messageDiv.html('<div class="alert alert-success py-2 mb-0 small"><i class="fas fa-check-circle me-2"></i>' + response.message + '</div>');
+                            $('#newsletterEmail').val('');
+                        } else {
+                            messageDiv.html('<div class="alert alert-warning py-2 mb-0 small"><i class="fas fa-exclamation-circle me-2"></i>' + response.message + '</div>');
+                        }
+                    },
+                    error: function() {
+                        messageDiv.html('<div class="alert alert-danger py-2 mb-0 small"><i class="fas fa-times-circle me-2"></i>' + localizedStrings.errorOccurred + '</div>');
+                    },
+                    complete: function() {
+                        btn.prop('disabled', false);
+                        btnText.removeClass('d-none');
+                        btnLoading.addClass('d-none');
+                    }
+                });
+            });
+
+            // Flash sale countdown
+            var endTime = $('.countdown-timer').data('end-time');
+            if (endTime) {
+                updateCountdown();
+                setInterval(updateCountdown, 1000);
+            }
+
+            function updateCountdown() {
+                var now = new Date().getTime();
+                var end = new Date(endTime).getTime();
+                var distance = end - now;
+
+                if (distance < 0) {
+                    $('.countdown-timer').html('<span class="text-danger fw-bold">' + localizedStrings.saleEnded + '</span>');
+                    return;
+                }
+
+                var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                $('#hours').text(hours.toString().padStart(2, '0'));
+                $('#minutes').text(minutes.toString().padStart(2, '0'));
+                $('#seconds').text(seconds.toString().padStart(2, '0'));
+            }
+
+            // Smooth scroll
+            $('.scroll-to').click(function(e) {
+                e.preventDefault();
+                var target = $($(this).attr('href'));
+                if (target.length) {
+                    $('html, body').animate({ scrollTop: target.offset().top - 100 }, 800);
+                }
+            });
+        });
+    </script>
+}
+
+<style>
+    .page-link {
+        border-radius: 0.375rem !important;
+        margin: 0 0.25rem;
+        min-width: 40px;
+        text-align: center;
+    }
+    .page-item.active .page-link {
+        background-color: #198754;
+        border-color: #198754;
+    }
+    .pagination {
+        gap: 0.25rem;
+    }
+    .shop-now-btn {
+        box-shadow: 0 8px 25px rgba(25, 135, 84, 0.4);
+    }
+    @@media (max-width: 768px) {
+        .countdown-timer > div {
+            min-width: 50px !important;
+            padding: 0.5rem !important;
+        }
+        .countdown-timer .fs-4 {
+            font-size: 1.25rem !important;
+        }
+        #scrollToTop {
+            width: 45px;
+            height: 45px;
+            bottom: 20px;
+            right: 20px;
+        }
+    }
+    /* Category name styling for light and dark modes */
+    .category-name {
+        color: #212529;
+    }
+    [data-theme="dark"] .category-name {
+        color: #f1f5f9 !important;
+    }
+    /* See All Categories card styling */
+    .see-all-card {
+        border-style: dashed !important;
+        transition: all 0.3s ease;
+    }
+    .see-all-card:hover {
+        border-color: #198754 !important;
+        background-color: rgba(25, 135, 84, 0.05);
+    }
+    [data-theme="dark"] .see-all-card:hover {
+        background-color: rgba(25, 135, 84, 0.15);
+    }
+</style>

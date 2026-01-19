@@ -1,0 +1,147 @@
+@model Bangaliyana.Models.SellerMonthlyReport
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = "Current Month Report";
+    var seller = ViewBag.Seller as Bangaliyana.Models.Seller;
+    var reportItems = ViewBag.ReportItems as IEnumerable<Bangaliyana.Models.MonthlyReportOrderItem>;
+}
+
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Index")">My Reports</a></li>
+                    <li class="breadcrumb-item active">Current Month</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h4 class="mb-1">
+                        <i class="fas fa-calendar-alt text-primary me-2"></i>@(new DateTime(Model.Year, Model.Month, 1).ToString("MMMM yyyy"))
+                    </h4>
+                    <p class="text-muted mb-0">Your current month's earnings summary</p>
+                </div>
+                <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>All Reports
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Report Summary -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent">
+                    <h6 class="mb-0"><i class="fas fa-calculator me-2"></i>Current Month Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <span class="badge bg-primary fs-6">@Model.Status.GetDisplayName()</span>
+                    </div>
+
+                    <table class="table table-sm mb-0">
+                        <tr>
+                            <td class="text-muted">Period</td>
+                            <td class="text-end">@Model.PeriodStart.ToString("dd MMM") - @Model.PeriodEnd.ToString("dd MMM")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Total Orders</td>
+                            <td class="text-end">@Model.TotalOrders</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Items Delivered</td>
+                            <td class="text-end">@Model.TotalItemsDelivered</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Sales</strong></td>
+                            <td class="text-end"><strong>@Model.TotalSales.ToString("N0") BDT</strong></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Commission (@Model.CommissionRate%)</td>
+                            <td class="text-end text-danger">-@Model.CommissionAmount.ToString("N0") BDT</td>
+                        </tr>
+                        @if (Model.CarryForwardFromPrevious > 0)
+                        {
+                            <tr>
+                                <td class="text-muted">From Previous Month</td>
+                                <td class="text-end text-info">+@Model.CarryForwardFromPrevious.ToString("N0") BDT</td>
+                            </tr>
+                        }
+                        <tr class="border-top border-2">
+                            <td><strong class="text-success">Estimated Payable</strong></td>
+                            <td class="text-end"><strong class="fs-5 text-success">@Model.NetPayable.ToString("N0") BDT</strong></td>
+                        </tr>
+                    </table>
+
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <small>This report will be finalized on the 1st of next month. Final amount may change based on returns/refunds.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Items -->
+        <div class="col-lg-8 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent">
+                    <h6 class="mb-0"><i class="fas fa-shopping-bag me-2"></i>Delivered Orders This Month (@(reportItems?.Count() ?? 0))</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Order</th>
+                                    <th>Product</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">Net</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (reportItems != null && reportItems.Any())
+                                {
+                                    foreach (var item in reportItems)
+                                    {
+                                        <tr class="@(item.Status != ReportItemStatus.Delivered ? "text-danger" : "")">
+                                            <td>#@item.OrderId</td>
+                                            <td class="text-truncate" style="max-width: 200px;">
+                                                @(item.OrderItem?.Product?.Name ?? "N/A")
+                                            </td>
+                                            <td class="text-end">@item.ItemAmount.ToString("N0")</td>
+                                            <td class="text-end text-success">@item.NetAmount.ToString("N0")</td>
+                                            <td class="text-center">
+                                                @{
+                                                    var itemStatusClass = item.Status switch
+                                                    {
+                                                        ReportItemStatus.Delivered => "bg-success",
+                                                        ReportItemStatus.Returned => "bg-danger",
+                                                        ReportItemStatus.Refunded => "bg-warning",
+                                                        _ => "bg-secondary"
+                                                    };
+                                                }
+                                                <span class="badge @itemStatusClass">@item.Status</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">
+                                            No delivered orders this month yet.
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

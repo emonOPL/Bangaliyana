@@ -1,0 +1,144 @@
+@model List<Bangaliyana.Models.StylingGuide>
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Localizer["StylingGuides"];
+    var featuredGuides = ViewBag.FeaturedGuides as List<StylingGuide>;
+    var guideTypes = ViewBag.GuideTypes as StylingGuideType[];
+    var currentPage = (int)ViewBag.CurrentPage;
+    var totalPages = (int)ViewBag.TotalPages;
+    var selectedType = ViewBag.SelectedType as StylingGuideType?;
+    var searchQuery = ViewBag.SearchQuery as string;
+}
+
+<div class="styling-guides-page py-5">
+    <div class="container">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-5 fw-bold"><i class="fas fa-palette text-primary me-2"></i>@Localizer["StylingGuides"]</h1>
+            <p class="lead text-muted">@Localizer["ExpertTipsOnHowToStyleFashion"]</p>
+        </div>
+
+        <!-- Search & Filter -->
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-8">
+                <form asp-action="Index" method="get" class="mb-4">
+                    <div class="input-group">
+                        <input type="text" name="search" value="@searchQuery" class="form-control" placeholder="@Localizer["SearchGuides"]">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+                    </div>
+                </form>
+
+                <!-- Type Filters -->
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <a asp-action="Index" class="btn @(selectedType == null && string.IsNullOrEmpty(searchQuery) ? "btn-primary" : "btn-outline-primary") btn-sm">@Localizer["All"]</a>
+                    @foreach (var type in guideTypes ?? Array.Empty<StylingGuideType>())
+                    {
+                        <a asp-action="Index" asp-route-type="@type" class="btn @(selectedType == type ? "btn-primary" : "btn-outline-primary") btn-sm">@type.ToString()</a>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Featured Guides -->
+        @if (featuredGuides?.Any() == true && selectedType == null && string.IsNullOrEmpty(searchQuery))
+        {
+            <div class="featured-section mb-5">
+                <h4 class="mb-4"><i class="fas fa-star text-warning me-2"></i>@Localizer["FeaturedGuides"]</h4>
+                <div class="row g-4">
+                    @foreach (var guide in featuredGuides)
+                    {
+                        <div class="col-lg-3 col-md-6">
+                            <a asp-action="Details" asp-route-slug="@guide.Slug" class="text-decoration-none">
+                                <div class="card h-100 border-0 shadow-sm guide-card">
+                                    @if (!string.IsNullOrEmpty(guide.CoverImageUrl))
+                                    {
+                                        <img src="~/@guide.CoverImageUrl" class="card-img-top" alt="@guide.Title" style="height: 180px; object-fit: cover;">
+                                    }
+                                    <div class="card-body">
+                                        <span class="badge bg-info mb-2">@guide.GuideType</span>
+                                        <h6 class="card-title text-dark">@guide.Title</h6>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- All Guides -->
+        @if (Model.Any())
+        {
+            <div class="row g-4">
+                @foreach (var guide in Model)
+                {
+                    <div class="col-lg-4 col-md-6">
+                        <a asp-action="Details" asp-route-slug="@guide.Slug" class="text-decoration-none">
+                            <div class="card h-100 border-0 shadow-sm guide-card">
+                                @if (!string.IsNullOrEmpty(guide.CoverImageUrl))
+                                {
+                                    <img src="~/@guide.CoverImageUrl" class="card-img-top" alt="@guide.Title" style="height: 200px; object-fit: cover;">
+                                }
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="badge bg-info">@guide.GuideType</span>
+                                        @if (guide.IsFeatured)
+                                        {
+                                            <span class="badge bg-warning"><i class="fas fa-star"></i></span>
+                                        }
+                                    </div>
+                                    <h5 class="card-title text-dark">@guide.Title</h5>
+                                    @if (!string.IsNullOrEmpty(guide.Subtitle))
+                                    {
+                                        <p class="card-text text-muted small">@guide.Subtitle</p>
+                                    }
+                                    <div class="d-flex justify-content-between text-muted small mt-3">
+                                        @if (!string.IsNullOrEmpty(guide.Occasion))
+                                        {
+                                            <span><i class="fas fa-tag me-1"></i>@guide.Occasion</span>
+                                        }
+                                        <span><i class="far fa-eye me-1"></i>@guide.ViewCount @Localizer["Views"]</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+
+            <!-- Pagination -->
+            @if (totalPages > 1)
+            {
+                <nav class="mt-5">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-page="@(currentPage - 1)" asp-route-type="@selectedType" asp-route-search="@searchQuery">@Localizer["Previous"]</a>
+                        </li>
+                        @for (int i = 1; i <= totalPages; i++)
+                        {
+                            <li class="page-item @(currentPage == i ? "active" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-type="@selectedType" asp-route-search="@searchQuery">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-page="@(currentPage + 1)" asp-route-type="@selectedType" asp-route-search="@searchQuery">@Localizer["Next"]</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-palette fa-4x text-muted mb-3"></i>
+                <h4>@Localizer["NoStylingGuidesFound"]</h4>
+                <p class="text-muted">@Localizer["CheckBackLaterForNewStylingTips"]</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .guide-card { transition: all 0.3s ease; }
+    .guide-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+</style>

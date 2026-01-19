@@ -1,0 +1,329 @@
+@model Bangaliyana.Services.CampaignAnalytics
+
+@{
+    var campaign = ViewBag.Campaign as Bangaliyana.Models.PromotionalCampaign;
+    ViewData["Title"] = "Campaign Analytics";
+}
+
+<div class="container">
+    <!-- Header -->
+    <div class="d-flex align-items-center mb-4">
+        <a asp-action="Index" class="btn btn-outline-secondary me-3">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div class="flex-grow-1">
+            <h4 class="mb-1">
+                <i class="fas fa-chart-bar text-primary me-2"></i>Campaign Analytics
+            </h4>
+            <p class="text-muted mb-0">@campaign?.Title</p>
+        </div>
+        @if (campaign?.SentAt != null)
+        {
+            <span class="badge bg-success fs-6">
+                <i class="fas fa-check me-1"></i>Sent @campaign.SentAt.Value.ToBangladeshString()
+            </span>
+        }
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="stat-icon bg-primary-soft text-primary mb-3">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3 class="mb-1">@Model.TotalRecipients.ToString("N0")</h3>
+                    <p class="text-muted mb-0">Total Recipients</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="stat-icon bg-success-soft text-success mb-3">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3 class="mb-1">@Model.DeliveredCount.ToString("N0")</h3>
+                    <p class="text-muted mb-0">Delivered</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="stat-icon bg-info-soft text-info mb-3">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <h3 class="mb-1">@Model.ReadCount.ToString("N0")</h3>
+                    <p class="text-muted mb-0">Read</p>
+                    <small class="text-success">@Model.ReadRate.ToString("F1")% rate</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="stat-icon bg-warning-soft text-warning mb-3">
+                        <i class="fas fa-mouse-pointer"></i>
+                    </div>
+                    <h3 class="mb-1">@Model.ClickCount.ToString("N0")</h3>
+                    <p class="text-muted mb-0">Clicked</p>
+                    <small class="text-success">@Model.ClickRate.ToString("F1")% rate</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Engagement Funnel -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0"><i class="fas fa-funnel-dollar me-2"></i>Engagement Funnel</h6>
+                </div>
+                <div class="card-body">
+                    <div class="funnel-item mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Sent</span>
+                            <span class="fw-bold">@Model.TotalRecipients.ToString("N0")</span>
+                        </div>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar bg-primary" style="width: 100%">100%</div>
+                        </div>
+                    </div>
+                    <div class="funnel-item mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Delivered</span>
+                            <span class="fw-bold">@Model.DeliveredCount.ToString("N0")</span>
+                        </div>
+                        <div class="progress" style="height: 25px;">
+                            @{
+                                var deliveryRate = Model.TotalRecipients > 0 ? (decimal)Model.DeliveredCount / Model.TotalRecipients * 100 : 0;
+                            }
+                            <div class="progress-bar bg-success" style="width: @deliveryRate%">@deliveryRate.ToString("F1")%</div>
+                        </div>
+                    </div>
+                    <div class="funnel-item mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Read</span>
+                            <span class="fw-bold">@Model.ReadCount.ToString("N0")</span>
+                        </div>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar bg-info" style="width: @Model.ReadRate%">@Model.ReadRate.ToString("F1")%</div>
+                        </div>
+                    </div>
+                    <div class="funnel-item">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Clicked</span>
+                            <span class="fw-bold">@Model.ClickCount.ToString("N0")</span>
+                        </div>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar bg-warning" style="width: @Model.ClickRate%">@Model.ClickRate.ToString("F1")%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Campaign Details -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Campaign Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="detail-row">
+                        <span class="label">Title:</span>
+                        <span class="value">@campaign?.Title</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Message:</span>
+                        <span class="value text-truncate" style="max-width: 250px;">@campaign?.Message</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Target Audience:</span>
+                        <span class="value">
+                            @(campaign?.TargetAudience switch
+                            {
+                                Bangaliyana.Models.TargetAudience.All => "All Users",
+                                Bangaliyana.Models.TargetAudience.NewUsers => "New Users",
+                                Bangaliyana.Models.TargetAudience.ReturningUsers => "Returning Customers",
+                                Bangaliyana.Models.TargetAudience.PremiumMembers => "Premium Members",
+                                Bangaliyana.Models.TargetAudience.InactiveUsers => "Inactive Users",
+                                Bangaliyana.Models.TargetAudience.HighSpenders => "High Spenders",
+                                _ => campaign?.TargetAudience.ToString()
+                            })
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Emails Sent:</span>
+                        <span class="value">
+                            @if (Model.EmailsSent > 0)
+                            {
+                                <span class="badge bg-success">@Model.EmailsSent emails</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">None</span>
+                            }
+                        </span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(campaign?.PromoCode))
+                    {
+                        <div class="detail-row">
+                            <span class="label">Promo Code:</span>
+                            <span class="value"><code>@campaign.PromoCode</code></span>
+                        </div>
+                    }
+                    <div class="detail-row">
+                        <span class="label">Created:</span>
+                        <span class="value">@campaign?.CreatedAt.ToBangladeshString()</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Recipients -->
+    @if (Model.Recipients.Any())
+    {
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-transparent border-0 py-3">
+                <h6 class="mb-0"><i class="fas fa-list me-2"></i>Recent Recipients</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">User</th>
+                                <th>Sent At</th>
+                                <th>Read At</th>
+                                <th>Clicked At</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var recipient in Model.Recipients.Take(50))
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-secondary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                                                @(recipient.User?.FullName?.Substring(0, 1).ToUpper() ?? "U")
+                                            </div>
+                                            <div>
+                                                <div class="fw-medium">@(recipient.User?.FullName ?? "Unknown")</div>
+                                                <small class="text-muted">@recipient.User?.Email</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small>@recipient.SentAt.ToBangladeshString("MMM dd, hh:mm tt")</small>
+                                    </td>
+                                    <td>
+                                        @if (recipient.ReadAt.HasValue)
+                                        {
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-eye me-1"></i>@recipient.ReadAt.Value.ToBangladeshString("MMM dd, hh:mm tt")
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (recipient.ClickedAt.HasValue)
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-mouse-pointer me-1"></i>@recipient.ClickedAt.Value.ToBangladeshString("MMM dd, hh:mm tt")
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (recipient.EmailSent)
+                                        {
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-envelope me-1"></i>Sent
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin: 0 auto;
+    }
+
+    .bg-primary-soft {
+        background-color: rgba(59, 130, 246, 0.1);
+    }
+
+    .bg-success-soft {
+        background-color: rgba(16, 185, 129, 0.1);
+    }
+
+    .bg-info-soft {
+        background-color: rgba(6, 182, 212, 0.1);
+    }
+
+    .bg-warning-soft {
+        background-color: rgba(245, 158, 11, 0.1);
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-row .label {
+        color: #6b7280;
+    }
+
+    [data-theme="dark"] .card {
+        background-color: #252538;
+    }
+
+    [data-theme="dark"] .detail-row {
+        border-color: #3d3d5c;
+    }
+
+    [data-theme="dark"] .bg-light {
+        background-color: #1e1e2d !important;
+    }
+
+    [data-theme="dark"] .table {
+        color: #e0e0e0;
+    }
+</style>

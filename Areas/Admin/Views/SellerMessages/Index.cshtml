@@ -1,0 +1,366 @@
+@model List<Bangaliyana.Models.SellerConversation>
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+
+@{
+    ViewData["Title"] = Localizer["SellerMessages"].Value;
+    var unreadCount = ViewBag.UnreadCount ?? 0;
+    var isAdminOrModerator = ViewBag.IsAdminOrModerator ?? false;
+    var currentSellerId = ViewBag.CurrentSellerId as int?;
+    var currentUserId = ViewBag.CurrentUserId as string;
+}
+
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+        <div class="mb-3 mb-md-0">
+            <h1 class="h3 mb-1"><i class="fas fa-comments me-2 text-primary"></i>@Localizer["SellerMessages"]</h1>
+            <p class="text-muted mb-0">@Localizer["CommunicateWithCustomers"]</p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (unreadCount > 0)
+            {
+                <span class="badge bg-danger fs-6 d-flex align-items-center">
+                    <i class="fas fa-envelope me-2"></i>@unreadCount @Localizer["Unread"]
+                </span>
+            }
+            <a asp-action="NewMessage" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>@Localizer["NewMessage"]
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (Model.Any())
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                @if (isAdminOrModerator)
+                                {
+                                    <th>@Localizer["Seller"]</th>
+                                }
+                                <th>@Localizer["Customer"]</th>
+                                <th>@Localizer["SubjectContext"]</th>
+                                <th>@Localizer["LastMessage"]</th>
+                                <th>@Localizer["Status"]</th>
+                                <th class="text-end">@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var conversation in Model)
+                            {
+                                var lastMessage = conversation.Messages?.FirstOrDefault();
+                                var hasUnread = conversation.UnreadCountSeller > 0;
+
+                                <tr class="@(hasUnread ? "table-primary" : "")">
+                                    @if (isAdminOrModerator)
+                                    {
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                @if (!string.IsNullOrEmpty(conversation.Seller?.ShopLogoUrl))
+                                                {
+                                                    <img src="@conversation.Seller.ShopLogoUrl" alt="@conversation.Seller.ShopName"
+                                                         class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="avatar-circle bg-primary text-white me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                                        @(conversation.Seller?.ShopName?.Substring(0, 1).ToUpper() ?? "S")
+                                                    </div>
+                                                }
+                                                <div>
+                                                    <div class="fw-medium small">@(conversation.Seller?.ShopName ?? Localizer["UnknownShop"].Value)</div>
+                                                    <small class="text-muted">@(conversation.Seller?.User?.Email ?? "")</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    }
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle bg-secondary text-white me-2">
+                                                @(conversation.Buyer?.FullName?.Substring(0, 1).ToUpper() ?? "C")
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">@(conversation.Buyer?.FullName ?? Localizer["Customer"].Value)</div>
+                                                <small class="text-muted">@(conversation.Buyer?.Email ?? "")</small>
+                                            </div>
+                                            @if (hasUnread)
+                                            {
+                                                <span class="badge bg-danger ms-2">@conversation.UnreadCountSeller</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(conversation.Subject))
+                                        {
+                                            <div class="fw-semibold">@conversation.Subject</div>
+                                        }
+                                        @if (conversation.Order != null)
+                                        {
+                                            <span class="badge bg-info me-1">
+                                                <i class="fas fa-shopping-bag me-1"></i>Order #@conversation.Order.Id
+                                            </span>
+                                        }
+                                        @if (conversation.Product != null)
+                                        {
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-box me-1"></i>@(conversation.Product.Name.Length > 20 ? conversation.Product.Name.Substring(0, 17) + "..." : conversation.Product.Name)
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (lastMessage != null)
+                                        {
+                                            <div class="text-truncate" style="max-width: 200px;">
+                                                @if (lastMessage.IsSentBySeller)
+                                                {
+                                                    <i class="fas fa-reply text-success me-1"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="fas fa-envelope text-primary me-1"></i>
+                                                }
+                                                @(lastMessage.Message.Length > 50 ? lastMessage.Message.Substring(0, 47) + "..." : lastMessage.Message)
+                                            </div>
+                                            <small class="text-muted">@GetTimeAgo(lastMessage.CreatedAt)</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (conversation.IsClosedByStaff)
+                                        {
+                                            @if (conversation.ClosedByUserId == currentUserId)
+                                            {
+                                                <span class="badge bg-info">@Localizer["ClosedByYou"]</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-info">@Localizer["ClosedByModerator"]</span>
+                                            }
+                                        }
+                                        else if (conversation.IsClosedBySeller)
+                                        {
+                                            @if (currentSellerId.HasValue && currentSellerId == conversation.SellerId)
+                                            {
+                                                <span class="badge bg-secondary">@Localizer["ClosedByYou"]</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">@Localizer["ClosedBySeller"]</span>
+                                            }
+                                        }
+                                        else if (conversation.IsClosedByBuyer)
+                                        {
+                                            @if (conversation.ClosedByUserId == currentUserId)
+                                            {
+                                                <span class="badge bg-warning text-dark">@Localizer["ClosedByYou"]</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning text-dark">@Localizer["ClosedByCustomer"]</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">@Localizer["Active"]</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="Conversation" asp-route-id="@conversation.Id"
+                                               class="btn btn-outline-primary" title="@Localizer["View"]">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            @if (!conversation.IsClosedBySeller)
+                                            {
+                                                <button type="button" class="btn btn-outline-secondary" title="@Localizer["Close"]"
+                                                        data-bs-toggle="modal" data-bs-target="#closeConversationModal"
+                                                        data-conversation-id="@conversation.Id">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            }
+                                            <button type="button" class="btn btn-outline-danger" title="@Localizer["Archive"]"
+                                                    data-bs-toggle="modal" data-bs-target="#archiveConversationModal"
+                                                    data-conversation-id="@conversation.Id">
+                                                <i class="fas fa-archive"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <div class="display-1 text-muted mb-4">
+                <i class="fas fa-comments"></i>
+            </div>
+            <h4 class="text-muted mb-3">@Localizer["NoConversationsYet"]</h4>
+            <p class="text-muted mb-4">@Localizer["StartConversationDescription"]</p>
+            <a asp-action="NewMessage" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>@Localizer["StartConversation"]
+            </a>
+        </div>
+    }
+</div>
+
+@functions {
+    private string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalMinutes < 1) return "Just now";
+        if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7) return $"{(int)timeSpan.TotalDays}d ago";
+
+        return dateTime.ToBangladeshShortDateString();
+    }
+}
+
+<style>
+    .avatar-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    [data-theme="dark"] .card {
+        background-color: #252538;
+    }
+
+    [data-theme="dark"] .table {
+        color: #e0e0e0;
+        --bs-table-bg: #252538;
+        --bs-table-striped-bg: #2a2a3d;
+    }
+
+    [data-theme="dark"] .table > tbody > tr {
+        background-color: #252538;
+        border-color: #3a3a52;
+    }
+
+    [data-theme="dark"] .table > tbody > tr > td {
+        background-color: transparent;
+        border-color: #3a3a52;
+    }
+
+    [data-theme="dark"] .table-primary,
+    [data-theme="dark"] .table-primary > td {
+        background-color: rgba(54, 153, 255, 0.15) !important;
+    }
+
+    [data-theme="dark"] thead.bg-light {
+        background-color: #1e1e2d !important;
+    }
+
+    [data-theme="dark"] thead.bg-light th {
+        background-color: #1e1e2d !important;
+        color: #a0a0b0;
+        border-color: #3a3a52;
+    }
+</style>
+
+<!-- Close Conversation Confirmation Modal -->
+<div class="modal fade" id="closeConversationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-warning">
+                        <i class="fas fa-times-circle" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">@Localizer["CloseConversationQuestion"]</h4>
+                <p class="text-muted mb-1">@Localizer["CloseConversationConfirm"]</p>
+                <p class="text-muted small mb-0">@Localizer["ConversationCanBeReopened"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <form id="closeConversationForm" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-warning px-4">
+                        <i class="fas fa-check me-1"></i> @Localizer["YesClose"]
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Archive Conversation Confirmation Modal -->
+<div class="modal fade" id="archiveConversationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-danger">
+                        <i class="fas fa-archive" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">@Localizer["ArchiveConversationQuestion"]</h4>
+                <p class="text-muted mb-1">@Localizer["ArchiveConversationConfirm"]</p>
+                <p class="text-muted small mb-0">@Localizer["ArchivedConversationsNote"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <form id="archiveConversationForm" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="fas fa-check me-1"></i> @Localizer["YesArchive"]
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('closeConversationModal').addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var conversationId = button.getAttribute('data-conversation-id');
+            document.getElementById('closeConversationForm').action = '@Url.Action("CloseConversation")/' + conversationId;
+        });
+
+        document.getElementById('archiveConversationModal').addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var conversationId = button.getAttribute('data-conversation-id');
+            document.getElementById('archiveConversationForm').action = '@Url.Action("ArchiveConversation")/' + conversationId;
+        });
+    </script>
+}

@@ -1,0 +1,203 @@
+@model Bangaliyana.Models.Products
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    var avgRating = Model.Reviews?.Any() == true ? Model.Reviews.Average(r => r.Rating) : 0;
+    var reviewCount = Model.Reviews?.Count ?? 0;
+    var currencySymbol = ViewData["CurrencySymbol"] as string ?? "৳";
+}
+
+<div class="card border-0 shadow-sm product-card-list">
+    <div class="row g-0">
+        <!-- Product Image -->
+        <div class="col-md-3 col-4">
+            <div class="position-relative h-100">
+                <a href="@Url.Action("Details", "Home", new { area = "Customer", id = Model.Id })">
+                    @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                    {
+                        <img src="~/@Model.ImageUrl?width=250&quality=80"
+                             alt="@Model.Name"
+                             class="img-fluid rounded-start product-list-img"
+                             loading="lazy"
+                             decoding="async" />
+                    }
+                    else
+                    {
+                        <img src="~/images/noimage.jpg"
+                             alt="@Model.Name"
+                             class="img-fluid rounded-start product-list-img"
+                             loading="lazy"
+                             decoding="async" />
+                    }
+                </a>
+
+                @if (Model.HasDiscount)
+                {
+                    <span class="badge bg-danger position-absolute top-0 start-0 m-2 px-2 py-1">-@Model.DiscountPercentage%</span>
+                }
+
+                @if (!Model.IsAvailable || Model.Stock <= 0)
+                {
+                    <div class="position-absolute top-50 start-50 translate-middle">
+                        <span class="badge bg-dark px-3 py-2">@Localizer["OutOfStock"]</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Product Details -->
+        <div class="col-md-9 col-8">
+            <div class="card-body d-flex flex-column h-100 py-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        @if (Model.Category != null)
+                        {
+                            <small class="text-success text-uppercase fw-semibold letter-spacing-1">@Model.Category.Name</small>
+                        }
+
+                        <h5 class="card-title mb-1 fw-semibold product-list-title">
+                            <a href="@Url.Action("Details", "Home", new { area = "Customer", id = Model.Id })" class="text-decoration-none product-title-link">
+                                @Model.Name
+                            </a>
+                        </h5>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="d-none d-md-flex gap-2">
+                        <button class="btn btn-outline-success btn-sm quick-view-btn" title="@Localizer["QuickView"]" data-product-id="@Model.Id">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm wishlist-btn" title="@Localizer["AddToWishlist"]" data-product-id="@Model.Id">
+                            <i class="far fa-heart"></i>
+                        </button>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.ShortDescription))
+                {
+                    <p class="card-text text-muted small mb-2 d-none d-md-block">
+                        @(Model.ShortDescription.Length > 150 ? Model.ShortDescription.Substring(0, 150) + "..." : Model.ShortDescription)
+                    </p>
+                }
+
+                <!-- Rating -->
+                <div class="mb-2">
+                    <span class="text-warning small">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            if (i <= avgRating)
+                            {
+                                <i class="fas fa-star"></i>
+                            }
+                            else if (i - 0.5 <= avgRating)
+                            {
+                                <i class="fas fa-star-half-alt"></i>
+                            }
+                            else
+                            {
+                                <i class="far fa-star"></i>
+                            }
+                        }
+                    </span>
+                    <small class="text-muted ms-1">(@reviewCount @Localizer["Reviews"])</small>
+                    @if (Model.SoldCount > 0)
+                    {
+                        <small class="text-muted ms-2">| @Model.SoldCount @Localizer["Sold"]</small>
+                    }
+                </div>
+
+                <!-- Price and Add to Cart -->
+                <div class="mt-auto d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div>
+                        @if (Model.HasDiscount)
+                        {
+                            <span class="text-muted text-decoration-line-through me-2">@currencySymbol@Model.Price.ToString("N0")</span>
+                            <span class="text-danger fw-bold fs-5">@currencySymbol@Model.DiscountPrice?.ToString("N0")</span>
+                        }
+                        else
+                        {
+                            <span class="text-danger fw-bold fs-5">@currencySymbol@Model.Price.ToString("N0")</span>
+                        }
+
+                        @if (Model.Stock > 0 && Model.Stock <= 5)
+                        {
+                            <span class="badge bg-warning text-dark ms-2">@Localizer["OnlyXLeft", Model.Stock]</span>
+                        }
+                    </div>
+
+                    @if (Model.IsAvailable && Model.Stock > 0)
+                    {
+                        <div class="d-flex gap-2">
+                            <a href="@Url.Action("Details", "Home", new { area = "Customer", id = Model.Id })" class="btn btn-outline-success btn-sm">
+                                <i class="fas fa-info-circle me-1"></i>@Localizer["Details"]
+                            </a>
+                            <button type="button" class="btn btn-success btn-sm add-to-cart-btn" data-product-id="@Model.Id">
+                                <i class="fas fa-shopping-cart me-1"></i>@Localizer["AddToCart"]
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="btn btn-secondary btn-sm disabled">
+                            <i class="fas fa-times-circle me-1"></i>@Localizer["OutOfStock"]
+                        </span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .product-card-list {
+        border-radius: 0.75rem !important;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .product-card-list:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .product-list-img {
+        width: 100%;
+        height: 100%;
+        min-height: 180px;
+        object-fit: cover;
+    }
+
+    .product-list-title {
+        font-size: 1.1rem;
+    }
+
+    .product-title-link {
+        color: var(--text-color, #212529);
+    }
+
+    [data-theme="dark"] .product-card-list {
+        background-color: #1e1e2d;
+    }
+
+    [data-theme="dark"] .product-title-link {
+        color: #f1f5f9 !important;
+    }
+
+    [data-theme="dark"] .product-card-list .card-body {
+        background-color: #1e1e2d;
+    }
+
+    .letter-spacing-1 {
+        letter-spacing: 0.5px;
+    }
+
+    @@media (max-width: 767.98px) {
+        .product-list-img {
+            min-height: 120px;
+        }
+
+        .product-list-title {
+            font-size: 0.95rem;
+        }
+    }
+</style>

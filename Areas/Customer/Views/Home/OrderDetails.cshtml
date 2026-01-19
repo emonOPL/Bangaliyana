@@ -1,0 +1,1315 @@
+@model Bangaliyana.Models.Order
+@using System.Globalization
+@using Bangaliyana.Extensions
+@using Bangaliyana.Models
+
+@{
+    ViewData["Title"] = Localizer["OrderDetails"];
+    var currencySymbol = "৳";
+
+    // Define timeline steps
+    var timelineSteps = new List<(string Icon, string Title, string Status, DateTime? Date, bool IsActive, bool IsCompleted)>
+    {
+        ("fa-clipboard-check", Localizer["OrderPlaced"].Value, "Pending", Model.OrderDate, true, true),
+        ("fa-check-circle", Localizer["Confirmed"].Value, "Confirmed", Model.Status >= OrderStatus.Confirmed ? Model.OrderDate.AddMinutes(5) : null,
+            Model.Status >= OrderStatus.Confirmed, Model.Status >= OrderStatus.Confirmed),
+        ("fa-box", Localizer["Processing"].Value, "Processing", Model.Status >= OrderStatus.Processing ? Model.OrderDate.AddHours(2) : null,
+            Model.Status >= OrderStatus.Processing, Model.Status >= OrderStatus.Processing),
+        ("fa-shipping-fast", Localizer["Shipped"].Value, "Shipped", Model.ShippedAt,
+            Model.Status >= OrderStatus.Shipped, Model.Status >= OrderStatus.Shipped),
+        ("fa-truck", Localizer["OutForDelivery"].Value, "OutForDelivery", Model.Status >= OrderStatus.OutForDelivery ? Model.ShippedAt?.AddDays(1) : null,
+            Model.Status >= OrderStatus.OutForDelivery, Model.Status >= OrderStatus.OutForDelivery),
+        ("fa-home", Localizer["Delivered"].Value, "Delivered", Model.DeliveredAt,
+            Model.Status >= OrderStatus.Delivered, Model.Status >= OrderStatus.Delivered)
+    };
+
+    // Calculate current step
+    int currentStep = 0;
+    if (Model.Status == OrderStatus.Pending) currentStep = 0;
+    else if (Model.Status == OrderStatus.Confirmed || Model.Status == OrderStatus.Paid) currentStep = 1;
+    else if (Model.Status == OrderStatus.Processing) currentStep = 2;
+    else if (Model.Status == OrderStatus.Shipped) currentStep = 3;
+    else if (Model.Status == OrderStatus.OutForDelivery) currentStep = 4;
+    else if (Model.Status == OrderStatus.Delivered) currentStep = 5;
+
+    bool isCancelled = Model.Status == OrderStatus.Cancelled;
+    bool isReturned = Model.Status == OrderStatus.Returned || Model.Status == OrderStatus.Refunded;
+}
+
+<style>
+    /* Header Card */
+    .order-header-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        color: white;
+        margin-bottom: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .order-header-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 100%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+    }
+
+    .order-number {
+        font-size: 0.875rem;
+        opacity: 0.9;
+        margin-bottom: 0.25rem;
+    }
+
+    .order-id-large {
+        font-size: 1.75rem;
+        font-weight: 700;
+        font-family: 'Courier New', monospace;
+    }
+
+    .order-date-info {
+        font-size: 0.875rem;
+        opacity: 0.9;
+    }
+
+    .status-badge-large {
+        padding: 0.5rem 1.25rem;
+        border-radius: 2rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Timeline Section */
+    .timeline-section {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .section-title i {
+        color: #667eea;
+    }
+
+    /* Timeline */
+    .order-timeline {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+        padding: 0 1rem;
+    }
+
+    .order-timeline::before {
+        content: '';
+        position: absolute;
+        top: 24px;
+        left: 60px;
+        right: 60px;
+        height: 4px;
+        background: #e5e7eb;
+        border-radius: 2px;
+        z-index: 1;
+    }
+
+    .timeline-progress {
+        position: absolute;
+        top: 24px;
+        left: 60px;
+        height: 4px;
+        background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        border-radius: 2px;
+        z-index: 2;
+        transition: width 0.5s ease;
+    }
+
+    .timeline-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 3;
+        flex: 1;
+        max-width: 100px;
+    }
+
+    .step-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.3s ease;
+        border: 3px solid #e5e7eb;
+        background: white;
+        color: #9ca3af;
+    }
+
+    .timeline-step.completed .step-icon {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-color: #10b981;
+        color: white;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .timeline-step.active .step-icon {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+        color: white;
+        animation: pulse-step 2s infinite;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .timeline-step.cancelled .step-icon {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        border-color: #ef4444;
+        color: white;
+    }
+
+    @@keyframes pulse-step {
+        0% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(102, 126, 234, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0); }
+    }
+
+    .step-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #6b7280;
+        text-align: center;
+        margin-bottom: 0.25rem;
+    }
+
+    .timeline-step.completed .step-title,
+    .timeline-step.active .step-title {
+        color: #1f2937;
+    }
+
+    .step-date {
+        font-size: 0.65rem;
+        color: #9ca3af;
+        text-align: center;
+    }
+
+    .timeline-step.completed .step-date {
+        color: #10b981;
+    }
+
+    /* Cancelled/Returned State */
+    .cancelled-banner {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border: 1px solid #fecaca;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .cancelled-banner i {
+        font-size: 2rem;
+        color: #ef4444;
+    }
+
+    .cancelled-banner .banner-text {
+        flex: 1;
+    }
+
+    .cancelled-banner .banner-title {
+        font-weight: 600;
+        color: #991b1b;
+    }
+
+    .cancelled-banner .banner-desc {
+        font-size: 0.875rem;
+        color: #b91c1c;
+    }
+
+    /* Tracking Info */
+    .tracking-info {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #bfdbfe;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .tracking-info-title {
+        font-weight: 600;
+        color: #1e40af;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .tracking-details {
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .tracking-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tracking-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    .tracking-value {
+        font-weight: 600;
+        color: #1e40af;
+    }
+
+    /* Action Buttons */
+    .action-buttons-section {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 1rem 1.5rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .action-btn i {
+        font-size: 1.25rem;
+    }
+
+    .action-btn.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .action-btn.primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .action-btn.success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .action-btn.success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .action-btn.outline {
+        background: white;
+        border-color: #e5e7eb;
+        color: #374151;
+    }
+
+    .action-btn.outline:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+    }
+
+    .action-btn.warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+
+    .action-btn.warning:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+    }
+
+    /* Order Summary */
+    .order-summary-section {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .summary-header {
+        background: #f8f9fa;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .summary-body {
+        padding: 1.5rem;
+    }
+
+    .order-items-table {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+
+    .order-items-table th {
+        text-align: left;
+        padding: 0.75rem;
+        background: #f9fafb;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #6b7280;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .order-items-table td {
+        padding: 1rem 0.75rem;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: middle;
+    }
+
+    .order-items-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .item-image {
+        width: 60px;
+        height: 60px;
+        border-radius: 0.5rem;
+        object-fit: cover;
+        background: #f3f4f6;
+    }
+
+    .item-details {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .item-name {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+    }
+
+    .item-variant {
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+
+    .totals-section {
+        border-top: 2px solid #e5e7eb;
+        padding-top: 1rem;
+    }
+
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+    }
+
+    .total-row.grand-total {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #059669;
+        border-top: 1px solid #e5e7eb;
+        padding-top: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    /* Delivery Info */
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .info-card {
+        background: #f9fafb;
+        border-radius: 0.75rem;
+        padding: 1rem;
+    }
+
+    .info-card-title {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .info-card-title i {
+        color: #667eea;
+    }
+
+    .info-item {
+        display: flex;
+        margin-bottom: 0.5rem;
+    }
+
+    .info-label {
+        color: #6b7280;
+        width: 100px;
+        flex-shrink: 0;
+        font-size: 0.875rem;
+    }
+
+    .info-value {
+        color: #1f2937;
+        font-weight: 500;
+        font-size: 0.875rem;
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] .timeline-section,
+    [data-theme="dark"] .action-buttons-section,
+    [data-theme="dark"] .order-summary-section {
+        background: #1f2937;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    [data-theme="dark"] .section-title,
+    [data-theme="dark"] .item-name,
+    [data-theme="dark"] .info-value {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .summary-header {
+        background: #111827;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .order-items-table th {
+        background: #111827;
+        color: #d1d5db;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .order-items-table td {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .info-card {
+        background: #111827;
+    }
+
+    [data-theme="dark"] .info-card-title {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .step-icon {
+        background: #374151;
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .order-timeline::before {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .action-btn.outline {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .totals-section,
+    [data-theme="dark"] .total-row.grand-total {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .tracking-info {
+        background: linear-gradient(135deg, #1e3a5f 0%, #1e3a8a 100%);
+        border-color: #3b82f6;
+    }
+
+    [data-theme="dark"] .tracking-info-title,
+    [data-theme="dark"] .tracking-value {
+        color: #93c5fd;
+    }
+
+    [data-theme="dark"] .cancelled-banner {
+        background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);
+        border-color: #991b1b;
+    }
+
+    [data-theme="dark"] .cancelled-banner .banner-title {
+        color: #fca5a5;
+    }
+
+    [data-theme="dark"] .cancelled-banner .banner-desc {
+        color: #fecaca;
+    }
+
+    /* Dark mode timeline text */
+    [data-theme="dark"] .step-title {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .timeline-step.completed .step-title,
+    [data-theme="dark"] .timeline-step.active .step-title {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .step-date {
+        color: #6b7280;
+    }
+
+    [data-theme="dark"] .timeline-step.completed .step-date {
+        color: #34d399;
+    }
+
+    [data-theme="dark"] .timeline-step.active .step-date {
+        color: #a5b4fc;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .order-timeline {
+            flex-direction: column;
+            padding: 0;
+            gap: 0;
+        }
+
+        .order-timeline::before {
+            top: 0;
+            bottom: 0;
+            left: 24px;
+            right: auto;
+            width: 4px;
+            height: auto;
+        }
+
+        .timeline-progress {
+            top: 0;
+            left: 24px;
+            width: 4px !important;
+            height: auto;
+        }
+
+        .timeline-step {
+            flex-direction: row;
+            max-width: 100%;
+            padding: 0.75rem 0;
+            gap: 1rem;
+        }
+
+        .step-icon {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+
+        .step-info {
+            text-align: left;
+        }
+
+        .step-title, .step-date {
+            text-align: left;
+        }
+
+        .action-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="container mt-4">
+    <!-- Order Header -->
+    <div class="order-header-card">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <div class="order-number">@Localizer["OrderNumber"]</div>
+                <div class="order-id-large">#@(Model.OrderNumber ?? Model.Id.ToString("D6"))</div>
+                <div class="order-date-info">
+                    <i class="far fa-calendar-alt me-1"></i>
+                    @Localizer["PlacedOn"] @Model.OrderDate.ToBangladeshShortDateString() @Localizer["At"] @Model.OrderDate.ToBangladeshString("hh:mm tt")
+                </div>
+            </div>
+            <div>
+                @if (isCancelled)
+                {
+                    <span class="status-badge-large bg-danger">
+                        <i class="fas fa-times-circle"></i> @Localizer["Cancelled"]
+                    </span>
+                }
+                else if (isReturned)
+                {
+                    <span class="status-badge-large bg-warning text-dark">
+                        <i class="fas fa-undo"></i> @Model.Status.GetDisplayName()
+                    </span>
+                }
+                else
+                {
+                    <span class="status-badge-large @GetStatusBadgeClass(Model.Status)">
+                        <i class="@GetStatusIcon(Model.Status)"></i> @Model.Status.GetDisplayName()
+                    </span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancelled/Returned Banner -->
+    @if (isCancelled)
+    {
+        <div class="cancelled-banner">
+            <i class="fas fa-times-circle"></i>
+            <div class="banner-text">
+                <div class="banner-title">@Localizer["OrderCancelled"]</div>
+                <div class="banner-desc">
+                    @if (Model.CancelledAt.HasValue)
+                    {
+                        <span>@Localizer["CancelledOn"] @Model.CancelledAt.Value.ToBangladeshShortDateString() @Localizer["At"] @Model.CancelledAt.Value.ToBangladeshString("hh:mm tt")</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.CancellationReason))
+                    {
+                        <span> - @Model.CancellationReason.FormatAsDisplayName()</span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else if (isReturned)
+    {
+        <div class="cancelled-banner warning-banner-gradient">
+            <i class="fas fa-undo" style="color: #d97706;"></i>
+            <div class="banner-text">
+                <div class="banner-title" style="color: #92400e;">@Localizer["ReturnInitiated"]</div>
+                <div class="banner-desc" style="color: #b45309;">
+                    @if (Model.ReturnedAt.HasValue)
+                    {
+                        <span>@Localizer["ReturnRequestedOn"] @Model.ReturnedAt.Value.ToBangladeshShortDateString()</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.ReturnReason))
+                    {
+                        <span> - @Model.ReturnReason.FormatAsDisplayName()</span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Timeline Section -->
+    @if (!isCancelled && !isReturned)
+    {
+        <div class="timeline-section">
+            <h5 class="section-title">
+                <i class="fas fa-route"></i> @Localizer["OrderTracking"]
+            </h5>
+
+            <div class="order-timeline">
+                <div class="timeline-progress" style="width: @(currentStep * 20)%;"></div>
+
+                @for (int i = 0; i < timelineSteps.Count; i++)
+                {
+                    var step = timelineSteps[i];
+                    var stepClass = "";
+                    if (i < currentStep) stepClass = "completed";
+                    else if (i == currentStep) stepClass = "active";
+
+                    <div class="timeline-step @stepClass">
+                        <div class="step-icon">
+                            <i class="fas @step.Icon"></i>
+                        </div>
+                        <div class="step-info">
+                            <div class="step-title">@step.Title</div>
+                            <div class="step-date">
+                                @if (step.Date.HasValue && (i <= currentStep))
+                                {
+                                    @step.Date.Value.ToBangladeshString("dd MMM")
+                                    <br />
+                                    @step.Date.Value.ToBangladeshString("hh:mm tt")
+                                }
+                                else
+                                {
+                                    <span>@Localizer["Pending"]</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Tracking Info -->
+            @if (Model.Status >= OrderStatus.Shipped && (!string.IsNullOrEmpty(Model.TrackingNumber) || !string.IsNullOrEmpty(Model.CourierName)))
+            {
+                <div class="tracking-info">
+                    <div class="tracking-info-title">
+                        <i class="fas fa-truck"></i> @Localizer["ShipmentDetails"]
+                    </div>
+                    <div class="tracking-details">
+                        @if (!string.IsNullOrEmpty(Model.CourierName))
+                        {
+                            <div class="tracking-item">
+                                <span class="tracking-label">@Localizer["Courier"]</span>
+                                <span class="tracking-value">@Model.CourierName</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.TrackingNumber))
+                        {
+                            <div class="tracking-item">
+                                <span class="tracking-label">@Localizer["TrackingNo"]</span>
+                                <span class="tracking-value">@Model.TrackingNumber</span>
+                            </div>
+                        }
+                        @if (Model.ShippedAt.HasValue)
+                        {
+                            <div class="tracking-item">
+                                <span class="tracking-label">@Localizer["ShippedDate"]</span>
+                                <span class="tracking-value">@Model.ShippedAt.Value.ToBangladeshShortDateString()</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Action Buttons -->
+    <div class="action-buttons-section">
+        <h5 class="section-title">
+            <i class="fas fa-bolt"></i> @Localizer["QuickActions"]
+        </h5>
+        <div class="action-grid">
+            <a href="@Url.Action("DownloadInvoice", "Home", new { id = Model.Id })" class="action-btn primary">
+                <i class="fas fa-file-invoice"></i>
+                <span>@Localizer["DownloadInvoice"]</span>
+            </a>
+
+            <a href="@Url.Action("ContactSeller", "Home", new { orderId = Model.Id })" class="action-btn success">
+                <i class="fas fa-headset"></i>
+                <span>@Localizer["ContactSupport"]</span>
+            </a>
+
+            @if (Model.Status == OrderStatus.Delivered && Model.DeliveredAt.HasValue &&
+                (DateTime.UtcNow - Model.DeliveredAt.Value).TotalDays <= 7)
+            {
+                <a asp-area="Identity" asp-page="/Account/Manage/OrderReturns" class="action-btn warning">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>@Localizer["ReturnReplace"]</span>
+                </a>
+            }
+
+            @if (Model.Status == OrderStatus.Pending)
+            {
+                <button type="button" class="action-btn outline" id="cancelOrderBtn" data-order-id="@Model.Id">
+                    <i class="fas fa-times"></i>
+                    <span>@Localizer["CancelOrder"]</span>
+                </button>
+            }
+
+            <a asp-action="Orders" class="action-btn outline">
+                <i class="fas fa-list"></i>
+                <span>@Localizer["AllOrders"]</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Order Summary -->
+    <div class="order-summary-section">
+        <div class="summary-header">
+            <h5 class="section-title mb-0">
+                <i class="fas fa-shopping-bag"></i> @Localizer["OrderSummary"]
+            </h5>
+        </div>
+        <div class="summary-body">
+            <table class="order-items-table">
+                <thead>
+                    <tr>
+                        <th>@Localizer["Product"]</th>
+                        <th class="text-center">@Localizer["Qty"]</th>
+                        <th class="text-end">@Localizer["Price"]</th>
+                        <th class="text-end">@Localizer["Total"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.OrderItems)
+                    {
+                        <tr>
+                            <td>
+                                <div class="item-details">
+                                    <img src="~/@(item.ProductImageUrl ?? item.Product?.ImageUrl ?? "images/products/noimage.jpg")"
+                                         alt="@item.ProductName" class="item-image" />
+                                    <div>
+                                        <div class="item-name">@item.ProductName</div>
+                                        @if (!string.IsNullOrEmpty(item.VariantInfo))
+                                        {
+                                            <div class="item-variant">@item.VariantInfo</div>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">@item.Quantity</td>
+                            <td class="text-end">@currencySymbol@item.UnitPrice.ToString("N0")</td>
+                            <td class="text-end fw-bold">@currencySymbol@item.TotalPrice.ToString("N0")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="totals-section">
+                <div class="total-row">
+                    <span class="text-muted">@Localizer["Subtotal"]</span>
+                    <span>@currencySymbol@Model.SubTotal.ToString("N0")</span>
+                </div>
+                @if (Model.DiscountAmount > 0)
+                {
+                    <div class="total-row text-success">
+                        <span>@Localizer["Discount"]</span>
+                        <span>-@currencySymbol@Model.DiscountAmount.ToString("N0")</span>
+                    </div>
+                }
+                @if (Model.RewardDiscountAmount > 0)
+                {
+                    <div class="total-row text-success">
+                        <span>@Localizer["RewardDiscount"]</span>
+                        <span>-@currencySymbol@Model.RewardDiscountAmount.ToString("N0")</span>
+                    </div>
+                }
+                @if (Model.PremiumDiscountAmount > 0)
+                {
+                    <div class="total-row text-success">
+                        <span>@Localizer["PremiumDiscount"]</span>
+                        <span>-@currencySymbol@Model.PremiumDiscountAmount.ToString("N0")</span>
+                    </div>
+                }
+                @if (Model.WalletAmountUsed > 0)
+                {
+                    <div class="total-row text-success">
+                        <span>@Localizer["WalletUsed"]</span>
+                        <span>-@currencySymbol@Model.WalletAmountUsed.ToString("N0")</span>
+                    </div>
+                }
+                <div class="total-row">
+                    <span class="text-muted">@Localizer["DeliveryCharge"]</span>
+                    <span>@(Model.FreeShippingApplied ? Localizer["FREE"].Value : currencySymbol + Model.DeliveryCharge.ToString("N0"))</span>
+                </div>
+                <div class="total-row grand-total">
+                    <span>@Localizer["Total"]</span>
+                    <span>@currencySymbol@Model.TotalAmount.ToString("N0")</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delivery & Payment Info -->
+    <div class="order-summary-section">
+        <div class="summary-header">
+            <h5 class="section-title mb-0">
+                <i class="fas fa-info-circle"></i> @Localizer["OrderInformation"]
+            </h5>
+        </div>
+        <div class="summary-body">
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-title">
+                        <i class="fas fa-map-marker-alt"></i> @Localizer["DeliveryAddress"]
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@Localizer["Name"]:</span>
+                        <span class="info-value">@Model.CustomerName</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@Localizer["Phone"]:</span>
+                        <span class="info-value">@Model.Phone</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@Localizer["Address"]:</span>
+                        <span class="info-value">@Model.Address</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.City))
+                    {
+                        <div class="info-item">
+                            <span class="info-label">@Localizer["City"]:</span>
+                            <span class="info-value">@Model.City</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.PostalCode))
+                    {
+                        <div class="info-item">
+                            <span class="info-label">@Localizer["Postal"]:</span>
+                            <span class="info-value">@Model.PostalCode</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="info-card">
+                    <div class="info-card-title">
+                        <i class="fas fa-credit-card"></i> @Localizer["PaymentDetails"]
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@Localizer["Method"]:</span>
+                        <span class="info-value">@Model.PaymentMethod.GetDisplayName()</span>
+                    </div>
+                    @{
+                        // Payment status logic:
+                        // - Cancelled/Returned orders: Show "Cancelled"
+                        // - Refunded orders: Show "Refunded"
+                        // - COD: Show "Paid" when order is Delivered
+                        // - Other payment methods: Show "Paid" when order is Confirmed or higher
+                        string paymentStatus;
+                        string paymentBadgeClass;
+
+                        if (Model.Status == OrderStatus.Cancelled || Model.Status == OrderStatus.Returned)
+                        {
+                            paymentStatus = Localizer["Cancelled"].Value;
+                            paymentBadgeClass = "bg-danger";
+                        }
+                        else if (Model.Status == OrderStatus.Refunded)
+                        {
+                            paymentStatus = Localizer["Refunded"].Value;
+                            paymentBadgeClass = "bg-info";
+                        }
+                        else if (Model.IsPaymentReceived ||
+                            (Model.PaymentMethod == PaymentMethod.CashOnDelivery && Model.Status >= OrderStatus.Delivered) ||
+                            (Model.PaymentMethod != PaymentMethod.CashOnDelivery && Model.Status >= OrderStatus.Confirmed))
+                        {
+                            paymentStatus = Localizer["Paid"].Value;
+                            paymentBadgeClass = "bg-success";
+                        }
+                        else
+                        {
+                            paymentStatus = Localizer["Pending"].Value;
+                            paymentBadgeClass = "bg-warning text-dark";
+                        }
+                    }
+                    <div class="info-item">
+                        <span class="info-label">@Localizer["Status"]:</span>
+                        <span class="info-value">
+                            <span class="badge @paymentBadgeClass">
+                                @paymentStatus
+                            </span>
+                        </span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.TransactionId))
+                    {
+                        <div class="info-item">
+                            <span class="info-label">@Localizer["Transaction"]:</span>
+                            <span class="info-value">@Model.TransactionId</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.CouponCode))
+                    {
+                        <div class="info-item">
+                            <span class="info-label">@Localizer["Coupon"]:</span>
+                            <span class="info-value text-success">@Model.CouponCode</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.Notes))
+            {
+                <div class="info-card mt-3">
+                    <div class="info-card-title">
+                        <i class="fas fa-sticky-note"></i> @Localizer["OrderNotes"]
+                    </div>
+                    <p class="mb-0 text-muted">@Model.Notes</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Refund Status Section - Only shown when order has a return request *@
+    @if (Model.Status == OrderStatus.Returned || Model.Status == OrderStatus.Refunded)
+    {
+        <div class="order-summary-section">
+            <div class="summary-header warning-banner-gradient">
+                <h5 class="section-title mb-0" style="color: #92400e;">
+                    <i class="fas fa-undo-alt"></i> @Localizer["ReturnRefundStatus"]
+                </h5>
+            </div>
+            <div class="summary-body">
+                <div class="info-grid">
+                    <div class="info-card info-card-green-gradient">
+                        <div class="info-card-title" style="color: #166534;">
+                            <i class="fas fa-info-circle"></i> @Localizer["RefundInformation"]
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">@Localizer["Status"]:</span>
+                            <span class="info-value">
+                                <span class="badge @GetRefundStatusBadgeClass(Model.RefundStatus)" style="font-size: 0.9rem;">
+                                    <i class="@GetRefundStatusIcon(Model.RefundStatus) me-1"></i>
+                                    @GetRefundStatusDisplayName(Model.RefundStatus)
+                                </span>
+                            </span>
+                        </div>
+                        @if (Model.RefundStatusChangedAt.HasValue)
+                        {
+                            <div class="info-item">
+                                <span class="info-label">@Localizer["Updated"]:</span>
+                                <span class="info-value">@Model.RefundStatusChangedAt.Value.ToBangladeshString()</span>
+                            </div>
+                        }
+                        @if (Model.ApprovedRefundAmount.HasValue && Model.RefundStatus == RefundStatus.Approved)
+                        {
+                            <div class="info-item">
+                                <span class="info-label">@Localizer["Amount"]:</span>
+                                <span class="info-value fw-bold text-success">@currencySymbol@((int)Math.Round(Model.ApprovedRefundAmount.Value))</span>
+                            </div>
+                        }
+                        @if (Model.PreferredRefundMethod.HasValue)
+                        {
+                            <div class="info-item">
+                                <span class="info-label">@Localizer["Method"]:</span>
+                                <span class="info-value">@GetRefundMethodDisplayName(Model.PreferredRefundMethod.Value)</span>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="info-card">
+                        <div class="info-card-title">
+                            <i class="fas fa-clipboard-list"></i> @Localizer["WhatsNext"]
+                        </div>
+                        @switch (Model.RefundStatus)
+                        {
+                            case RefundStatus.Pending:
+                                <p class="mb-0 text-muted small">
+                                    <i class="fas fa-clock text-warning me-1"></i>
+                                    @Localizer["RefundPendingMessage"]
+                                </p>
+                                break;
+                            case RefundStatus.Reviewing:
+                                <p class="mb-0 text-muted small">
+                                    <i class="fas fa-search text-info me-1"></i>
+                                    @Localizer["RefundReviewingMessage"]
+                                </p>
+                                break;
+                            case RefundStatus.InProgress:
+                                <p class="mb-0 text-muted small">
+                                    <i class="fas fa-spinner text-primary me-1"></i>
+                                    @Localizer["RefundInProgressMessage"]
+                                </p>
+                                break;
+                            case RefundStatus.Approved:
+                                @if (Model.PreferredRefundMethod == RefundMethod.WalletCredit)
+                                {
+                                    <p class="mb-0 text-success small">
+                                        <i class="fas fa-check-circle me-1"></i>
+                                        @Localizer["RefundWalletMessage"]
+                                    </p>
+                                }
+                                else
+                                {
+                                    <p class="mb-0 text-success small">
+                                        <i class="fas fa-check-circle me-1"></i>
+                                        @Localizer["RefundApprovedMessage"]
+                                    </p>
+                                }
+                                break;
+                            case RefundStatus.Rejected:
+                                <p class="mb-0 text-danger small">
+                                    <i class="fas fa-times-circle me-1"></i>
+                                    @Localizer["RefundRejectedMessage"]
+                                </p>
+                                break;
+                            case RefundStatus.Completed:
+                                <p class="mb-0 text-success small">
+                                    <i class="fas fa-check-double me-1"></i>
+                                    @Localizer["RefundCompletedMessage"]
+                                </p>
+                                break;
+                        }
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.ReturnReason))
+                {
+                    <div class="info-card mt-3">
+                        <div class="info-card-title">
+                            <i class="fas fa-comment-alt"></i> @Localizer["ReturnReason"]
+                        </div>
+                        <p class="mb-0 text-muted">@FormatReturnReasonDisplay(Model.ReturnReason)</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Cancel Order Modal -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="mb-3">
+                    <div class="info-card-red-gradient" style="width: 80px; height: 80px; margin: 0 auto; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-exclamation-triangle text-danger" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">@Localizer["CancelOrderQuestion"]</h4>
+                <p class="text-muted">@Localizer["CancelOrderConfirmMessage"] @Localizer["ActionCannotBeUndone"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">@Localizer["NoKeepIt"]</button>
+                <form asp-action="CancelOrder" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button type="submit" class="btn btn-danger px-4">@Localizer["YesCancel"]</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private string GetStatusBadgeClass(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Pending => "bg-warning text-dark",
+            OrderStatus.Confirmed => "bg-info",
+            OrderStatus.Paid => "bg-success",
+            OrderStatus.Processing => "bg-primary",
+            OrderStatus.Shipped => "bg-primary",
+            OrderStatus.OutForDelivery => "bg-info",
+            OrderStatus.Delivered => "bg-success",
+            OrderStatus.Cancelled => "bg-danger",
+            OrderStatus.Returned => "bg-warning text-dark",
+            OrderStatus.Refunded => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetStatusIcon(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Pending => "fas fa-clock",
+            OrderStatus.Confirmed => "fas fa-check",
+            OrderStatus.Paid => "fas fa-check-double",
+            OrderStatus.Processing => "fas fa-cog",
+            OrderStatus.Shipped => "fas fa-shipping-fast",
+            OrderStatus.OutForDelivery => "fas fa-truck",
+            OrderStatus.Delivered => "fas fa-check-circle",
+            OrderStatus.Cancelled => "fas fa-times-circle",
+            OrderStatus.Returned => "fas fa-undo",
+            OrderStatus.Refunded => "fas fa-money-bill-wave",
+            _ => "fas fa-info-circle"
+        };
+    }
+
+    private string GetRefundStatusBadgeClass(RefundStatus status)
+    {
+        return status switch
+        {
+            RefundStatus.Pending => "bg-warning text-dark",
+            RefundStatus.Reviewing => "bg-info",
+            RefundStatus.InProgress => "bg-primary",
+            RefundStatus.Approved => "bg-success",
+            RefundStatus.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetRefundStatusIcon(RefundStatus status)
+    {
+        return status switch
+        {
+            RefundStatus.Pending => "fas fa-clock",
+            RefundStatus.Reviewing => "fas fa-search",
+            RefundStatus.InProgress => "fas fa-spinner",
+            RefundStatus.Approved => "fas fa-check-circle",
+            RefundStatus.Rejected => "fas fa-times-circle",
+            _ => "fas fa-question-circle"
+        };
+    }
+
+    private string GetRefundStatusDisplayName(RefundStatus status)
+    {
+        return status switch
+        {
+            RefundStatus.Pending => Localizer["Pending"].Value,
+            RefundStatus.Reviewing => Localizer["UnderReview"].Value,
+            RefundStatus.InProgress => Localizer["Processing"].Value,
+            RefundStatus.Approved => Localizer["Approved"].Value,
+            RefundStatus.Rejected => Localizer["Rejected"].Value,
+            _ => status.ToString()
+        };
+    }
+
+    private string GetRefundMethodDisplayName(RefundMethod method)
+    {
+        return method switch
+        {
+            RefundMethod.WalletCredit => Localizer["WalletCredit"].Value,
+            RefundMethod.Bkash => "bKash",
+            RefundMethod.Nagad => "Nagad",
+            RefundMethod.Upay => "Upay",
+            RefundMethod.Rocket => "Rocket",
+            RefundMethod.BankTransfer => Localizer["BankTransfer"].Value,
+            RefundMethod.OriginalMethod => Localizer["OriginalPaymentMethod"].Value,
+            _ => method.ToString()
+        };
+    }
+
+    private string FormatReturnReasonDisplay(string? reason)
+    {
+        if (string.IsNullOrEmpty(reason)) return Localizer["NotSpecified"].Value;
+
+        var mappings = new Dictionary<string, string>
+        {
+            { "Damaged", Localizer["DamagedProduct"].Value },
+            { "WrongItem", Localizer["WrongItemReceived"].Value },
+            { "NotAsDescribed", Localizer["ProductNotAsDescribed"].Value },
+            { "QualityIssue", Localizer["QualityNotSatisfactory"].Value },
+            { "SizeIssue", Localizer["SizeFitIssue"].Value },
+            { "ChangedMind", Localizer["ChangedMind"].Value },
+            { "Other", Localizer["Other"].Value }
+        };
+
+        foreach (var m in mappings)
+        {
+            if (reason.StartsWith(m.Key + ":"))
+                return m.Value + ": " + reason.Substring(m.Key.Length + 1);
+            if (reason == m.Key)
+                return m.Value;
+        }
+        return reason;
+    }
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var cancelBtn = document.getElementById('cancelOrderBtn');
+            if (cancelBtn) {
+                var cancelModal = new bootstrap.Modal(document.getElementById('cancelOrderModal'));
+                cancelBtn.addEventListener('click', function() {
+                    cancelModal.show();
+                });
+            }
+        });
+    </script>
+}

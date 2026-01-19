@@ -1,0 +1,168 @@
+@model Bangaliyana.Models.Products
+@{
+    var avgRating = Model.Reviews?.Any() == true ? Model.Reviews.Average(r => r.Rating) : 0;
+    var reviewCount = Model.Reviews?.Count ?? 0;
+    var currencySymbol = ViewBag.CurrencySymbol as string ?? "৳";
+}
+
+<div class="row g-4">
+    <!-- Product Image -->
+    <div class="col-md-5">
+        <div class="quick-view-image-container">
+            @if (!string.IsNullOrEmpty(Model.ImageUrl))
+            {
+                <img src="~/@Model.ImageUrl" alt="@Model.Name" class="img-fluid rounded quick-view-img" />
+            }
+            else
+            {
+                <img src="~/images/no-image.png" alt="@Model.Name" class="img-fluid rounded quick-view-img" />
+            }
+
+            @if (Model.HasDiscount)
+            {
+                <span class="badge bg-danger position-absolute top-0 start-0 m-2">-@Model.DiscountPercentage%</span>
+            }
+
+            @if (!Model.IsAvailable || Model.Stock <= 0)
+            {
+                <div class="position-absolute top-50 start-50 translate-middle">
+                    <span class="badge bg-dark px-3 py-2">@Localizer["OutOfStock"]</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Product Details -->
+    <div class="col-md-7">
+        @if (Model.Category != null)
+        {
+            <span class="badge bg-success-subtle text-success mb-2">@Model.Category.Name</span>
+        }
+
+        <h4 class="fw-bold mb-2 quick-view-title">@Model.Name</h4>
+
+        <!-- Rating -->
+        <div class="mb-3">
+            <span class="text-warning">
+                @for (int i = 1; i <= 5; i++)
+                {
+                    if (i <= avgRating)
+                    {
+                        <i class="fas fa-star"></i>
+                    }
+                    else if (i - 0.5 <= avgRating)
+                    {
+                        <i class="fas fa-star-half-alt"></i>
+                    }
+                    else
+                    {
+                        <i class="far fa-star"></i>
+                    }
+                }
+            </span>
+            <span class="text-muted ms-2">(@reviewCount @Localizer["ReviewsLower"])</span>
+        </div>
+
+        <!-- Price -->
+        <div class="mb-3">
+            @if (Model.HasDiscount)
+            {
+                <span class="text-muted text-decoration-line-through fs-5 me-2">@currencySymbol@Model.Price.ToString("N0")</span>
+                <span class="text-danger fw-bold fs-4">@currencySymbol@Model.DiscountPrice?.ToString("N0")</span>
+            }
+            else
+            {
+                <span class="text-danger fw-bold fs-4">@currencySymbol@Model.Price.ToString("N0")</span>
+            }
+        </div>
+
+        <!-- Short Description -->
+        @if (!string.IsNullOrEmpty(Model.ShortDescription))
+        {
+            <p class="text-muted mb-3">@Model.ShortDescription</p>
+        }
+
+        <!-- Stock Status -->
+        <div class="mb-3">
+            @if (Model.IsAvailable && Model.Stock > 0)
+            {
+                <span class="text-success">
+                    <i class="fas fa-check-circle me-1"></i>
+                    @Localizer["InStock"]
+                    @if (Model.Stock <= 5)
+                    {
+                        <span class="text-warning ms-2">(@Localizer["OnlyXLeft", Model.Stock])</span>
+                    }
+                </span>
+            }
+            else
+            {
+                <span class="text-danger">
+                    <i class="fas fa-times-circle me-1"></i>
+                    @Localizer["OutOfStock"]
+                </span>
+            }
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="@Url.Action("Details", "Home", new { area = "Customer", id = Model.Id })" class="btn btn-outline-success">
+                <i class="fas fa-eye me-1"></i>@Localizer["ViewDetails"]
+            </a>
+
+            @if (Model.IsAvailable && Model.Stock > 0)
+            {
+                <button type="button" class="btn btn-success add-to-cart-btn" data-product-id="@Model.Id">
+                    <i class="fas fa-shopping-cart me-1"></i>@Localizer["AddToCart"]
+                </button>
+            }
+        </div>
+
+        <!-- Product Info -->
+        @if (Model.Category != null || !string.IsNullOrEmpty(Model.SKU) || !string.IsNullOrEmpty(Model.Tags))
+        {
+            <hr class="my-3" />
+            <div class="small text-muted">
+                @if (!string.IsNullOrEmpty(Model.SKU))
+                {
+                    <div><strong>@Localizer["SKU"]:</strong> @Model.SKU</div>
+                }
+                @if (Model.Category != null)
+                {
+                    <div><strong>@Localizer["Category"]:</strong> @Model.Category.Name</div>
+                }
+                @if (!string.IsNullOrEmpty(Model.Tags))
+                {
+                    <div><strong>@Localizer["Tags"]:</strong> @Model.Tags</div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .quick-view-image-container {
+        position: relative;
+        overflow: hidden;
+        border-radius: 0.5rem;
+    }
+
+    .quick-view-img {
+        width: 100%;
+        max-height: 350px;
+        object-fit: contain;
+        background-color: #f8f9fa;
+    }
+
+    .quick-view-title {
+        color: var(--text-color, #212529);
+    }
+
+    [data-theme="dark"] .quick-view-title {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .quick-view-img {
+        background-color: #2a2a3d;
+    }
+</style>

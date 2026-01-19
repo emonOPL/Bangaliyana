@@ -1,0 +1,249 @@
+@model IEnumerable<Bangaliyana.Models.SellerPaymentLog>
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = "Payment Processing Logs";
+    var currentPage = (int)(ViewBag.CurrentPage ?? 1);
+    var totalPages = (int)(ViewBag.TotalPages ?? 1);
+    var totalCount = (int)(ViewBag.TotalCount ?? 0);
+}
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Index")">Seller Payments</a></li>
+                    <li class="breadcrumb-item active">Logs</li>
+                </ol>
+            </nav>
+            <h4 class="mb-0"><i class="fas fa-clipboard-list text-primary me-2"></i>Payment Processing Logs</h4>
+            <p class="text-muted mb-0">View all payment processing activity and events</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Payments
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small mb-1">Total Logs</p>
+                            <h4 class="mb-0">@totalCount</h4>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-list text-primary fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card border-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small mb-1">Payments Created</p>
+                            <h4 class="mb-0">@Model.Count(l => l.LogType == Bangaliyana.Models.PaymentLogType.PaymentCreated)</h4>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-check-circle text-success fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small mb-1">Failures</p>
+                            <h4 class="mb-0">@Model.Count(l => l.LogType == Bangaliyana.Models.PaymentLogType.PaymentFailed || l.LogType == Bangaliyana.Models.PaymentLogType.Error)</h4>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-times-circle text-danger fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card border-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small mb-1">Manual Triggers</p>
+                            <h4 class="mb-0">@Model.Count(l => l.LogType == Bangaliyana.Models.PaymentLogType.ManualTrigger)</h4>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-play text-warning fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 160px;">Date/Time</th>
+                                <th style="width: 140px;">Type</th>
+                                <th>Message</th>
+                                <th style="width: 150px;">Details</th>
+                                <th style="width: 120px;">Triggered By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in Model)
+                            {
+                                var (badgeClass, icon) = log.LogType switch
+                                {
+                                    Bangaliyana.Models.PaymentLogType.ProcessingStarted => ("bg-info", "fa-play-circle"),
+                                    Bangaliyana.Models.PaymentLogType.ProcessingCompleted => ("bg-success", "fa-check-circle"),
+                                    Bangaliyana.Models.PaymentLogType.PaymentCreated => ("bg-primary", "fa-plus-circle"),
+                                    Bangaliyana.Models.PaymentLogType.PaymentFailed => ("bg-danger", "fa-times-circle"),
+                                    Bangaliyana.Models.PaymentLogType.StatusChanged => ("bg-secondary", "fa-exchange-alt"),
+                                    Bangaliyana.Models.PaymentLogType.ManualTrigger => ("bg-warning text-dark", "fa-hand-pointer"),
+                                    Bangaliyana.Models.PaymentLogType.Error => ("bg-danger", "fa-exclamation-triangle"),
+                                    _ => ("bg-secondary", "fa-info-circle")
+                                };
+                                <tr>
+                                    <td>
+                                        <small>@log.CreatedAt.ToBangladeshShortDateString()</small>
+                                        <br>
+                                        <small class="text-muted">@log.CreatedAt.ToBangladeshString("hh:mm:ss tt")</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge @badgeClass">
+                                            <i class="fas @icon me-1"></i>@log.LogType.GetDisplayName()
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span>@log.Message</span>
+                                        @if (log.SellerPayment != null)
+                                        {
+                                            <br>
+                                            <a href="@Url.Action("Details", new { id = log.SellerPaymentId })" class="small text-decoration-none">
+                                                <i class="fas fa-link me-1"></i>@log.SellerPayment.PaymentNumber
+                                            </a>
+                                        }
+                                        @if (log.Seller != null)
+                                        {
+                                            <br>
+                                            <small class="text-muted"><i class="fas fa-store me-1"></i>@log.Seller.ShopName</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(log.Details))
+                                        {
+                                            <small class="text-muted" title="@log.Details">
+                                                @(log.Details.Length > 50 ? log.Details.Substring(0, 50) + "..." : log.Details)
+                                            </small>
+                                        }
+                                        @if (log.TotalSellersProcessed.HasValue)
+                                        {
+                                            <div class="small">
+                                                <span class="text-muted">Processed:</span> @log.TotalSellersProcessed
+                                                @if (log.SuccessCount.HasValue)
+                                                {
+                                                    <span class="text-success ms-1"><i class="fas fa-check"></i> @log.SuccessCount</span>
+                                                }
+                                                @if (log.FailCount.HasValue && log.FailCount > 0)
+                                                {
+                                                    <span class="text-danger ms-1"><i class="fas fa-times"></i> @log.FailCount</span>
+                                                }
+                                            </div>
+                                        }
+                                        @if (log.TotalAmountProcessed.HasValue && log.TotalAmountProcessed > 0)
+                                        {
+                                            <small class="text-success fw-bold">BDT @((int)Math.Round(log.TotalAmountProcessed.Value))</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (log.TriggeredBy != null)
+                                        {
+                                            <small>@log.TriggeredBy.Email</small>
+                                        }
+                                        else if (log.LogType == Bangaliyana.Models.PaymentLogType.ProcessingStarted || log.LogType == Bangaliyana.Models.PaymentLogType.ProcessingCompleted)
+                                        {
+                                            <small class="text-muted"><i class="fas fa-robot me-1"></i>Scheduled</small>
+                                        }
+                                        else
+                                        {
+                                            <small class="text-muted">-</small>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No logs found.</p>
+                    <p class="text-muted small">Logs will appear here when payment processing runs.</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    @if (totalPages > 1)
+    {
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                    <a class="page-link" href="@Url.Action("Logs", new { page = currentPage - 1 })">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <a class="page-link" href="@Url.Action("Logs", new { page = i })">@i</a>
+                    </li>
+                }
+                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                    <a class="page-link" href="@Url.Action("Logs", new { page = currentPage + 1 })">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>
+
+<style>
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+    [data-theme="dark"] .table {
+        color: #e5e7eb;
+    }
+    [data-theme="dark"] .table-light {
+        background-color: #374151;
+        color: #e5e7eb;
+    }
+    [data-theme="dark"] .table-light th {
+        background-color: #374151;
+        color: #e5e7eb;
+    }
+</style>

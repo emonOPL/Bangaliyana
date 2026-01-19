@@ -1,0 +1,68 @@
+﻿@model Bangaliyana.Models.Order
+@using System.Globalization
+@using Bangaliyana.Extensions
+
+@{
+    ViewData["Title"] = "Confirmation";
+}
+
+<style>
+    @@media print {
+        .btn, .navbar, .footer {
+            display: none;
+        }
+    }
+</style>
+
+<h2 class="text-success">Order Confirmation</h2>
+
+<p>Thank you, @Model.CustomerName. Your order (#@Model.Id) has been placed on @Model.OrderDate.ToBangladeshString().</p>
+
+<p>Order #: @Model.Id</p>
+<p>Payment Method: @Model.PaymentMethod.GetDisplayName()</p>
+<p>Delivery Charge: @Model.DeliveryCharge.ToString("C", new CultureInfo("bn-BD"))</p>
+<p>Order Total (incl. delivery): @Model.TotalAmount.ToString("C", new CultureInfo("bn-BD"))</p>
+
+<h4>Items</h4>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Product</th>
+            <th>Unit</th>
+            <th>Qty</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var i in Model.OrderItems)
+        {
+            <tr>
+                <td>@i.ProductName</td>
+                <td>@i.UnitPrice.ToString("C", new CultureInfo("bn-BD"))</td>
+                <td>@i.Quantity</td>
+                <td>@i.TotalPrice.ToString("C", new CultureInfo("bn-BD"))</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="d-flex justify-content-center align-items-center gap-4 mt-5">
+    <a asp-action="Index" class="btn btn-outline-info">Back to Home</a>
+    <button class="btn btn-outline-success" onclick="window.print();">Print</button>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        $(document).ready(function () {
+            $(function(){
+                var saveMessage = '@TempData["success"]'
+                if(saveMessage != null && saveMessage != ""){
+                    alertify.success(saveMessage);
+                }
+            })
+        });
+    </script>
+}

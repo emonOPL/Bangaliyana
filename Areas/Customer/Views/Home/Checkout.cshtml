@@ -1,0 +1,1887 @@
+@model Bangaliyana.Models.CheckoutViewModel
+@using System.Globalization
+@using Bangaliyana.Extensions
+@using Bangaliyana.Models
+
+@{
+    ViewData["Title"] = Localizer["Checkout"].Value;
+    var currencySymbol = "৳";
+    var hasSavedAddresses = Model.SavedAddresses?.Any() == true;
+    var isCODAllowed = ViewBag.IsCODAllowed ?? true;
+    var codRestrictionReason = ViewBag.CODRestrictionReason as string;
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home", new { area = "Customer" })" class="text-decoration-none">@Localizer["Home"]</a></li>
+            <li class="breadcrumb-item"><a href="@Url.Action("Cart", "Home", new { area = "Customer" })" class="text-decoration-none">@Localizer["Cart"]</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Localizer["Checkout"]</li>
+        </ol>
+    </nav>
+
+    <h2 class="mb-4"><i class="fas fa-shopping-bag me-2"></i>@Localizer["Checkout"]</h2>
+
+    <div class="row g-4">
+        <!-- Left Column - Checkout Form -->
+        <div class="col-lg-7">
+            <form id="checkout-form" asp-action="Checkout" method="post" novalidate>
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="DeliveryCharge" id="delivery-charge-hidden" />
+                <input type="hidden" asp-for="UseSavedAddress" id="use-saved-address" />
+                <input type="hidden" asp-for="SelectedAddressId" id="selected-address-id" />
+                <input type="hidden" asp-for="SaveAddress" id="save-address-hidden" value="true" />
+                <input type="hidden" asp-for="SelectedDiscountRewardId" id="selected-discount-reward-id" />
+                <input type="hidden" asp-for="SelectedFreeShippingRewardId" id="selected-free-shipping-reward-id" />
+                <input type="hidden" asp-for="UseWalletBalance" id="use-wallet-balance" value="false" />
+                <input type="hidden" asp-for="WalletAmountToUse" id="wallet-amount-to-use" value="0" />
+
+                <!-- Validation Summary -->
+                <div id="validation-summary" class="alert alert-danger" style="display: none;">
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>@Localizer["PleaseFixErrors"]</h6>
+                    <ul id="validation-errors" class="mb-0"></ul>
+                </div>
+
+                <!-- Delivery Address Section -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>@Localizer["DeliveryAddress"]</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (hasSavedAddresses)
+                        {
+                            <!-- Saved Addresses -->
+                            <div id="saved-addresses-section">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="mb-0">@Localizer["SelectDeliveryAddress"]</h6>
+                                    <button type="button" class="btn btn-outline-success btn-sm" id="add-new-address-btn">
+                                        <i class="fas fa-plus me-1"></i>@Localizer["AddNewAddress"]
+                                    </button>
+                                </div>
+
+                                <div class="row g-3" id="address-cards">
+                                    @foreach (var address in Model.SavedAddresses)
+                                    {
+                                        <div class="col-md-6">
+                                            <div class="card address-card @(address.Id == Model.SelectedAddressId ? "selected" : "")"
+                                                 data-address-id="@address.Id"
+                                                 data-division-id="@address.DivisionId"
+                                                 data-district-id="@address.DistrictId"
+                                                 data-division-name="@address.Division?.Name">
+                                                <div class="card-body p-3">
+                                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                                        <div>
+                                                            <span class="badge @(address.AddressType == AddressType.Home ? "bg-primary" : address.AddressType == AddressType.Office ? "bg-info" : "bg-secondary") me-1">
+                                                                <i class="fas @(address.AddressType == AddressType.Home ? "fa-home" : address.AddressType == AddressType.Office ? "fa-building" : "fa-map-pin") me-1"></i>
+                                                                @address.AddressType
+                                                            </span>
+                                                            @if (address.IsDefault)
+                                                            {
+                                                                <span class="badge bg-success">@Localizer["Default"]</span>
+                                                            }
+                                                        </div>
+                                                        <div class="address-actions">
+                                                            <button type="button" class="btn btn-sm btn-link text-muted p-0 edit-address-btn" data-address-id="@address.Id" title="Edit">
+                                                                <i class="fas fa-edit"></i>
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 delete-address-btn" data-address-id="@address.Id" title="Delete">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <h6 class="mb-1">@address.RecipientName</h6>
+                                                    <p class="text-muted small mb-1">@address.Phone</p>
+                                                    <p class="small mb-0 address-text">
+                                                        @address.FullAddress@(address.Upazila != null ? $", {address.Upazila.Name}" : "")@(address.District != null ? $", {address.District.Name}" : "")@(address.Division != null ? $", {address.Division.Name}" : "")
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <!-- New Address Form (hidden if saved addresses exist) -->
+                        <div id="new-address-section" style="@(hasSavedAddresses ? "display: none;" : "")">
+                            @if (hasSavedAddresses)
+                            {
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="mb-0">@Localizer["AddNewAddress"]</h6>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="cancel-new-address-btn">
+                                        <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                                    </button>
+                                </div>
+                            }
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="CustomerName" class="form-label">@Localizer["FullName"] <span class="text-danger">*</span></label>
+                                    <input asp-for="CustomerName" class="form-control" placeholder="@Localizer["EnterRecipientName"]" />
+                                    <span asp-validation-for="CustomerName" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="Phone" class="form-label">@Localizer["Phone"] <span class="text-danger">*</span></label>
+                                    <input asp-for="Phone" class="form-control" placeholder="01XXXXXXXXX" />
+                                    <span asp-validation-for="Phone" class="text-danger small"></span>
+                                </div>
+                                <div class="col-12">
+                                    <label asp-for="Email" class="form-label">@Localizer["Email"] <span class="text-danger">*</span></label>
+                                    <input asp-for="Email" class="form-control" type="email" placeholder="your@email.com" />
+                                    <span asp-validation-for="Email" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <!-- Address Fields -->
+                            <div class="mt-3">
+                                @{
+                                    ViewData["DivisionField"] = "DivisionId";
+                                    ViewData["DistrictField"] = "DistrictId";
+                                    ViewData["UpazilaField"] = "UpazilaId";
+                                    ViewData["AddressField"] = "Address";
+                                    ViewData["PostalCodeField"] = "PostalCode";
+
+                                    ViewData["SelectedDivision"] = Model.DivisionId?.ToString() ?? "";
+                                    ViewData["SelectedDistrict"] = Model.DistrictId?.ToString() ?? "";
+                                    ViewData["SelectedUpazila"] = Model.UpazilaId?.ToString() ?? "";
+                                    ViewData["AddressValue"] = Model.Address ?? "";
+                                    ViewData["PostalCodeValue"] = Model.PostalCode ?? "";
+                                    ViewData["IsCheckout"] = "true";
+                                }
+                                @await Html.PartialAsync("_AddressFields")
+                            </div>
+
+                            <!-- Save Address Checkbox -->
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox" id="save-address-checkbox" checked>
+                                <label class="form-check-label" for="save-address-checkbox">
+                                    @Localizer["SaveAddressForFuture"]
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delivery Instructions -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-sticky-note me-2"></i>@Localizer["DeliveryInstructions"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <textarea asp-for="DeliveryInstructions" class="form-control" rows="2"
+                                  placeholder="@Localizer["DeliveryInstructionsPlaceholder"]"></textarea>
+                        <small class="text-muted">@Localizer["Max500Characters"]</small>
+                    </div>
+                </div>
+
+                <!-- Payment Method Section -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>@Localizer["PaymentMethod"]</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!isCODAllowed)
+                        {
+                            <div class="alert alert-warning mb-3">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>@Localizer["CODRestricted"]:</strong> @Localizer["CODNotAvailable"]
+                                @if (!string.IsNullOrEmpty(codRestrictionReason))
+                                {
+                                    <br /><small class="text-muted">Reason: @codRestrictionReason</small>
+                                }
+                            </div>
+                        }
+                        <div class="row g-3" id="payment-method-section">
+                            <!-- Cash on Delivery -->
+                            <div class="col-md-6 col-lg-4">
+                                @if (isCODAllowed)
+                                {
+                                    <div class="payment-option @(Model.PaymentMethod == PaymentMethod.CashOnDelivery ? "selected" : "")" data-method="CashOnDelivery">
+                                        <input class="form-check-input d-none" type="radio" name="PaymentMethod" value="CashOnDelivery"
+                                               id="pm_CashOnDelivery" @(Model.PaymentMethod == PaymentMethod.CashOnDelivery ? "checked" : "") />
+                                        <label class="payment-label" for="pm_CashOnDelivery">
+                                            <div class="payment-logo">
+                                                <img src="~/images/logos/cod-logo.png" alt="Cash on Delivery" />
+                                            </div>
+                                            <span>Cash on Delivery</span>
+                                        </label>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="payment-option disabled" data-method="CashOnDelivery" data-bs-toggle="tooltip" data-bs-placement="top" title="COD is not available for your account">
+                                        <label class="payment-label">
+                                            <div class="payment-logo disabled-logo">
+                                                <img src="~/images/logos/cod-logo.png" alt="Cash on Delivery" />
+                                            </div>
+                                            <span>Cash on Delivery</span>
+                                            <small class="text-danger d-block mt-1"><i class="fas fa-ban"></i> Restricted</small>
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- bKash -->
+                            <div class="col-md-6 col-lg-4">
+                                <div class="payment-option @(Model.PaymentMethod == PaymentMethod.bKash ? "selected" : "")" data-method="bKash">
+                                    <input class="form-check-input d-none" type="radio" name="PaymentMethod" value="bKash"
+                                           id="pm_bKash" @(Model.PaymentMethod == PaymentMethod.bKash ? "checked" : "") />
+                                    <label class="payment-label" for="pm_bKash">
+                                        <div class="payment-logo">
+                                            <img src="~/images/logos/bkash-logo.png" alt="bKash" />
+                                        </div>
+                                        <span>bKash</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Nagad -->
+                            <div class="col-md-6 col-lg-4">
+                                <div class="payment-option @(Model.PaymentMethod == PaymentMethod.Nagad ? "selected" : "")" data-method="Nagad">
+                                    <input class="form-check-input d-none" type="radio" name="PaymentMethod" value="Nagad"
+                                           id="pm_Nagad" @(Model.PaymentMethod == PaymentMethod.Nagad ? "checked" : "") />
+                                    <label class="payment-label" for="pm_Nagad">
+                                        <div class="payment-logo">
+                                            <img src="~/images/logos/nagad-logo.png" alt="Nagad" />
+                                        </div>
+                                        <span>Nagad</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Rocket -->
+                            <div class="col-md-6 col-lg-4">
+                                <div class="payment-option @(Model.PaymentMethod == PaymentMethod.Rocket ? "selected" : "")" data-method="Rocket">
+                                    <input class="form-check-input d-none" type="radio" name="PaymentMethod" value="Rocket"
+                                           id="pm_Rocket" @(Model.PaymentMethod == PaymentMethod.Rocket ? "checked" : "") />
+                                    <label class="payment-label" for="pm_Rocket">
+                                        <div class="payment-logo">
+                                            <img src="~/images/logos/rocket-logo.png" alt="Rocket" />
+                                        </div>
+                                        <span>Rocket</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Upay -->
+                            <div class="col-md-6 col-lg-4">
+                                <div class="payment-option @(Model.PaymentMethod == PaymentMethod.Upay ? "selected" : "")" data-method="Upay">
+                                    <input class="form-check-input d-none" type="radio" name="PaymentMethod" value="Upay"
+                                           id="pm_Upay" @(Model.PaymentMethod == PaymentMethod.Upay ? "checked" : "") />
+                                    <label class="payment-label" for="pm_Upay">
+                                        <div class="payment-logo">
+                                            <img src="~/images/logos/upay-logo.png" alt="Upay" />
+                                        </div>
+                                        <span>Upay</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Credit/Debit Card -->
+                            <div class="col-md-6 col-lg-4">
+                                <div class="payment-option @(Model.PaymentMethod == PaymentMethod.CreditDebitCard ? "selected" : "")" data-method="CreditDebitCard">
+                                    <input class="form-check-input d-none" type="radio" name="PaymentMethod" value="CreditDebitCard"
+                                           id="pm_CreditDebitCard" @(Model.PaymentMethod == PaymentMethod.CreditDebitCard ? "checked" : "") />
+                                    <label class="payment-label" for="pm_CreditDebitCard">
+                                        <div class="payment-icon card-payment">
+                                            <i class="fas fa-credit-card"></i>
+                                        </div>
+                                        <span>Card Payment</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mobile Banking Details (shown for bKash, Nagad, Rocket) -->
+                        <div id="mobile-banking-details" class="mt-4" style="display: none;">
+                            <div class="alert alert-info alert-permanent" id="mfs-instructions">
+                                <h6 class="alert-heading"><i class="fas fa-info-circle me-2"></i>@Localizer["MobileBankingInstructions"]</h6>
+                                <ol class="mb-2 small">
+                                    <li>Send the total amount to our <span id="mfs-provider">bKash</span> number: <strong id="mfs-number">@ViewBag.BkashNumber</strong></li>
+                                    <li>Enter your mobile number and transaction ID below</li>
+                                    <li>We will verify your payment and confirm your order</li>
+                                </ol>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="MobileBankingNumber" class="form-label">@Localizer["YourMobileNumber"] <span class="text-danger">*</span></label>
+                                    <input asp-for="MobileBankingNumber" class="form-control" id="MobileBankingNumber" placeholder="01XXXXXXXXX" />
+                                    <span asp-validation-for="MobileBankingNumber" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="TransactionId" class="form-label">@Localizer["TransactionIDTrxID"] <span class="text-danger">*</span></label>
+                                    <input asp-for="TransactionId" class="form-control" id="TransactionId" placeholder="@Localizer["EnterTransactionID"]" />
+                                    <span asp-validation-for="TransactionId" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Payment Info (shown for Credit/Debit Card) -->
+                        <div id="card-payment-info" class="mt-4" style="display: none;">
+                            <div class="alert alert-info alert-permanent">
+                                <h6 class="alert-heading"><i class="fas fa-credit-card me-2"></i>@Localizer["CardPaymentInfo"]</h6>
+                                <p class="mb-2 small">You will be redirected to our secure payment gateway (SSLCommerz) to complete your payment.</p>
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <span class="small text-muted me-2">Accepted Cards:</span>
+                                    <i class="fab fa-cc-visa fa-2x text-primary"></i>
+                                    <i class="fab fa-cc-mastercard fa-2x text-warning"></i>
+                                    <i class="fab fa-cc-amex fa-2x text-info"></i>
+                                    <img src="https://www.sslcommerz.com/wp-content/uploads/2021/11/logo.png" alt="SSLCommerz" style="height: 24px;" onerror="this.style.display='none'" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <span asp-validation-for="PaymentMethod" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <!-- Rewards & Wallet Section (only show if user has any rewards/wallet) -->
+                @if (Model.AvailableFreeShippingVouchers.Any() || Model.AvailableDiscountVouchers.Any() || Model.AvailableWalletBalance > 0 || Model.IsPremiumMember)
+                {
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0"><i class="fas fa-gift me-2"></i>@Localizer["RewardsAndWallet"]</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Premium Member Badge -->
+                            @if (Model.IsPremiumMember)
+                            {
+                                <div class="alert alert-success mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-crown fa-2x text-warning me-3"></i>
+                                        <div>
+                                            <strong>@Localizer["PremiumMember"]</strong>
+                                            <p class="mb-0 small">
+                                                <i class="fas fa-truck me-1"></i>@Localizer["FreeShippingOnAllOrders"]
+                                                @if (Model.HasActivePremiumDiscount)
+                                                {
+                                                    <span class="ms-2"><i class="fas fa-percent me-1"></i>5% discount active</span>
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Free Shipping Vouchers -->
+                            @if (Model.AvailableFreeShippingVouchers.Any() && !Model.IsPremiumMember)
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold"><i class="fas fa-truck me-2"></i>@Localizer["FreeShippingVouchers"]</label>
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <div class="voucher-option" data-voucher-id="0" data-type="shipping">
+                                                <input type="radio" name="free-shipping-voucher" value="0" id="no-shipping-voucher" checked class="d-none" />
+                                                <label for="no-shipping-voucher" class="voucher-label">
+                                                    <i class="fas fa-times-circle text-muted me-2"></i>
+                                                    <span>@Localizer["NoFreeShipping"]</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        @foreach (var voucher in Model.AvailableFreeShippingVouchers)
+                                        {
+                                            <div class="col-md-6">
+                                                <div class="voucher-option" data-voucher-id="@voucher.Id" data-type="shipping">
+                                                    <input type="radio" name="free-shipping-voucher" value="@voucher.Id" id="shipping-voucher-@voucher.Id" class="d-none" />
+                                                    <label for="shipping-voucher-@voucher.Id" class="voucher-label">
+                                                        <i class="fas fa-truck text-success me-2"></i>
+                                                        <div>
+                                                            <span>@voucher.RewardName</span>
+                                                            <small class="text-muted d-block">Expires: @voucher.ExpiresAt.ToString("MMM dd, yyyy")</small>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Discount Vouchers -->
+                            @if (Model.AvailableDiscountVouchers.Any())
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold"><i class="fas fa-tag me-2"></i>@Localizer["DiscountVouchers"]</label>
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <div class="voucher-option selected" data-voucher-id="0" data-type="discount" data-amount="0" data-min="0">
+                                                <input type="radio" name="discount-voucher" value="0" id="no-discount-voucher" checked class="d-none" />
+                                                <label for="no-discount-voucher" class="voucher-label">
+                                                    <i class="fas fa-times-circle text-muted me-2"></i>
+                                                    <span>@Localizer["NoDiscountVoucher"]</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        @foreach (var voucher in Model.AvailableDiscountVouchers)
+                                        {
+                                            <div class="col-md-6">
+                                                <div class="voucher-option" data-voucher-id="@voucher.Id" data-type="discount" data-amount="@(voucher.DiscountAmount ?? 0)" data-min="@(voucher.MinimumOrderAmount ?? 0)">
+                                                    <input type="radio" name="discount-voucher" value="@voucher.Id" id="discount-voucher-@voucher.Id" class="d-none" />
+                                                    <label for="discount-voucher-@voucher.Id" class="voucher-label">
+                                                        <i class="fas fa-tag text-danger me-2"></i>
+                                                        <div>
+                                                            <span>@voucher.RewardName</span>
+                                                            @if (voucher.MinimumOrderAmount.HasValue && voucher.MinimumOrderAmount > 0)
+                                                            {
+                                                                <small class="text-muted d-block">Min order: @currencySymbol@voucher.MinimumOrderAmount.Value.ToString("N0")</small>
+                                                            }
+                                                            <small class="text-muted d-block">Expires: @voucher.ExpiresAt.ToString("MMM dd, yyyy")</small>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Wallet Balance -->
+                            @if (Model.AvailableWalletBalance > 0)
+                            {
+                                <div class="mb-0">
+                                    <label class="form-label fw-bold"><i class="fas fa-wallet me-2"></i>@Localizer["WalletBalance"]</label>
+                                    <div class="d-flex align-items-center">
+                                        <div class="form-check me-3">
+                                            <input class="form-check-input" type="checkbox" id="use-wallet-checkbox">
+                                            <label class="form-check-label" for="use-wallet-checkbox">
+                                                @Localizer["UseWalletBalance"]
+                                            </label>
+                                        </div>
+                                        <span class="badge bg-success fs-6">@currencySymbol@Math.Round(Model.AvailableWalletBalance).ToString("N0") available</span>
+                                    </div>
+                                    <div id="wallet-amount-section" class="mt-2" style="display: none;">
+                                        <div class="input-group" style="max-width: 250px;">
+                                            <span class="input-group-text">@currencySymbol</span>
+                                            <input type="number" class="form-control" id="wallet-amount-input"
+                                                   min="0" max="@Math.Round(Model.AvailableWalletBalance)" step="1"
+                                                   value="@Math.Round(Model.AvailableWalletBalance)" placeholder="Amount to use" />
+                                            <button type="button" class="btn btn-outline-success" id="use-full-wallet-btn">Max</button>
+                                        </div>
+                                        <small class="text-muted">Enter amount to use (max: @currencySymbol@Math.Round(Model.AvailableWalletBalance).ToString("N0"))</small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </form>
+        </div>
+
+        <!-- Right Column - Order Summary -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm sticky-top" style="top: 20px; overflow: visible;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-receipt me-2"></i>@Localizer["OrderSummary"]</h5>
+                </div>
+                <div class="card-body" style="overflow: visible;">
+                    <!-- Cart Items -->
+                    <div class="order-items mb-3">
+                        @foreach (var item in Model.CartItems)
+                        {
+                            var itemPrice = item.EffectivePrice;
+                            var hasDiscount = item.Product.HasDiscount;
+                            <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
+                                <div class="position-relative me-3 product-img-wrapper">
+                                    @if (!string.IsNullOrEmpty(item.Product.ImageUrl))
+                                    {
+                                        <img src="~/@item.Product.ImageUrl" alt="@item.Product.Name"
+                                             class="rounded" style="width: 60px; height: 60px; object-fit: cover;" />
+                                    }
+                                    else
+                                    {
+                                        <img src="~/images/no-image.png" alt="@item.Product.Name"
+                                             class="rounded" style="width: 60px; height: 60px; object-fit: cover;" />
+                                    }
+                                    <span class="position-absolute badge rounded-pill bg-success qty-badge">
+                                        @item.Quantity
+                                    </span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-0 small">@item.Product.Name</h6>
+                                    @if (!string.IsNullOrEmpty(item.VariantInfo))
+                                    {
+                                        <small class="text-muted d-block"><i class="fas fa-tag me-1"></i>@item.VariantInfo</small>
+                                    }
+                                    <div>
+                                        <small class="text-success">@(currencySymbol)@itemPrice.ToString("N0")</small>
+                                        @if (hasDiscount)
+                                        {
+                                            <small class="text-muted text-decoration-line-through ms-1">@(currencySymbol)@item.Product.Price.ToString("N0")</small>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <strong>@(currencySymbol)@((itemPrice * item.Quantity).ToString("N0"))</strong>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Order Totals -->
+                    <div class="order-totals">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Subtotal (@Model.CartItems.Sum(i => i.Quantity) items)</span>
+                            <span id="cart-subtotal">@(currencySymbol)@Model.CartTotal.ToString("N0")</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2" id="delivery-charge-row">
+                            <span class="text-muted">@Localizer["DeliveryCharge"]</span>
+                            <span id="delivery-charge-display">@(currencySymbol)@Model.DeliveryCharge.ToString("N0")</span>
+                        </div>
+                        @{
+                            var appliedCoupon = ViewBag.AppliedCoupon as Bangaliyana.Models.Coupon;
+                            var couponDiscountAmount = ViewBag.CouponDiscountAmount as decimal? ?? 0m;
+                        }
+                        <!-- Coupon Discount (from cart) -->
+                        @if (appliedCoupon != null && couponDiscountAmount > 0)
+                        {
+                            <div class="d-flex justify-content-between mb-2 text-success" id="coupon-discount-row">
+                                <span><i class="fas fa-ticket-alt me-1"></i>Coupon (@appliedCoupon.Code)</span>
+                                <span id="coupon-discount-display">-@(currencySymbol)@couponDiscountAmount.ToString("N0")</span>
+                            </div>
+                        }
+                        <!-- Premium Discount (5% - shows only if premium and within first week) -->
+                        <div class="d-flex justify-content-between mb-2 text-success" id="premium-discount-row" style="display: none !important;">
+                            <span><i class="fas fa-crown me-1"></i>Premium Discount (5%)</span>
+                            <span id="premium-discount-display">-@(currencySymbol)0</span>
+                        </div>
+                        <!-- Discount Voucher -->
+                        <div class="d-flex justify-content-between mb-2 text-danger" id="voucher-discount-row" style="display: none !important;">
+                            <span><i class="fas fa-tag me-1"></i>Voucher Discount</span>
+                            <span id="voucher-discount-display">-@(currencySymbol)0</span>
+                        </div>
+                        <!-- Wallet Applied -->
+                        <div class="d-flex justify-content-between mb-2 text-info" id="wallet-discount-row" style="display: none !important;">
+                            <span><i class="fas fa-wallet me-1"></i>Wallet Applied</span>
+                            <span id="wallet-discount-display">-@(currencySymbol)0</span>
+                        </div>
+                        <hr />
+                        <div class="d-flex justify-content-between mb-3">
+                            <strong class="fs-5">@Localizer["Total"]</strong>
+                            <strong class="fs-5 text-success" id="grand-total">@(currencySymbol)@Model.GrandTotal.ToString("N0")</strong>
+                        </div>
+                        @if (Model.IsPremiumMember || Model.AvailableFreeShippingVouchers.Any() || Model.AvailableDiscountVouchers.Any() || Model.AvailableWalletBalance > 0)
+                        {
+                            <div class="text-center">
+                                <small class="text-success" id="savings-message" style="display: none;">
+                                    <i class="fas fa-piggy-bank me-1"></i>You're saving <span id="total-savings">@(currencySymbol)0</span>!
+                                </small>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Place Order Button -->
+                    <button type="submit" form="checkout-form" id="place-order-btn" class="btn btn-success btn-lg w-100">
+                        <span id="btn-text"><i class="fas fa-lock me-2"></i>@Localizer["PlaceOrder"]</span>
+                        <span id="btn-spinner" class="d-none">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            @Localizer["Processing"]
+                        </span>
+                    </button>
+
+                    <p class="text-muted small text-center mt-3 mb-0">
+                        <i class="fas fa-shield-alt me-1"></i>
+                        @Localizer["PaymentSecure"]
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Address Modal -->
+<div class="modal fade" id="addressModal" tabindex="-1" aria-labelledby="addressModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="addressModalLabel"><i class="fas fa-map-marker-alt me-2"></i>Add New Address</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="address-form">
+                    <input type="hidden" id="address-id" value="0" />
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Address Label <span class="text-danger">*</span></label>
+                            <input type="text" id="address-label" class="form-control" placeholder="e.g., Home, Office" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Address Type</label>
+                            <select id="address-type" class="form-select">
+                                <option value="0">Home</option>
+                                <option value="1">Office</option>
+                                <option value="2">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Recipient Name <span class="text-danger">*</span></label>
+                            <input type="text" id="modal-recipient-name" class="form-control" placeholder="Full name" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone <span class="text-danger">*</span></label>
+                            <input type="tel" id="modal-phone" class="form-control" placeholder="01XXXXXXXXX" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Division <span class="text-danger">*</span></label>
+                            <select id="modal-division" class="form-select" required>
+                                <option value="">Select Division</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">District <span class="text-danger">*</span></label>
+                            <select id="modal-district" class="form-select" required>
+                                <option value="">Select District</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Upazila <span class="text-danger">*</span></label>
+                            <select id="modal-upazila" class="form-select" required>
+                                <option value="">Select Upazila</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Postal Code</label>
+                            <input type="text" id="modal-postal-code" class="form-control" placeholder="Postal code" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Full Address <span class="text-danger">*</span></label>
+                            <textarea id="modal-full-address" class="form-control" rows="2" placeholder="House/Road/Village details" required></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="modal-is-default">
+                                <label class="form-check-label" for="modal-is-default">
+                                    Set as default address
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="save-address-btn">
+                    <i class="fas fa-save me-1"></i>Save Address
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .address-card {
+        cursor: pointer;
+        border: 2px solid #dee2e6;
+        transition: all 0.2s ease;
+    }
+    .address-card:hover {
+        border-color: #198754;
+        box-shadow: 0 0.25rem 0.5rem rgba(25, 135, 84, 0.15);
+    }
+    .address-card.selected {
+        border-color: #198754;
+        background-color: rgba(25, 135, 84, 0.05);
+    }
+    .address-card.selected::before {
+        content: '\f00c';
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 900;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        color: #198754;
+        font-size: 1.2rem;
+    }
+    .address-text {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .address-actions {
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .address-card:hover .address-actions {
+        opacity: 1;
+    }
+
+    .payment-option {
+        border: 2px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+    }
+    .payment-option:hover {
+        border-color: #198754;
+        background-color: rgba(25, 135, 84, 0.05);
+    }
+    .payment-option.selected {
+        border-color: #198754;
+        background-color: rgba(25, 135, 84, 0.1);
+    }
+    .payment-option.disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background-color: #f8f9fa;
+        border-color: #dc3545;
+    }
+    .payment-option.disabled:hover {
+        border-color: #dc3545;
+        background-color: #f8f9fa;
+    }
+    .payment-option.disabled .payment-label {
+        cursor: not-allowed;
+    }
+    .payment-icon.disabled-icon {
+        background: linear-gradient(135deg, #6c757d, #495057);
+    }
+    .payment-label {
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0;
+    }
+    .payment-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        background: linear-gradient(135deg, #198754, #157347);
+        color: white;
+    }
+    .payment-icon.bkash {
+        background: linear-gradient(135deg, #E2136E, #C11F69);
+    }
+    .payment-icon.nagad {
+        background: linear-gradient(135deg, #F6921E, #EF4823);
+    }
+    .payment-icon.rocket {
+        background: linear-gradient(135deg, #8C3494, #662D91);
+    }
+    .payment-icon.upay {
+        background: linear-gradient(135deg, #00A651, #008C44);
+    }
+    .payment-icon.card-payment {
+        background: linear-gradient(135deg, #1A1F71, #0D47A1);
+    }
+    .payment-logo {
+        width: 60px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    .payment-logo img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    .payment-logo.disabled-logo {
+        opacity: 0.5;
+        filter: grayscale(100%);
+    }
+
+    .order-items {
+        max-height: 350px;
+        overflow-y: auto;
+        overflow-x: visible;
+        padding-top: 12px;
+        margin-top: -12px;
+    }
+
+    .product-img-wrapper {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        flex-shrink: 0;
+    }
+
+    .qty-badge {
+        top: -8px;
+        right: -8px;
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+        z-index: 1;
+    }
+
+    /* Dark mode styles */
+    [data-theme="dark"] .card {
+        background-color: var(--bg-secondary, #2a2a3d);
+        border-color: #444;
+    }
+
+    [data-theme="dark"] .card-body {
+        background-color: var(--bg-secondary, #2a2a3d);
+    }
+
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+        background-color: var(--bg-tertiary, #1e1e2e);
+        border-color: #444;
+        color: var(--text-primary, #e0e0e0);
+    }
+
+    [data-theme="dark"] .form-control:focus,
+    [data-theme="dark"] .form-select:focus,
+    [data-theme="dark"] textarea.form-control:focus {
+        background-color: var(--bg-tertiary, #1e1e2e);
+        border-color: #198754;
+        color: var(--text-primary, #e0e0e0);
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+    }
+
+    [data-theme="dark"] .alert-info {
+        background-color: rgba(13, 202, 240, 0.1);
+        border-color: rgba(13, 202, 240, 0.3);
+        color: #6edff6;
+    }
+
+    [data-theme="dark"] .modal-content {
+        background-color: var(--bg-secondary, #2a2a3d);
+        border-color: #444;
+    }
+
+    [data-theme="dark"] .modal-body {
+        background-color: var(--bg-secondary, #2a2a3d);
+    }
+
+    [data-theme="dark"] .modal-footer {
+        background-color: var(--bg-secondary, #2a2a3d);
+        border-color: #444;
+    }
+
+    [data-theme="dark"] .address-card {
+        border-color: #444;
+        background-color: #2a2a3d;
+    }
+    [data-theme="dark"] .address-card:hover,
+    [data-theme="dark"] .address-card.selected {
+        border-color: #198754;
+        background-color: rgba(25, 135, 84, 0.15);
+    }
+    [data-theme="dark"] .payment-option {
+        border-color: #444;
+        background-color: #2a2a3d;
+    }
+    [data-theme="dark"] .payment-option:hover,
+    [data-theme="dark"] .payment-option.selected {
+        border-color: #198754;
+        background-color: rgba(25, 135, 84, 0.2);
+    }
+    [data-theme="dark"] .payment-option.disabled {
+        opacity: 0.6;
+        background-color: #2a2a3d;
+        border-color: #dc3545;
+    }
+    [data-theme="dark"] .payment-option.disabled:hover {
+        background-color: #2a2a3d;
+        border-color: #dc3545;
+    }
+
+    /* Voucher styling */
+    .voucher-option {
+        border: 2px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        height: 100%;
+        display: flex;
+        align-items: center;
+    }
+    .voucher-option:hover {
+        border-color: #ffc107;
+        background-color: rgba(255, 193, 7, 0.05);
+    }
+    .voucher-option.selected {
+        border-color: #ffc107;
+        background-color: rgba(255, 193, 7, 0.1);
+    }
+    .voucher-option.disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background-color: #f8f9fa;
+    }
+    .voucher-label {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        margin: 0;
+        width: 100%;
+    }
+    [data-theme="dark"] .voucher-option {
+        border-color: #444;
+        background-color: #2a2a3d;
+    }
+    [data-theme="dark"] .voucher-option:hover,
+    [data-theme="dark"] .voucher-option.selected {
+        border-color: #ffc107;
+        background-color: rgba(255, 193, 7, 0.15);
+    }
+
+    /* Validation error styling */
+    .form-control.is-invalid,
+    .form-select.is-invalid {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+    }
+    .field-validation-error {
+        color: #dc3545;
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+    #payment-method-section.is-invalid {
+        padding: 0.5rem;
+        border: 2px solid #dc3545;
+        border-radius: 0.5rem;
+    }
+    #address-cards.is-invalid {
+        padding: 0.5rem;
+        border: 2px solid #dc3545;
+        border-radius: 0.5rem;
+    }
+    /* Force MFS section visible when active */
+    #mobile-banking-details.mfs-active {
+        display: block !important;
+    }
+    #card-payment-info.card-active {
+        display: block !important;
+    }
+</style>
+
+<!-- Delete Address Confirmation Modal -->
+<div class="modal fade" id="deleteAddressModal" tabindex="-1" aria-labelledby="deleteAddressModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-danger">
+                        <i class="fas fa-trash-alt"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="deleteAddressModalLabel">Delete Address?</h4>
+                <p class="text-muted mb-1">Are you sure you want to delete this address?</p>
+                <p class="text-muted small mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmDeleteAddressBtn">
+                    <i class="fas fa-check me-1"></i> Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+    // Disable jQuery validation on MFS section to prevent it from hiding elements
+    $(document).ready(function() {
+        var form = $('#checkout-form');
+        if (form.length && form.data('validator')) {
+            // Tell jQuery validation to ignore the MFS fields - they'll be validated manually
+            form.data('validator').settings.ignore = ':hidden:not(#MobileBankingNumber):not(#TransactionId)';
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const cartTotal = @Model.CartTotal;
+        const originalDeliveryCharge = @(Model.IsPremiumMember ? 0 : 100);
+        let deliveryCharge = @Model.DeliveryCharge;
+        let freeDeliveryThreshold = @(ViewBag.FreeDeliveryThreshold ?? 0);
+        const currencySymbol = '@Html.Raw(currencySymbol)';
+        const hasSavedAddresses = @(hasSavedAddresses ? "true" : "false");
+
+        // Coupon discount from cart
+        const couponDiscountAmount = @(couponDiscountAmount);
+
+        // Rewards and wallet state
+        const isPremiumMember = @(Model.IsPremiumMember ? "true" : "false");
+        const hasPremiumDiscount = @(Model.HasActivePremiumDiscount ? "true" : "false");
+        const availableWalletBalance = Math.floor(@Model.AvailableWalletBalance); // Always use integer
+
+        let selectedFreeShippingVoucherId = 0;
+        let selectedDiscountVoucherId = 0;
+        let selectedDiscountAmount = 0;
+        let useWallet = false;
+        let walletAmountToUse = 0;
+        let premiumDiscountAmount = 0;
+
+        // MFS Numbers from SiteSettings
+        const mfsNumbers = {
+            'bKash': '@ViewBag.BkashNumber',
+            'Nagad': '@ViewBag.NagadNumber',
+            'Rocket': '@ViewBag.RocketNumber',
+            'Upay': '@ViewBag.UpayNumber'
+        };
+
+        // Address card selection
+        document.querySelectorAll('.address-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (e.target.closest('.address-actions')) return;
+
+                document.querySelectorAll('.address-card').forEach(c => c.classList.remove('selected'));
+                this.classList.add('selected');
+
+                const addressId = this.dataset.addressId;
+                const districtId = this.dataset.districtId;
+
+                document.getElementById('selected-address-id').value = addressId;
+                document.getElementById('use-saved-address').value = 'true';
+
+                // Fetch delivery charge based on district from server
+                if (districtId) {
+                    fetch('/api/address/delivery-charge-by-district/' + districtId)
+                        .then(response => response.json())
+                        .then(data => {
+                            deliveryCharge = data.deliveryCharge || 100;
+                            freeDeliveryThreshold = data.freeDeliveryThreshold || 0;
+                            updateTotals();
+                        })
+                        .catch(err => {
+                            console.error('Error fetching delivery charge:', err);
+                            deliveryCharge = 100;
+                            updateTotals();
+                        });
+                } else {
+                    deliveryCharge = 100;
+                    updateTotals();
+                }
+            });
+        });
+
+        // Add new address button
+        document.getElementById('add-new-address-btn')?.addEventListener('click', function() {
+            const modal = new bootstrap.Modal(document.getElementById('addressModal'));
+            resetAddressModal();
+            document.getElementById('addressModalLabel').innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>Add New Address';
+            modal.show();
+        });
+
+        // Cancel new address
+        document.getElementById('cancel-new-address-btn')?.addEventListener('click', function() {
+            document.getElementById('saved-addresses-section').style.display = '';
+            document.getElementById('new-address-section').style.display = 'none';
+            document.getElementById('use-saved-address').value = 'true';
+        });
+
+        // Sync save address checkbox with hidden field
+        document.getElementById('save-address-checkbox')?.addEventListener('change', function() {
+            document.getElementById('save-address-hidden').value = this.checked ? 'true' : 'false';
+        });
+
+        // Edit address
+        document.querySelectorAll('.edit-address-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const addressId = this.dataset.addressId;
+                loadAddressForEdit(addressId);
+            });
+        });
+
+        // Delete address - modal handling
+        let addressIdToDelete = null;
+        const deleteAddressModal = new bootstrap.Modal(document.getElementById('deleteAddressModal'));
+
+        document.querySelectorAll('.delete-address-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                addressIdToDelete = this.dataset.addressId;
+                deleteAddressModal.show();
+            });
+        });
+
+        document.getElementById('confirmDeleteAddressBtn')?.addEventListener('click', function() {
+            if (addressIdToDelete) {
+                deleteAddressModal.hide();
+                deleteAddress(addressIdToDelete);
+                addressIdToDelete = null;
+            }
+        });
+
+        // Payment method selection
+        // Track the currently selected MFS method
+        let currentMfsMethod = null;
+
+        // Helper function to check if a method is MFS
+        function isMfsMethod(method) {
+            return method === 'bKash' || method === 'Nagad' || method === 'Rocket' || method === 'Upay';
+        }
+
+        // Helper function to update MFS display
+        function updateMfsDisplay(method) {
+            const mfsBankingSection = document.getElementById('mobile-banking-details');
+            const cardPaymentSection = document.getElementById('card-payment-info');
+            const mfsProviderSpan = document.getElementById('mfs-provider');
+            const mfsNumberSpan = document.getElementById('mfs-number');
+
+            // Remove active classes and hide all payment info sections first
+            if (mfsBankingSection) {
+                mfsBankingSection.classList.remove('mfs-active');
+                mfsBankingSection.style.display = 'none';
+            }
+            if (cardPaymentSection) {
+                cardPaymentSection.classList.remove('card-active');
+                cardPaymentSection.style.display = 'none';
+            }
+
+            if (isMfsMethod(method)) {
+                if (mfsBankingSection) {
+                    // Use CSS class with !important to force visibility
+                    mfsBankingSection.classList.add('mfs-active');
+                    mfsBankingSection.style.display = 'block';
+                }
+                if (mfsProviderSpan) {
+                    mfsProviderSpan.textContent = method;
+                }
+                if (mfsNumberSpan) {
+                    mfsNumberSpan.textContent = mfsNumbers[method] || '';
+                }
+                currentMfsMethod = method;
+            } else if (method === 'CreditDebitCard') {
+                if (cardPaymentSection) {
+                    cardPaymentSection.classList.add('card-active');
+                    cardPaymentSection.style.display = 'block';
+                }
+                currentMfsMethod = null;
+            } else {
+                currentMfsMethod = null;
+            }
+        }
+
+        // Payment option click handlers
+        const paymentOptions = document.querySelectorAll('.payment-option');
+        paymentOptions.forEach(function(option) {
+            option.addEventListener('click', function(e) {
+                // Remove selected from all
+                paymentOptions.forEach(function(o) {
+                    o.classList.remove('selected');
+                });
+                // Add selected to clicked
+                this.classList.add('selected');
+
+                // Check the radio button
+                const radio = this.querySelector('input[type="radio"]');
+                if (radio) {
+                    radio.checked = true;
+                }
+
+                // Update MFS display
+                const method = this.getAttribute('data-method');
+                updateMfsDisplay(method);
+            });
+        });
+
+        // Initialize payment method display on page load
+        function initPaymentDisplay() {
+            const selectedPayment = document.querySelector('.payment-option.selected');
+            if (selectedPayment) {
+                const method = selectedPayment.getAttribute('data-method');
+                updateMfsDisplay(method);
+            }
+        }
+
+        // Run immediately
+        initPaymentDisplay();
+
+        // Also run after delays to counter any jQuery validation interference
+        setTimeout(initPaymentDisplay, 100);
+        setTimeout(initPaymentDisplay, 500);
+        setTimeout(initPaymentDisplay, 1000);
+        setTimeout(initPaymentDisplay, 2000);
+        setTimeout(initPaymentDisplay, 3000);
+
+        // Continuously protect MFS display for the first 10 seconds
+        let protectionCount = 0;
+        const protectionInterval = setInterval(function() {
+            protectionCount++;
+            const mfsBankingSection = document.getElementById('mobile-banking-details');
+            const cardPaymentSection = document.getElementById('card-payment-info');
+
+            if (mfsBankingSection && currentMfsMethod && isMfsMethod(currentMfsMethod)) {
+                // Ensure the mfs-active class is present AND inline style is set
+                if (!mfsBankingSection.classList.contains('mfs-active')) {
+                    mfsBankingSection.classList.add('mfs-active');
+                }
+                // Force inline style to block
+                if (mfsBankingSection.style.display !== 'block') {
+                    mfsBankingSection.style.display = 'block';
+                }
+            }
+
+            // Also protect card payment section if Credit/Debit Card is selected
+            if (cardPaymentSection && currentMfsMethod === null) {
+                const selectedPayment = document.querySelector('.payment-option.selected');
+                if (selectedPayment && selectedPayment.getAttribute('data-method') === 'CreditDebitCard') {
+                    if (!cardPaymentSection.classList.contains('card-active')) {
+                        cardPaymentSection.classList.add('card-active');
+                    }
+                    if (cardPaymentSection.style.display !== 'block') {
+                        cardPaymentSection.style.display = 'block';
+                    }
+                }
+            }
+
+            // Stop after 10 seconds (100 iterations at 100ms)
+            if (protectionCount >= 100) {
+                clearInterval(protectionInterval);
+            }
+        }, 100);
+
+        function updateTotals() {
+            // Calculate effective delivery charge
+            let effectiveDeliveryCharge = deliveryCharge;
+
+            // Premium members get free shipping automatically
+            if (isPremiumMember) {
+                effectiveDeliveryCharge = 0;
+            }
+            // Or if order qualifies for free delivery based on threshold
+            else if (freeDeliveryThreshold > 0 && cartTotal >= freeDeliveryThreshold) {
+                effectiveDeliveryCharge = 0;
+            }
+            // Or if a free shipping voucher is selected (and not premium)
+            else if (selectedFreeShippingVoucherId > 0) {
+                effectiveDeliveryCharge = 0;
+            }
+
+            // Calculate premium discount (5% if active)
+            premiumDiscountAmount = 0;
+            if (hasPremiumDiscount) {
+                premiumDiscountAmount = Math.round(cartTotal * 0.05);
+            }
+
+            // Calculate wallet amount (can't exceed remaining total) - always integer
+            let maxWalletUsable = Math.floor(cartTotal + effectiveDeliveryCharge - selectedDiscountAmount - premiumDiscountAmount - couponDiscountAmount);
+            if (maxWalletUsable < 0) maxWalletUsable = 0;
+            if (useWallet && walletAmountToUse > 0) {
+                walletAmountToUse = Math.floor(Math.min(walletAmountToUse, maxWalletUsable, availableWalletBalance));
+            } else {
+                walletAmountToUse = 0;
+            }
+
+            // Calculate grand total (including coupon discount) - always integer
+            let grandTotal = Math.floor(cartTotal + effectiveDeliveryCharge - premiumDiscountAmount - selectedDiscountAmount - walletAmountToUse - couponDiscountAmount);
+            if (grandTotal < 0) grandTotal = 0;
+
+            // Calculate total savings (including coupon discount) - always integer
+            let totalSavings = Math.floor((deliveryCharge - effectiveDeliveryCharge) + premiumDiscountAmount + selectedDiscountAmount + walletAmountToUse + couponDiscountAmount);
+
+            // Update delivery charge display
+            const deliveryRow = document.getElementById('delivery-charge-row');
+            const deliveryDisplay = document.getElementById('delivery-charge-display');
+            if (effectiveDeliveryCharge === 0 && deliveryCharge > 0) {
+                deliveryDisplay.innerHTML = '<span class="text-decoration-line-through text-muted me-2">' + currencySymbol + deliveryCharge.toLocaleString() + '</span><span class="text-success">FREE</span>';
+            } else {
+                deliveryDisplay.textContent = currencySymbol + effectiveDeliveryCharge.toLocaleString();
+            }
+
+            // Update premium discount row
+            const premiumRow = document.getElementById('premium-discount-row');
+            const premiumDisplay = document.getElementById('premium-discount-display');
+            if (premiumDiscountAmount > 0) {
+                premiumRow.style.display = 'flex';
+                premiumRow.style.cssText = 'display: flex !important;';
+                premiumDisplay.textContent = '-' + currencySymbol + premiumDiscountAmount.toLocaleString();
+            } else {
+                premiumRow.style.display = 'none';
+                premiumRow.style.cssText = 'display: none !important;';
+            }
+
+            // Update voucher discount row
+            const voucherRow = document.getElementById('voucher-discount-row');
+            const voucherDisplay = document.getElementById('voucher-discount-display');
+            if (selectedDiscountAmount > 0) {
+                voucherRow.style.display = 'flex';
+                voucherRow.style.cssText = 'display: flex !important;';
+                voucherDisplay.textContent = '-' + currencySymbol + selectedDiscountAmount.toLocaleString();
+            } else {
+                voucherRow.style.display = 'none';
+                voucherRow.style.cssText = 'display: none !important;';
+            }
+
+            // Update wallet discount row
+            const walletRow = document.getElementById('wallet-discount-row');
+            const walletDisplay = document.getElementById('wallet-discount-display');
+            if (walletAmountToUse > 0) {
+                walletRow.style.display = 'flex';
+                walletRow.style.cssText = 'display: flex !important;';
+                walletDisplay.textContent = '-' + currencySymbol + walletAmountToUse.toLocaleString();
+            } else {
+                walletRow.style.display = 'none';
+                walletRow.style.cssText = 'display: none !important;';
+            }
+
+            // Update grand total
+            document.getElementById('grand-total').textContent = currencySymbol + grandTotal.toLocaleString();
+
+            // Update savings message
+            const savingsMessage = document.getElementById('savings-message');
+            const totalSavingsDisplay = document.getElementById('total-savings');
+            if (savingsMessage && totalSavings > 0) {
+                savingsMessage.style.display = 'inline';
+                totalSavingsDisplay.textContent = currencySymbol + totalSavings.toLocaleString();
+            } else if (savingsMessage) {
+                savingsMessage.style.display = 'none';
+            }
+
+            // Update hidden form fields
+            document.getElementById('delivery-charge-hidden').value = effectiveDeliveryCharge;
+            document.getElementById('selected-discount-reward-id').value = selectedDiscountVoucherId || '';
+            document.getElementById('selected-free-shipping-reward-id').value = selectedFreeShippingVoucherId || '';
+            document.getElementById('use-wallet-balance').value = useWallet ? 'true' : 'false';
+            document.getElementById('wallet-amount-to-use').value = walletAmountToUse;
+        }
+
+        // Listen for delivery charge updates from address fields
+        document.addEventListener('deliveryChargeUpdated', function(event) {
+            deliveryCharge = event.detail.deliveryCharge;
+            updateTotals();
+        });
+
+        // Voucher option selection handlers
+        document.querySelectorAll('.voucher-option[data-type="shipping"]').forEach(option => {
+            option.addEventListener('click', function() {
+                // Remove selection from all shipping vouchers
+                document.querySelectorAll('.voucher-option[data-type="shipping"]').forEach(opt => {
+                    opt.classList.remove('selected');
+                    opt.querySelector('input[type="radio"]').checked = false;
+                });
+
+                // Select this one
+                this.classList.add('selected');
+                const radio = this.querySelector('input[type="radio"]');
+                radio.checked = true;
+
+                // Update state
+                selectedFreeShippingVoucherId = parseInt(this.dataset.voucherId) || 0;
+                updateTotals();
+            });
+        });
+
+        document.querySelectorAll('.voucher-option[data-type="discount"]').forEach(option => {
+            option.addEventListener('click', function() {
+                const minOrder = parseFloat(this.dataset.min) || 0;
+                const discountAmount = parseFloat(this.dataset.amount) || 0;
+                const voucherId = parseInt(this.dataset.voucherId) || 0;
+
+                // Check minimum order requirement
+                if (voucherId > 0 && cartTotal < minOrder) {
+                    alert('Your cart total (' + currencySymbol + cartTotal.toLocaleString() + ') is below the minimum order requirement (' + currencySymbol + minOrder.toLocaleString() + ') for this voucher.');
+                    return;
+                }
+
+                // Remove selection from all discount vouchers
+                document.querySelectorAll('.voucher-option[data-type="discount"]').forEach(opt => {
+                    opt.classList.remove('selected');
+                    opt.querySelector('input[type="radio"]').checked = false;
+                });
+
+                // Select this one
+                this.classList.add('selected');
+                const radio = this.querySelector('input[type="radio"]');
+                radio.checked = true;
+
+                // Update state
+                selectedDiscountVoucherId = voucherId;
+                selectedDiscountAmount = discountAmount;
+                updateTotals();
+            });
+        });
+
+        // Wallet checkbox handler
+        const walletCheckbox = document.getElementById('use-wallet-checkbox');
+        const walletAmountSection = document.getElementById('wallet-amount-section');
+        const walletAmountInput = document.getElementById('wallet-amount-input');
+        const useFullWalletBtn = document.getElementById('use-full-wallet-btn');
+
+        if (walletCheckbox) {
+            walletCheckbox.addEventListener('change', function() {
+                useWallet = this.checked;
+                if (walletAmountSection) {
+                    walletAmountSection.style.display = this.checked ? 'block' : 'none';
+                }
+                if (this.checked && walletAmountInput) {
+                    walletAmountToUse = parseFloat(walletAmountInput.value) || 0;
+                } else {
+                    walletAmountToUse = 0;
+                }
+                updateTotals();
+            });
+        }
+
+        if (walletAmountInput) {
+            walletAmountInput.addEventListener('input', function() {
+                // Only allow integer values
+                let value = Math.floor(parseFloat(this.value) || 0);
+                if (value < 0) value = 0;
+                if (value > availableWalletBalance) value = availableWalletBalance;
+                this.value = value; // Update input to show integer
+                walletAmountToUse = value;
+                updateTotals();
+            });
+        }
+
+        if (useFullWalletBtn) {
+            useFullWalletBtn.addEventListener('click', function() {
+                if (walletAmountInput) {
+                    walletAmountInput.value = availableWalletBalance; // Already integer from Math.floor
+                    walletAmountToUse = availableWalletBalance;
+                    updateTotals();
+                }
+            });
+        }
+
+        // Initialize totals on page load
+        updateTotals();
+
+        // Form submission handler
+        function submitCheckoutForm(e) {
+            if (e) e.preventDefault();
+            console.log('Form submission triggered');
+
+            clearValidationMessages();
+
+            if (!validateForm()) {
+                console.log('Form validation failed');
+                return false;
+            }
+
+            console.log('Form validation passed, submitting...');
+            showLoadingState();
+
+            const form = document.getElementById('checkout-form');
+            const formData = new FormData(form);
+
+            // Ensure MFS fields are included in FormData even if parent is hidden
+            const selectedPaymentMethod = document.querySelector('input[name="PaymentMethod"]:checked')?.value;
+            if (selectedPaymentMethod === 'bKash' || selectedPaymentMethod === 'Nagad' || selectedPaymentMethod === 'Rocket' || selectedPaymentMethod === 'Upay') {
+                const mobileNumber = document.getElementById('MobileBankingNumber')?.value?.trim();
+                const transactionId = document.getElementById('TransactionId')?.value?.trim();
+
+                // Strip +88 prefix if present to match server validation (01XXXXXXXXX format)
+                let cleanedMobileNumber = mobileNumber;
+                if (mobileNumber && mobileNumber.startsWith('+88')) {
+                    cleanedMobileNumber = mobileNumber.substring(3);
+                } else if (mobileNumber && mobileNumber.startsWith('88')) {
+                    cleanedMobileNumber = mobileNumber.substring(2);
+                }
+
+                // Explicitly set/override the values in FormData
+                if (cleanedMobileNumber) {
+                    formData.set('MobileBankingNumber', cleanedMobileNumber);
+                }
+                if (transactionId) {
+                    formData.set('TransactionId', transactionId);
+                }
+            }
+
+            // Log form data for debugging
+            console.log('Form action:', '@Url.Action("Checkout", "Home")');
+            for (let [key, value] of formData.entries()) {
+                console.log('Form data:', key, '=', value);
+            }
+
+            $.ajax({
+                url: '@Url.Action("Checkout", "Home")',
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: handleCheckoutSuccess,
+                error: handleCheckoutError
+            });
+
+            return false;
+        }
+
+        // Form submit event listener
+        document.getElementById('checkout-form').addEventListener('submit', submitCheckoutForm);
+
+        // Also add click handler to the button directly (fallback)
+        document.getElementById('place-order-btn').addEventListener('click', function(e) {
+            console.log('Place Order button clicked');
+            e.preventDefault();
+            submitCheckoutForm(e);
+        });
+
+        function validateForm() {
+            let isValid = true;
+            let firstErrorField = null;
+
+            // Clear previous validation messages
+            clearValidationMessages();
+
+            const useSavedAddress = document.getElementById('use-saved-address').value === 'true';
+            const selectedAddressId = document.getElementById('selected-address-id').value;
+
+            if (useSavedAddress && hasSavedAddresses) {
+                if (!selectedAddressId) {
+                    showFieldError('address-cards', 'Please select a delivery address');
+                    isValid = false;
+                    if (!firstErrorField) firstErrorField = document.getElementById('address-cards');
+                }
+            } else {
+                // Validate new address fields
+                const customerName = document.getElementById('CustomerName')?.value?.trim();
+                const phone = document.getElementById('Phone')?.value?.trim();
+                const divisionId = document.getElementById('DivisionId')?.value;
+                const districtId = document.getElementById('DistrictId')?.value;
+                const upazilaId = document.getElementById('UpazilaId')?.value;
+                const address = document.getElementById('Address')?.value?.trim();
+
+                if (!customerName) {
+                    showFieldError('CustomerName', 'Full name is required');
+                    isValid = false;
+                    if (!firstErrorField) firstErrorField = document.getElementById('CustomerName');
+                }
+                if (!phone) {
+                    showFieldError('Phone', 'Phone number is required');
+                    isValid = false;
+                    if (!firstErrorField) firstErrorField = document.getElementById('Phone');
+                } else {
+                    // Validate Bangladesh phone number format
+                    const phoneRegex = /^(?:\+?88)?01[3-9]\d{8}$/;
+                    if (!phoneRegex.test(phone)) {
+                        showFieldError('Phone', 'Please enter a valid Bangladeshi phone number');
+                        isValid = false;
+                        if (!firstErrorField) firstErrorField = document.getElementById('Phone');
+                    }
+                }
+                if (!divisionId) {
+                    showFieldError('DivisionId', 'Division is required');
+                    isValid = false;
+                    if (!firstErrorField) firstErrorField = document.getElementById('DivisionId');
+                }
+                if (!districtId) {
+                    showFieldError('DistrictId', 'District is required');
+                    isValid = false;
+                    if (!firstErrorField) firstErrorField = document.getElementById('DistrictId');
+                }
+                if (!upazilaId) {
+                    showFieldError('UpazilaId', 'Upazila is required');
+                    isValid = false;
+                    if (!firstErrorField) firstErrorField = document.getElementById('UpazilaId');
+                }
+                if (!address) {
+                    showFieldError('Address', 'Address is required');
+                    isValid = false;
+                    if (!firstErrorField) firstErrorField = document.getElementById('Address');
+                }
+            }
+
+            // Validate payment method
+            const paymentMethod = document.querySelector('input[name="PaymentMethod"]:checked');
+            if (!paymentMethod) {
+                showFieldError('payment-method-section', 'Please select a payment method');
+                isValid = false;
+                if (!firstErrorField) firstErrorField = document.querySelector('.payment-option');
+            } else {
+                // If bKash, Nagad, Rocket, or Upay is selected, validate mobile banking fields
+                const selectedMethod = paymentMethod.value;
+                if (selectedMethod === 'bKash' || selectedMethod === 'Nagad' || selectedMethod === 'Rocket' || selectedMethod === 'Upay') {
+                    const mobileNumber = document.getElementById('MobileBankingNumber')?.value?.trim();
+                    const transactionId = document.getElementById('TransactionId')?.value?.trim();
+
+                    if (!mobileNumber) {
+                        showFieldError('MobileBankingNumber', 'Mobile number is required');
+                        isValid = false;
+                        if (!firstErrorField) firstErrorField = document.getElementById('MobileBankingNumber');
+                    } else {
+                        // Validate Bangladesh phone number format
+                        const phoneRegex = /^(?:\+?88)?01[3-9]\d{8}$/;
+                        if (!phoneRegex.test(mobileNumber)) {
+                            showFieldError('MobileBankingNumber', 'Please enter a valid mobile number');
+                            isValid = false;
+                            if (!firstErrorField) firstErrorField = document.getElementById('MobileBankingNumber');
+                        }
+                    }
+                    if (!transactionId) {
+                        showFieldError('TransactionId', 'Transaction ID is required');
+                        isValid = false;
+                        if (!firstErrorField) firstErrorField = document.getElementById('TransactionId');
+                    }
+                }
+            }
+
+            // Scroll to first error field
+            if (!isValid && firstErrorField) {
+                firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (firstErrorField.focus) firstErrorField.focus();
+            }
+
+            return isValid;
+        }
+
+        function showFieldError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                // Add is-invalid class to the field
+                field.classList.add('is-invalid');
+
+                // Check if error span already exists
+                let errorSpan = field.parentElement.querySelector('.field-validation-error');
+                if (!errorSpan) {
+                    errorSpan = document.createElement('span');
+                    errorSpan.className = 'field-validation-error text-danger small d-block mt-1';
+                    field.parentElement.appendChild(errorSpan);
+                }
+                errorSpan.textContent = message;
+            }
+        }
+
+        function clearValidationMessages() {
+            // Remove is-invalid class from all fields
+            document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            // Remove all field validation error messages
+            document.querySelectorAll('.field-validation-error').forEach(el => el.remove());
+            // Hide validation summary if visible
+            const validationSummary = document.getElementById('validation-summary');
+            const validationErrors = document.getElementById('validation-errors');
+            if (validationSummary) validationSummary.style.display = 'none';
+            if (validationErrors) validationErrors.innerHTML = '';
+        }
+
+        function showLoadingState() {
+            document.getElementById('place-order-btn').disabled = true;
+            document.getElementById('btn-text').classList.add('d-none');
+            document.getElementById('btn-spinner').classList.remove('d-none');
+        }
+
+        function hideLoadingState() {
+            document.getElementById('place-order-btn').disabled = false;
+            document.getElementById('btn-text').classList.remove('d-none');
+            document.getElementById('btn-spinner').classList.add('d-none');
+        }
+
+        function showErrors(errors) {
+            const validationSummary = document.getElementById('validation-summary');
+            const validationErrors = document.getElementById('validation-errors');
+
+            if (validationSummary && validationErrors) {
+                validationErrors.innerHTML = '';
+                errors.forEach(error => {
+                    const li = document.createElement('li');
+                    li.textContent = error;
+                    validationErrors.appendChild(li);
+                });
+                validationSummary.style.display = 'block';
+                validationSummary.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function handleCheckoutSuccess(response) {
+            console.log('Checkout response:', response);
+            hideLoadingState();
+
+            if (response.success) {
+                console.log('Order successful, redirecting...');
+                if (response.paymentUrl) {
+                    console.log('Redirecting to payment URL:', response.paymentUrl);
+                    window.location.href = response.paymentUrl;
+                } else if (response.redirectUrl) {
+                    console.log('Redirecting to:', response.redirectUrl);
+                    window.location.href = response.redirectUrl;
+                } else {
+                    const url = '@Url.Action("OrderConfirmation", "Home")/' + response.orderId;
+                    console.log('Redirecting to OrderConfirmation:', url);
+                    window.location.href = url;
+                }
+            } else {
+                console.log('Order failed:', response);
+                if (response.errors) {
+                    const errorMessages = [];
+                    Object.values(response.errors).forEach(errs => {
+                        errs.forEach(err => errorMessages.push(err));
+                    });
+                    showErrors(errorMessages);
+                } else {
+                    showErrors([response.message || 'An error occurred. Please try again.']);
+                }
+            }
+        }
+
+        function handleCheckoutError(xhr, status, error) {
+            console.error('Checkout AJAX error:', status, error);
+            console.error('XHR response:', xhr.responseText);
+            hideLoadingState();
+            showErrors(['An error occurred while processing your order. Please try again.']);
+        }
+
+        // Address Modal Functions
+        function resetAddressModal() {
+            document.getElementById('address-id').value = '0';
+            document.getElementById('address-label').value = '';
+            document.getElementById('address-type').value = '0';
+            document.getElementById('modal-recipient-name').value = '';
+            document.getElementById('modal-phone').value = '';
+            document.getElementById('modal-division').innerHTML = '<option value="">Select Division</option>';
+            document.getElementById('modal-district').innerHTML = '<option value="">Select District</option>';
+            document.getElementById('modal-upazila').innerHTML = '<option value="">Select Upazila</option>';
+            document.getElementById('modal-full-address').value = '';
+            document.getElementById('modal-postal-code').value = '';
+            document.getElementById('modal-is-default').checked = false;
+
+            // Load divisions
+            loadDivisions();
+        }
+
+        function loadDivisions() {
+            $.get('/api/address/divisions', function(data) {
+                const select = document.getElementById('modal-division');
+                select.innerHTML = '<option value="">Select Division</option>';
+                data.forEach(d => {
+                    select.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+                });
+            });
+        }
+
+        document.getElementById('modal-division')?.addEventListener('change', function() {
+            const divisionId = this.value;
+            const districtSelect = document.getElementById('modal-district');
+            districtSelect.innerHTML = '<option value="">Select District</option>';
+            document.getElementById('modal-upazila').innerHTML = '<option value="">Select Upazila</option>';
+
+            if (divisionId) {
+                $.get('/api/address/districts/' + divisionId, function(data) {
+                    data.forEach(d => {
+                        districtSelect.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+                    });
+                });
+            }
+        });
+
+        document.getElementById('modal-district')?.addEventListener('change', function() {
+            const districtId = this.value;
+            const upazilaSelect = document.getElementById('modal-upazila');
+            upazilaSelect.innerHTML = '<option value="">Select Upazila</option>';
+
+            if (districtId) {
+                $.get('/api/address/upazilas/' + districtId, function(data) {
+                    data.forEach(u => {
+                        upazilaSelect.innerHTML += `<option value="${u.id}">${u.name}</option>`;
+                    });
+                });
+            }
+        });
+
+        function loadAddressForEdit(addressId) {
+            $.get('@Url.Action("GetAddress", "Home")/' + addressId, function(response) {
+                if (response.success) {
+                    const addr = response.address;
+                    document.getElementById('address-id').value = addr.id;
+                    document.getElementById('address-label').value = addr.label;
+                    document.getElementById('address-type').value = addr.addressType;
+                    document.getElementById('modal-recipient-name').value = addr.recipientName;
+                    document.getElementById('modal-phone').value = addr.phone;
+                    document.getElementById('modal-full-address').value = addr.fullAddress;
+                    document.getElementById('modal-postal-code').value = addr.postalCode || '';
+                    document.getElementById('modal-is-default').checked = addr.isDefault;
+
+                    // Load divisions first, then cascade
+                    $.get('/api/address/divisions', function(divisions) {
+                        const divSelect = document.getElementById('modal-division');
+                        divSelect.innerHTML = '<option value="">Select Division</option>';
+                        divisions.forEach(d => {
+                            divSelect.innerHTML += `<option value="${d.id}" ${d.id == addr.divisionId ? 'selected' : ''}>${d.name}</option>`;
+                        });
+
+                        if (addr.divisionId) {
+                            $.get('/api/address/districts/' + addr.divisionId, function(districts) {
+                                const distSelect = document.getElementById('modal-district');
+                                distSelect.innerHTML = '<option value="">Select District</option>';
+                                districts.forEach(d => {
+                                    distSelect.innerHTML += `<option value="${d.id}" ${d.id == addr.districtId ? 'selected' : ''}>${d.name}</option>`;
+                                });
+
+                                if (addr.districtId) {
+                                    $.get('/api/address/upazilas/' + addr.districtId, function(upazilas) {
+                                        const upzSelect = document.getElementById('modal-upazila');
+                                        upzSelect.innerHTML = '<option value="">Select Upazila</option>';
+                                        upazilas.forEach(u => {
+                                            upzSelect.innerHTML += `<option value="${u.id}" ${u.id == addr.upazilaId ? 'selected' : ''}>${u.name}</option>`;
+                                        });
+                                    });
+                                }
+                            });
+                        }
+                    });
+
+                    document.getElementById('addressModalLabel').innerHTML = '<i class="fas fa-edit me-2"></i>Edit Address';
+                    const modal = new bootstrap.Modal(document.getElementById('addressModal'));
+                    modal.show();
+                }
+            });
+        }
+
+        document.getElementById('save-address-btn')?.addEventListener('click', function() {
+            const addressData = {
+                id: parseInt(document.getElementById('address-id').value) || 0,
+                label: document.getElementById('address-label').value,
+                addressType: parseInt(document.getElementById('address-type').value),
+                recipientName: document.getElementById('modal-recipient-name').value,
+                phone: document.getElementById('modal-phone').value,
+                divisionId: parseInt(document.getElementById('modal-division').value) || null,
+                districtId: parseInt(document.getElementById('modal-district').value) || null,
+                upazilaId: parseInt(document.getElementById('modal-upazila').value) || null,
+                fullAddress: document.getElementById('modal-full-address').value,
+                postalCode: document.getElementById('modal-postal-code').value,
+                isDefault: document.getElementById('modal-is-default').checked
+            };
+
+            $.ajax({
+                url: '@Url.Action("SaveAddress", "Home")',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(addressData),
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function() {
+                    alert('Failed to save address. Please try again.');
+                }
+            });
+        });
+
+        function deleteAddress(addressId) {
+            $.ajax({
+                url: '@Url.Action("DeleteAddress", "Home")?id=' + addressId,
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.message);
+                    }
+                }
+            });
+        }
+    });
+    </script>
+}

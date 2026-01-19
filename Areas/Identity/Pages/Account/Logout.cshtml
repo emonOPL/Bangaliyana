@@ -1,0 +1,61 @@
+@page
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@model LogoutModel
+@{
+    ViewData["Title"] = Localizer["Logout"].Value;
+}
+
+<header>
+    <h1>@ViewData["Title"]</h1>
+    @{
+        if (User.Identity?.IsAuthenticated ?? false)
+        {
+            <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })" method="post" id="logoutForm">
+                <button type="submit" class="nav-link btn btn-link text-dark">@Localizer["ClickHereToLogout"]</button>
+            </form>
+        }
+        else
+        {
+            <p>@Localizer["LogoutSuccess"]</p>
+            <a asp-area="" asp-controller="Home" asp-action="Index" class="btn btn-primary">@Localizer["ReturnToHome"]</a>
+        }
+    }
+</header>
+
+@section Scripts {
+    <script>
+        // Clear client-side storage on logout
+        document.getElementById('logoutForm')?.addEventListener('submit', function(e) {
+            // Clear localStorage
+            if (typeof(Storage) !== "undefined") {
+                localStorage.clear();
+                sessionStorage.clear();
+            }
+            
+            // Clear any client-side cookies (that JavaScript can access)
+            document.cookie.split(";").forEach(function(c) { 
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+            });
+            
+            // Clear IndexedDB if used
+            if ('indexedDB' in window) {
+                indexedDB.databases().then(databases => {
+                    databases.forEach(db => { indexedDB.deleteDatabase(db.name) });
+                });
+            }
+        });
+        
+        // If already logged out, clear storage immediately
+        @if (!(User.Identity?.IsAuthenticated ?? false))
+        {
+            <text>
+            // Clear all client storage when logout is complete
+            if (typeof(Storage) !== "undefined") {
+                localStorage.clear();
+                sessionStorage.clear();
+            }
+            </text>
+        }
+    </script>
+}}

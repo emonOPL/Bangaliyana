@@ -1,0 +1,211 @@
+@model List<Bangaliyana.Services.EligibleBuyer>
+
+@{
+    ViewData["Title"] = "New Message";
+    var sellerId = ViewBag.SellerId;
+}
+
+<div class="container py-4">
+    <!-- Back Button and Header -->
+    <div class="d-flex align-items-center mb-4">
+        <a asp-action="Index" class="btn btn-outline-secondary me-3">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div>
+            <h3 class="mb-0"><i class="fas fa-envelope me-2 text-primary"></i>New Message</h3>
+            <p class="text-muted mb-0">Start a conversation with a customer</p>
+        </div>
+    </div>
+
+    @if (TempData["error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (Model.Any())
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-users me-2"></i>Eligible Customers</h5>
+                <small class="text-muted">Customers who have ordered from you or inquired about your products</small>
+            </div>
+            <div class="card-body">
+                <form asp-action="StartConversation" method="post" id="newMessageForm">
+                    <input type="hidden" name="sellerId" value="@sellerId" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Select Customer <span class="text-danger">*</span></label>
+                        <select name="buyerId" class="form-select" required id="buyerSelect">
+                            <option value="">-- Select a customer --</option>
+                            @foreach (var buyer in Model)
+                            {
+                                <option value="@buyer.UserId"
+                                        data-order="@buyer.OrderId"
+                                        data-product="@buyer.ProductId">
+                                    @buyer.DisplayName (@buyer.Email) - @buyer.EligibilityReason
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Related Order (Optional)</label>
+                            <select name="orderId" class="form-select" id="orderSelect">
+                                <option value="">-- No specific order --</option>
+                            </select>
+                            <small class="text-muted">Link this conversation to an order</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Related Product (Optional)</label>
+                            <select name="productId" class="form-select" id="productSelect">
+                                <option value="">-- No specific product --</option>
+                            </select>
+                            <small class="text-muted">Link this conversation to a product</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Subject</label>
+                        <input type="text" name="subject" class="form-control"
+                               placeholder="e.g., Follow up on your recent order" maxlength="200" />
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Message <span class="text-danger">*</span></label>
+                        <textarea name="message" class="form-control" rows="5"
+                                  placeholder="Type your message here..." required></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-2"></i>Send Message
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Customer Details Card -->
+        <div class="card border-0 shadow-sm mt-4" id="customerDetails" style="display: none;">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="fas fa-user me-2"></i>Customer Details</h6>
+            </div>
+            <div class="card-body">
+                <div id="customerInfo">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <div class="display-4 text-muted mb-3">
+                    <i class="fas fa-user-slash"></i>
+                </div>
+                <h4 class="text-muted mb-3">No Eligible Customers</h4>
+                <p class="text-muted mb-4">
+                    You can only message customers who have:
+                </p>
+                <ul class="list-unstyled text-muted">
+                    <li><i class="fas fa-check text-success me-2"></i>Placed an order with you</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Asked a question about your products</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Submitted a support ticket for your orders</li>
+                </ul>
+                <a asp-action="Index" class="btn btn-outline-primary mt-3">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Messages
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    [data-theme="dark"] .card {
+        background-color: #252538;
+    }
+
+    [data-theme="dark"] .card-header.bg-light {
+        background-color: #1e1e2d !important;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const buyerSelect = document.getElementById('buyerSelect');
+            const orderSelect = document.getElementById('orderSelect');
+            const productSelect = document.getElementById('productSelect');
+            const customerDetails = document.getElementById('customerDetails');
+            const areaName = '@(ViewBag.AreaName ?? "Admin")';
+            const controllerName = '@(ViewBag.ControllerName ?? "SellerMessages")';
+
+            buyerSelect.addEventListener('change', async function () {
+                const selected = this.options[this.selectedIndex];
+
+                // Reset dropdowns
+                orderSelect.innerHTML = '<option value="">-- No specific order --</option>';
+                productSelect.innerHTML = '<option value="">-- No specific product --</option>';
+
+                if (selected.value) {
+                    const orderId = selected.dataset.order;
+                    const productId = selected.dataset.product;
+
+                    // Fetch orders and products for this buyer
+                    try {
+                        const response = await fetch(`/${areaName}/${controllerName}/GetBuyerOrdersAndProducts?buyerId=${selected.value}`);
+                        if (response.ok) {
+                            const data = await response.json();
+
+                            // Populate orders dropdown
+                            if (data.orders && data.orders.length > 0) {
+                                data.orders.forEach(order => {
+                                    const option = document.createElement('option');
+                                    option.value = order.id;
+                                    option.textContent = order.display;
+                                    orderSelect.appendChild(option);
+                                });
+                            }
+
+                            // Populate products dropdown
+                            if (data.products && data.products.length > 0) {
+                                data.products.forEach(product => {
+                                    const option = document.createElement('option');
+                                    option.value = product.id;
+                                    option.textContent = product.display;
+                                    productSelect.appendChild(option);
+                                });
+                            }
+
+                            // Auto-select related order/product if available
+                            if (orderId && orderId !== 'undefined') {
+                                orderSelect.value = orderId;
+                            }
+                            if (productId && productId !== 'undefined') {
+                                productSelect.value = productId;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error fetching buyer data:', error);
+                    }
+
+                    customerDetails.style.display = 'block';
+                    document.getElementById('customerInfo').innerHTML = `
+                        <p class="mb-1"><strong>Name:</strong> ${selected.text.split(' (')[0]}</p>
+                        <p class="mb-1"><strong>Contact Type:</strong> ${selected.text.split(' - ')[1] || 'Customer'}</p>
+                    `;
+                } else {
+                    customerDetails.style.display = 'none';
+                }
+            });
+        });
+    </script>
+}

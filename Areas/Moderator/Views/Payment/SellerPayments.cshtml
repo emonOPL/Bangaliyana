@@ -1,0 +1,183 @@
+@model X.PagedList.IPagedList<Bangaliyana.Models.ViewModels.SellerPaymentViewModel>
+@using X.PagedList.Mvc.Core
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+
+@{
+    ViewData["Title"] = Localizer["SellerPayments"].Value;
+}
+
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12 d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h4 class="mb-1"><i class="fas fa-wallet text-primary me-2"></i>@Localizer["SellerPayments"]</h4>
+                <p class="text-muted mb-0">@Localizer["SellerPaymentsSubtitle"]</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a asp-action="PrintPendingPayouts" target="_blank" class="btn btn-outline-primary">
+                    <i class="fas fa-print me-2"></i>@Localizer["PrintAllPendingPayouts"]
+                </a>
+                <a asp-action="PrintCompletedPayouts" target="_blank" class="btn btn-outline-success">
+                    <i class="fas fa-file-pdf me-2"></i>@Localizer["PrintAllCompletedPayouts"]
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100 bg-success bg-gradient text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3">
+                            <i class="fas fa-money-bill-wave fa-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0">@(((decimal)ViewBag.TotalPayable).ToString("N0")) BDT</h3>
+                            <small class="opacity-75">@Localizer["TotalPayable"]</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100 bg-info bg-gradient text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3">
+                            <i class="fas fa-percentage fa-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0">@(((decimal)ViewBag.TotalCommission).ToString("N0")) BDT</h3>
+                            <small class="opacity-75">@Localizer["TotalCommission"]</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100 bg-primary bg-gradient text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3">
+                            <i class="fas fa-store fa-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0">@ViewBag.SellerCount</h3>
+                            <small class="opacity-75">@Localizer["ActiveSellers"]</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sellers Table -->
+    <div class="card">
+        <div class="card-header bg-transparent">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>@Localizer["SellerPaymentSummary"]</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>@Localizer["Seller"]</th>
+                            <th class="text-center">@Localizer["Orders"]</th>
+                            <th class="text-end">@Localizer["ThisMonthSales"]</th>
+                            <th class="text-center">@Localizer["CommissionPercent"]</th>
+                            <th class="text-end">@Localizer["Commission"]</th>
+                            <th class="text-end">@Localizer["PendingPayable"]</th>
+                            <th class="text-center">@Localizer["Reports"]</th>
+                            <th class="text-center">@Localizer["PaymentMethod"]</th>
+                            <th>@Localizer["Actions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            @foreach (var seller in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@seller.ShopName</strong>
+                                        <small class="d-block text-muted">@seller.SellerEmail</small>
+                                        @if (seller.CarryForwardAmount > 0)
+                                        {
+                                            <small class="d-block text-info"><i class="fas fa-arrow-right me-1"></i>CF: @seller.CarryForwardAmount.ToString("N0")</small>
+                                        }
+                                    </td>
+                                    <td class="text-center">@seller.TotalOrders</td>
+                                    <td class="text-end">
+                                        @seller.CurrentMonthSales.ToString("N0") BDT
+                                        @if (seller.TotalSales != seller.CurrentMonthSales && seller.TotalSales > 0)
+                                        {
+                                            <small class="d-block text-muted">@Localizer["TotalLabel"]: @seller.TotalSales.ToString("N0")</small>
+                                        }
+                                    </td>
+                                    <td class="text-center">@seller.CommissionRate%</td>
+                                    <td class="text-end text-danger">@seller.CommissionAmount.ToString("N0") BDT</td>
+                                    <td class="text-end fw-bold @(seller.PayableAmount >= 500 ? "text-success" : "text-warning")">
+                                        @seller.PayableAmount.ToString("N0") BDT
+                                        @if (seller.PayableAmount < 500 && seller.PayableAmount > 0)
+                                        {
+                                            <small class="d-block text-muted"><i class="fas fa-info-circle me-1"></i>@Localizer["Below500"]</small>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (seller.PendingPayoutReportsCount > 0)
+                                        {
+                                            <span class="badge bg-warning text-dark">@seller.PendingPayoutReportsCount @Localizer["Pending"]</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">0</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (seller.HasBankAccount)
+                                        {
+                                            <span class="badge bg-primary"><i class="fas fa-university me-1"></i>@Localizer["Bank"]</span>
+                                        }
+                                        @if (seller.HasMobileBanking)
+                                        {
+                                            <span class="badge bg-success"><i class="fas fa-mobile-alt me-1"></i>@Localizer["Mobile"]</span>
+                                        }
+                                        @if (!seller.HasBankAccount && !seller.HasMobileBanking)
+                                        {
+                                            <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>@Localizer["None"]</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <a asp-action="SellerPaymentDetails" asp-route-id="@seller.SellerId" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye me-1"></i>@Localizer["Details"]
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3 d-block"></i>
+                                    <p class="text-muted mb-0">@Localizer["NoPendingSellerPayments"]</p>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @if (Model.PageCount > 1)
+        {
+            <div class="card-footer">
+                <nav>
+                    @Html.PagedListPager(Model, page => Url.Action("SellerPayments", new { page }), new PagedListRenderOptions { DisplayLinkToFirstPage = PagedListDisplayMode.IfNeeded, DisplayLinkToLastPage = PagedListDisplayMode.IfNeeded })
+                </nav>
+            </div>
+        }
+    </div>
+</div>

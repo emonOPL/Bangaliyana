@@ -1,0 +1,321 @@
+@model Bangaliyana.Models.Seller
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+
+@{
+    ViewData["Title"] = Localizer["EditSeller"].Value + " - " + Model.ShopName;
+}
+
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">@Localizer["SellerManagement"]</a></li>
+            <li class="breadcrumb-item"><a asp-action="Details" asp-route-id="@Model.Id">@Model.ShopName</a></li>
+            <li class="breadcrumb-item active">@Localizer["Edit"]</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-edit text-primary me-2"></i>@Localizer["EditSeller"]</h1>
+            <p class="text-muted mb-0">@Localizer["UpdateShopInfoSettings"]</p>
+        </div>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>@Localizer["BackToDetails"]
+        </a>
+    </div>
+
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Shop Identity -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-store text-primary me-2"></i>@Localizer["ShopIdentity"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="ShopName" class="form-label">@Localizer["ShopName"] *</label>
+                                <input asp-for="ShopName" class="form-control" />
+                                <span asp-validation-for="ShopName" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="ShopSlug" class="form-label">@Localizer["ShopURLSlug"]</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">/shop/</span>
+                                    <input asp-for="ShopSlug" class="form-control" placeholder="my-shop" />
+                                </div>
+                                <span asp-validation-for="ShopSlug" class="text-danger"></span>
+                                <small class="text-muted">@Localizer["LeaveEmptyToAutoGenerate"]</small>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label asp-for="ShopDescription" class="form-label">@Localizer["ShopDescription"]</label>
+                                <textarea asp-for="ShopDescription" class="form-control" rows="4" placeholder="@Localizer["TellCustomersAboutShop"]"></textarea>
+                                <span asp-validation-for="ShopDescription" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="BusinessTypeId" class="form-label">@Localizer["BusinessCategory"] *</label>
+                                <select asp-for="BusinessTypeId" class="form-select">
+                                    <option value="">-- @Localizer["SelectCategory"] --</option>
+                                    @{
+                                        var businessTypes = ViewBag.BusinessTypes as List<BusinessType> ?? new List<BusinessType>();
+                                    }
+                                    @foreach (var bt in businessTypes)
+                                    {
+                                        <option value="@bt.Id" selected="@(Model.BusinessTypeId == bt.Id)">@bt.Name</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="BusinessTypeId" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-address-card text-primary me-2"></i>@Localizer["ContactInformation"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="BusinessEmail" class="form-label">@Localizer["BusinessEmail"]</label>
+                                <input asp-for="BusinessEmail" type="email" class="form-control" />
+                                <span asp-validation-for="BusinessEmail" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="BusinessPhone" class="form-label">@Localizer["BusinessPhone"]</label>
+                                <input asp-for="BusinessPhone" class="form-control" />
+                                <span asp-validation-for="BusinessPhone" class="text-danger"></span>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label asp-for="BusinessAddress" class="form-label">@Localizer["BusinessAddress"]</label>
+                                <textarea asp-for="BusinessAddress" class="form-control" rows="2" placeholder="@Localizer["FullBusinessAddressPlaceholder"]"></textarea>
+                                <span asp-validation-for="BusinessAddress" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="OperatingHours" class="form-label">@Localizer["OperatingHours"]</label>
+                                <input asp-for="OperatingHours" class="form-control" placeholder="@Localizer["OperatingHoursPlaceholder"]" />
+                                <span asp-validation-for="OperatingHours" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shop Policies -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-file-contract text-primary me-2"></i>@Localizer["ShopPolicies"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label asp-for="ShopPolicies" class="form-label">@Localizer["GeneralPolicies"]</label>
+                            <textarea asp-for="ShopPolicies" class="form-control" rows="3" placeholder="@Localizer["GeneralPoliciesPlaceholder"]"></textarea>
+                            <span asp-validation-for="ShopPolicies" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="ReturnPolicy" class="form-label">@Localizer["ReturnPolicy"]</label>
+                            <textarea asp-for="ReturnPolicy" class="form-control" rows="3" placeholder="@Localizer["ReturnPolicyPlaceholder"]"></textarea>
+                            <span asp-validation-for="ReturnPolicy" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="ShippingInfo" class="form-label">@Localizer["ShippingInformation"]</label>
+                            <textarea asp-for="ShippingInfo" class="form-control" rows="3" placeholder="@Localizer["ShippingInfoPlaceholder"]"></textarea>
+                            <span asp-validation-for="ShippingInfo" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Social Links -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-share-alt text-primary me-2"></i>@Localizer["SocialLinks"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="FacebookUrl" class="form-label"><i class="fab fa-facebook text-primary me-1"></i>@Localizer["FacebookURL"]</label>
+                                <input asp-for="FacebookUrl" type="url" class="form-control" placeholder="https://facebook.com/..." />
+                                <span asp-validation-for="FacebookUrl" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="InstagramUrl" class="form-label"><i class="fab fa-instagram text-danger me-1"></i>@Localizer["InstagramURL"]</label>
+                                <input asp-for="InstagramUrl" type="url" class="form-control" placeholder="https://instagram.com/..." />
+                                <span asp-validation-for="InstagramUrl" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="WhatsAppNumber" class="form-label"><i class="fab fa-whatsapp text-success me-1"></i>@Localizer["WhatsAppNumber"]</label>
+                                <input asp-for="WhatsAppNumber" class="form-control" placeholder="+8801XXXXXXXXX" />
+                                <span asp-validation-for="WhatsAppNumber" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Business Documents -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-file-alt text-primary me-2"></i>@Localizer["BusinessDocuments"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="TradeLicenseNumber" class="form-label">@Localizer["TradeLicenseNumber"]</label>
+                                <input asp-for="TradeLicenseNumber" class="form-control" />
+                                <span asp-validation-for="TradeLicenseNumber" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="NIDNumber" class="form-label">@Localizer["NIDNumber"]</label>
+                                <input asp-for="NIDNumber" class="form-control" />
+                                <span asp-validation-for="NIDNumber" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <!-- Admin Settings -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-cog me-2"></i>@Localizer["AdminSettings"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label asp-for="Status" class="form-label">@Localizer["Status"]</label>
+                            <select asp-for="Status" class="form-select">
+                                @foreach (var status in Enum.GetValues<SellerStatus>())
+                                {
+                                    <option value="@status">@status</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="CommissionRate" class="form-label">@Localizer["CommissionRate"]</label>
+                            <div class="input-group">
+                                <input asp-for="CommissionRate" type="number" class="form-control" min="0" max="100" step="0.5" />
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <span asp-validation-for="CommissionRate" class="text-danger"></span>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input asp-for="IsVerified" class="form-check-input" type="checkbox" />
+                            <label asp-for="IsVerified" class="form-check-label">
+                                <i class="fas fa-check-circle text-success me-1"></i>@Localizer["VerifiedSeller"]
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Images -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-image text-primary me-2"></i>@Localizer["CurrentImages"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">@Localizer["ShopLogo"]</label>
+                            @if (!string.IsNullOrEmpty(Model.ShopLogoUrl))
+                            {
+                                <div class="mb-2">
+                                    <img src="@Model.ShopLogoUrl" alt="Logo" class="img-thumbnail" style="max-width: 100px; height: auto;" />
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted small">@Localizer["NoLogoUploaded"]</p>
+                            }
+                        </div>
+                        <div>
+                            <label class="form-label">@Localizer["ShopBanner"]</label>
+                            @if (!string.IsNullOrEmpty(Model.ShopBannerUrl))
+                            {
+                                <div>
+                                    <img src="@Model.ShopBannerUrl" alt="Banner" class="img-thumbnail w-100" style="max-height: 100px; object-fit: cover;" />
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted small">@Localizer["NoBannerUploaded"]</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Owner Info -->
+                @if (Model.User != null)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-user text-primary me-2"></i>@Localizer["ShopOwner"]</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                @if (!string.IsNullOrEmpty(Model.User.AvatarUrl))
+                                {
+                                    <img src="@Model.User.AvatarUrl" alt="@Model.User.FullName" class="rounded-circle me-3" width="50" height="50" style="object-fit: cover;" />
+                                }
+                                else
+                                {
+                                    <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                                        <i class="fas fa-user text-white"></i>
+                                    </div>
+                                }
+                                <div>
+                                    <strong>@(Model.User.FullName ?? Localizer["NA"].Value)</strong><br />
+                                    <small class="text-muted">@Model.User.Email</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Submit Button -->
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save me-2"></i>@Localizer["SaveChanges"]
+                    </button>
+                    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+                        @Localizer["Cancel"]
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+
+@section Styles {
+    <style>
+        /* Dark mode */
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-header {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background-color: var(--bs-gray-700);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .input-group-text {
+            background-color: var(--bs-gray-700);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-label {
+            color: var(--bs-light);
+        }
+    </style>
+}

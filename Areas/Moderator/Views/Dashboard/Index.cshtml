@@ -1,0 +1,369 @@
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = Localizer["ModeratorDashboard"].Value;
+}
+
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-1">
+                <i class="fas fa-tachometer-alt text-primary me-2"></i>@Localizer["ModeratorDashboard"]
+            </h4>
+            <p class="text-muted mb-0">@Localizer["ModeratorDashboardSubtitle"]</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <!-- Pending Sellers -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <a href="@Url.Action("Index", "Seller", new { area = "Moderator", status = "Pending" })" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 hover-lift">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                                    <i class="fas fa-store text-warning fa-lg"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h3 class="mb-0">@ViewBag.PendingSellers</h3>
+                                <small class="text-muted">@Localizer["PendingSellers"]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Pending Bank Requests -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <a href="@Url.Action("BankRequests", "Seller", new { area = "Moderator", status = "Pending" })" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 hover-lift">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="rounded-circle bg-info bg-opacity-10 p-3">
+                                    <i class="fas fa-university text-info fa-lg"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h3 class="mb-0">@ViewBag.PendingBankRequests</h3>
+                                <small class="text-muted">@Localizer["BankRequests"]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Pending Orders -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <a href="@Url.Action("Index", "Order", new { area = "Moderator", status = "Pending" })" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 hover-lift">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                                    <i class="fas fa-shopping-bag text-primary fa-lg"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h3 class="mb-0">@ViewBag.PendingOrders</h3>
+                                <small class="text-muted">@Localizer["PendingOrders"]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Open Tickets -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <a href="@Url.Action("Index", "Ticket", new { area = "Moderator", status = "Open" })" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 hover-lift">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="rounded-circle bg-danger bg-opacity-10 p-3">
+                                    <i class="fas fa-headset text-danger fa-lg"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h3 class="mb-0">@ViewBag.OpenTickets</h3>
+                                <small class="text-muted">@Localizer["OpenTickets"]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Second Row Stats -->
+    <div class="row mb-4">
+        <!-- Pending Returns -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <a href="@Url.Action("Returns", "Order", new { area = "Moderator", status = "pending" })" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 hover-lift">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="rounded-circle bg-secondary bg-opacity-10 p-3">
+                                    <i class="fas fa-undo text-secondary fa-lg"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h3 class="mb-0">@ViewBag.PendingReturns</h3>
+                                <small class="text-muted">@Localizer["PendingReturns"]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Pending Refunds -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <a href="@Url.Action("CustomerRefunds", "Payment", new { area = "Moderator" })" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 hover-lift">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                                    <i class="fas fa-money-bill-wave text-success fa-lg"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h3 class="mb-0">@ViewBag.PendingRefunds</h3>
+                                <small class="text-muted">@Localizer["PendingRefunds"]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Unread Messages -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <a href="@Url.Action("Index", "Message", new { area = "Moderator" })" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 hover-lift">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="rounded-circle bg-purple bg-opacity-10 p-3" style="background-color: rgba(128, 0, 128, 0.1);">
+                                    <i class="fas fa-comment-dots fa-lg" style="color: purple;"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h3 class="mb-0">@ViewBag.UnreadMessages</h3>
+                                <small class="text-muted">@Localizer["UnreadMessages"]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Payments -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <a href="@Url.Action("SellerPayments", "Payment", new { area = "Moderator" })" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 hover-lift">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="rounded-circle bg-dark bg-opacity-10 p-3">
+                                    <i class="fas fa-wallet text-dark fa-lg"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h3 class="mb-0"><i class="fas fa-arrow-right fa-sm"></i></h3>
+                                <small class="text-muted">@Localizer["SellerPayments"]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Seller Applications -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="fas fa-store me-2 text-warning"></i>@Localizer["RecentSellerApplications"]</h6>
+                    <a href="@Url.Action("Index", "Seller", new { area = "Moderator" })" class="btn btn-sm btn-outline-primary">@Localizer["ViewAll"]</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        @if (ViewBag.RecentSellers != null)
+                        {
+                            foreach (var seller in (IEnumerable<Bangaliyana.Models.Seller>)ViewBag.RecentSellers)
+                            {
+                                <a href="@Url.Action("Details", "Seller", new { area = "Moderator", id = seller.Id })" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>@seller.ShopName</strong>
+                                            <small class="d-block text-muted">@seller.User?.Email</small>
+                                        </div>
+                                        <span class="badge bg-@(seller.Status == Bangaliyana.Models.SellerStatus.Pending ? "warning" : seller.Status == Bangaliyana.Models.SellerStatus.Approved ? "success" : "secondary")">
+                                            @seller.Status.GetDisplayName()
+                                        </span>
+                                    </div>
+                                </a>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Orders -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="fas fa-shopping-bag me-2 text-primary"></i>@Localizer["RecentOrders"]</h6>
+                    <a href="@Url.Action("Index", "Order", new { area = "Moderator" })" class="btn btn-sm btn-outline-primary">@Localizer["ViewAll"]</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        @if (ViewBag.RecentOrders != null)
+                        {
+                            foreach (var order in (IEnumerable<Bangaliyana.Models.Order>)ViewBag.RecentOrders)
+                            {
+                                <a href="@Url.Action("Details", "Order", new { area = "Moderator", id = order.Id })" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>#@(order.OrderNumber ?? order.Id.ToString())</strong>
+                                            <small class="d-block text-muted">@order.CustomerName</small>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-@(order.Status == Bangaliyana.Models.OrderStatus.Delivered ? "success" : order.Status == Bangaliyana.Models.OrderStatus.Pending ? "warning" : "secondary")">
+                                                @order.Status.GetDisplayName()
+                                            </span>
+                                            <small class="d-block text-muted">@order.TotalAmount.ToString("N0") BDT</small>
+                                        </div>
+                                    </div>
+                                </a>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Tickets -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="fas fa-ticket-alt me-2 text-danger"></i>@Localizer["RecentTickets"]</h6>
+                    <a href="@Url.Action("Index", "Ticket", new { area = "Moderator" })" class="btn btn-sm btn-outline-primary">@Localizer["ViewAll"]</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        @if (ViewBag.RecentTickets != null)
+                        {
+                            foreach (var ticket in (IEnumerable<Bangaliyana.Models.Ticket>)ViewBag.RecentTickets)
+                            {
+                                <a href="@Url.Action("Details", "Ticket", new { area = "Moderator", id = ticket.Id })" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>@ticket.Subject.Substring(0, Math.Min(ticket.Subject.Length, 25))@(ticket.Subject.Length > 25 ? "..." : "")</strong>
+                                            <small class="d-block text-muted">@ticket.User?.FullName</small>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-@(ticket.Priority == Bangaliyana.Models.TicketPriority.Urgent ? "danger" : ticket.Priority == Bangaliyana.Models.TicketPriority.High ? "warning" : "secondary")">
+                                                @ticket.Priority.GetDisplayName()
+                                            </span>
+                                            <span class="badge bg-@(ticket.Status == Bangaliyana.Models.TicketStatus.Open ? "primary" : ticket.Status == Bangaliyana.Models.TicketStatus.InProgress ? "info" : "secondary") d-block mt-1">
+                                                @ticket.Status.GetDisplayName()
+                                            </span>
+                                        </div>
+                                    </div>
+                                </a>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h6 class="mb-0"><i class="fas fa-bolt me-2 text-warning"></i>@Localizer["QuickActions"]</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-6 col-md-3 col-lg-2">
+                            <a href="@Url.Action("Index", "Seller", new { area = "Moderator", status = "Pending" })" class="btn btn-outline-warning w-100">
+                                <i class="fas fa-store d-block mb-1"></i>
+                                <small>@Localizer["ReviewSellers"]</small>
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3 col-lg-2">
+                            <a href="@Url.Action("BankRequests", "Seller", new { area = "Moderator" })" class="btn btn-outline-info w-100">
+                                <i class="fas fa-university d-block mb-1"></i>
+                                <small>@Localizer["BankRequests"]</small>
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3 col-lg-2">
+                            <a href="@Url.Action("Returns", "Order", new { area = "Moderator" })" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-undo d-block mb-1"></i>
+                                <small>@Localizer["Returns"]</small>
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3 col-lg-2">
+                            <a href="@Url.Action("Index", "Ticket", new { area = "Moderator" })" class="btn btn-outline-danger w-100">
+                                <i class="fas fa-headset d-block mb-1"></i>
+                                <small>@Localizer["Support"]</small>
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3 col-lg-2">
+                            <a href="@Url.Action("Index", "Message", new { area = "Moderator" })" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-comments d-block mb-1"></i>
+                                <small>@Localizer["Messages"]</small>
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3 col-lg-2">
+                            <a href="@Url.Action("SellerPayments", "Payment", new { area = "Moderator" })" class="btn btn-outline-success w-100">
+                                <i class="fas fa-money-bill d-block mb-1"></i>
+                                <small>@Localizer["Payments"]</small>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-lift {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .hover-lift:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+    [data-theme="dark"] .list-group-item {
+        background-color: #1f2937;
+        border-color: #374151;
+        color: #e5e7eb;
+    }
+    [data-theme="dark"] .list-group-item:hover {
+        background-color: #374151;
+    }
+</style>

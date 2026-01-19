@@ -1,0 +1,2802 @@
+@model Bangaliyana.Models.Products
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+
+@{
+    ViewData["Title"] = Localizer["EditProduct"].Value;
+}
+
+<div class="container py-4">
+    <div class="card shadow-lg border-0">
+                <div class="card-header bg-info text-white py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0"><i class="fas fa-edit me-2"></i>@Localizer["EditProduct"]</h4>
+                        <div>
+                            <span class="badge bg-primary me-2">
+                                <i class="fas fa-eye me-1"></i>@Localizer["Views"]: @Model.ViewCount
+                            </span>
+                            <span class="badge bg-success">
+                                <i class="fas fa-shopping-cart me-1"></i>@Localizer["Sold"]: @Model.SoldCount
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <form asp-action="Edit" method="post" enctype="multipart/form-data" id="productForm">
+                        <input type="hidden" asp-for="Id" />
+                        <input type="hidden" asp-for="ViewCount" />
+                        <input type="hidden" asp-for="SoldCount" />
+                        <input type="hidden" asp-for="SellerId" />
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                        <div class="row">
+                            <!-- Left Column - Form Fields -->
+                            <div class="col-lg-8">
+                                <!-- Basic Information Section -->
+                                <div class="card mb-4 border-info">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-info-circle text-info me-2"></i>@Localizer["BasicInformation"]</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-12 mb-3">
+                                                <label asp-for="Name" class="form-label fw-semibold">@Localizer["ProductName"] <span class="text-danger">*</span></label>
+                                                <input asp-for="Name" class="form-control" placeholder="@Localizer["EnterProductName"]" />
+                                                <span asp-validation-for="Name" class="text-danger small"></span>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-12 mb-3">
+                                                <label asp-for="Description" class="form-label fw-semibold">@Localizer["MainDescription"] <span class="text-danger">*</span></label>
+                                                <textarea asp-for="Description" class="form-control" rows="4" placeholder="@Localizer["EnterMainProductDescription"]"></textarea>
+                                                <span asp-validation-for="Description" class="text-danger small"></span>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="DescriptionBengali" class="form-label fw-semibold">@Localizer["DescriptionBengali"]</label>
+                                                <textarea asp-for="DescriptionBengali" class="form-control bengali-only" rows="4" placeholder="বাংলায় পণ্যের বিবরণ লিখুন"></textarea>
+                                                <span class="text-danger small bengali-error" style="display:none;">@Localizer["OnlyBengaliAllowed"]</span>
+                                                <span asp-validation-for="DescriptionBengali" class="text-danger small"></span>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="DescriptionEnglish" class="form-label fw-semibold">@Localizer["DescriptionEnglish"]</label>
+                                                <textarea asp-for="DescriptionEnglish" class="form-control english-only" rows="4" placeholder="@Localizer["EnterProductDescriptionEnglish"]"></textarea>
+                                                <span class="text-danger small english-error" style="display:none;">@Localizer["OnlyEnglishAllowed"]</span>
+                                                <span asp-validation-for="DescriptionEnglish" class="text-danger small"></span>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-12 mb-3">
+                                                <label asp-for="ShortDescription" class="form-label fw-semibold">@Localizer["ShortDescription"]</label>
+                                                <textarea asp-for="ShortDescription" class="form-control" rows="2" placeholder="@Localizer["ShortDescriptionPlaceholder"]" maxlength="500"></textarea>
+                                                <span asp-validation-for="ShortDescription" class="text-danger small"></span>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-12 mb-3">
+                                                <label asp-for="Highlights" class="form-label fw-semibold">@Localizer["ProductHighlights"]</label>
+                                                <textarea asp-for="Highlights" class="form-control" rows="3" placeholder="@Localizer["KeyFeaturesOrHighlights"]"></textarea>
+                                                <small class="text-muted">@Localizer["EnterKeyFeaturesPerLine"]</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Pricing & Inventory Section -->
+                                <div class="card mb-4 border-success">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-tags text-success me-2"></i>@Localizer["PricingAndInventory"]</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <label asp-for="Price" class="form-label fw-semibold">@Localizer["PriceBDT"] <span class="text-danger">*</span></label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">৳</span>
+                                                    <input asp-for="Price" class="form-control" type="number" step="0.01" min="0.01" placeholder="0.00" />
+                                                </div>
+                                                <span asp-validation-for="Price" class="text-danger small"></span>
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label asp-for="DiscountPrice" class="form-label fw-semibold">Discount Price (BDT)</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">৳</span>
+                                                    <input asp-for="DiscountPrice" class="form-control" type="number" step="0.01" min="0" placeholder="0.00" />
+                                                </div>
+                                                <small class="text-muted">Leave empty if no discount</small>
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label asp-for="Stock" class="form-label fw-semibold">Stock Quantity <span class="text-danger">*</span></label>
+                                                <input asp-for="Stock" class="form-control" type="number" min="0" placeholder="0" id="stockInput" />
+                                                <span asp-validation-for="Stock" class="text-danger small"></span>
+                                                <small class="text-muted">Set to 0 for out of stock</small>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="SKU" class="form-label fw-semibold">SKU</label>
+                                                <input asp-for="SKU" class="form-control" placeholder="Product SKU/Code" />
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="Status" class="form-label fw-semibold">Product Status <span class="text-danger">*</span></label>
+                                                <select asp-for="Status" class="form-select" id="statusSelect" asp-items="ViewBag.productStatuses">
+                                                    <option value="">Select Status</option>
+                                                </select>
+                                                <small class="text-muted">Auto-set to "Out of Stock" when stock is 0</small>
+                                            </div>
+                                            <input type="hidden" asp-for="IsAvailable" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Category & Classification Section -->
+                                <div class="card mb-4 border-primary">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-folder-open text-primary me-2"></i>Category & Classification</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Cascading Category Selection -->
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Category <span class="text-muted">(Select from hierarchy)</span></label>
+                                            <div id="categoryBreadcrumb" class="mb-2" style="display:none;">
+                                                <small class="text-info"><i class="fas fa-sitemap me-1"></i>Selected: <span id="categoryPath"></span></small>
+                                            </div>
+                                            <div id="cascadingCategories" class="row g-2">
+                                                <div class="col-md-4 category-level" data-level="0">
+                                                    <select class="form-select category-select" data-level="0" asp-items="ViewBag.rootCategories">
+                                                        <option value="">Select Category</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <input type="hidden" asp-for="CategoryId" id="finalCategoryId" />
+                                            <small class="text-muted">Select the most specific category for your product</small>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-12 mb-3">
+                                                <label asp-for="Tags" class="form-label fw-semibold">Tags</label>
+                                                <input asp-for="Tags" class="form-control" placeholder="Enter tags separated by commas" />
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <label asp-for="Brand" class="form-label fw-semibold">Brand</label>
+                                                <input asp-for="Brand" class="form-control" placeholder="Brand name" />
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label asp-for="Manufacturer" class="form-label fw-semibold">Manufacturer</label>
+                                                <input asp-for="Manufacturer" class="form-control" placeholder="Manufacturer name" />
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label asp-for="CountryOfOrigin" class="form-label fw-semibold">Country of Origin</label>
+                                                <input asp-for="CountryOfOrigin" class="form-control" placeholder="e.g., Bangladesh" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Product Details Section -->
+                                <div class="card mb-4 border-warning">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-clipboard-list text-warning me-2"></i>Product Details</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="Fabric" class="form-label fw-semibold">Fabric/Material</label>
+                                                <input asp-for="Fabric" class="form-control" placeholder="e.g., Cotton, Silk" />
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="Weight" class="form-label fw-semibold">Weight (grams)</label>
+                                                <input asp-for="Weight" class="form-control" type="number" step="0.01" min="0" placeholder="Weight in grams" />
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="CareInstructions" class="form-label fw-semibold">Care Instructions</label>
+                                                <textarea asp-for="CareInstructions" class="form-control" rows="3" placeholder="Washing, drying, storage instructions"></textarea>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="WarrantyInfo" class="form-label fw-semibold">Warranty Information</label>
+                                                <textarea asp-for="WarrantyInfo" class="form-control" rows="3" placeholder="Warranty details if applicable"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Product Variants Section -->
+                                <div class="card mb-4 border-purple" style="border-color: #6f42c1 !important;">
+                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0"><i class="fas fa-palette me-2" style="color: #6f42c1;"></i>Product Variants (Size, Color)</h5>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" id="addVariantBtn">
+                                            <i class="fas fa-plus me-1"></i>Add Variant
+                                        </button>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (Model.Variants != null && Model.Variants.Any())
+                                        {
+                                            <div class="table-responsive" id="variantsTableContainer">
+                                                <table class="table table-hover align-middle mb-0">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>Size</th>
+                                                            <th>Color</th>
+                                                            <th>SKU</th>
+                                                            <th class="text-center">Stock</th>
+                                                            <th class="text-end">Additional Price</th>
+                                                            <th class="text-center">Status</th>
+                                                            <th class="text-end">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="variantsTableBody">
+                                                        @foreach (var variant in Model.Variants.OrderBy(v => v.DisplayOrder))
+                                                        {
+                                                            <tr data-variant-id="@variant.Id">
+                                                                <td>
+                                                                    @if (!string.IsNullOrEmpty(variant.Size))
+                                                                    {
+                                                                        <span class="badge bg-secondary">@variant.Size</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="text-muted">-</span>
+                                                                    }
+                                                                </td>
+                                                                <td>
+                                                                    @if (!string.IsNullOrEmpty(variant.Color))
+                                                                    {
+                                                                        <div class="d-flex align-items-center">
+                                                                            @if (!string.IsNullOrEmpty(variant.ColorCode))
+                                                                            {
+                                                                                <span style="background-color: @variant.ColorCode; width: 18px; height: 18px; border-radius: 50%; border: 1px solid #ddd; display: inline-block; margin-right: 8px;"></span>
+                                                                            }
+                                                                            <span>@variant.Color</span>
+                                                                        </div>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="text-muted">-</span>
+                                                                    }
+                                                                </td>
+                                                                <td><code class="small">@(variant.SKU ?? "-")</code></td>
+                                                                <td class="text-center">
+                                                                    <span class="badge @(variant.Stock > 0 ? "bg-success" : "bg-danger")">@variant.Stock</span>
+                                                                </td>
+                                                                <td class="text-end">
+                                                                    @if (variant.AdditionalPrice > 0)
+                                                                    {
+                                                                        <span class="text-success">+৳@variant.AdditionalPrice.ToString("N0")</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="text-muted">-</span>
+                                                                    }
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    @if (variant.IsAvailable)
+                                                                    {
+                                                                        <span class="badge bg-success"><i class="fas fa-check"></i></span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="badge bg-secondary"><i class="fas fa-times"></i></span>
+                                                                    }
+                                                                </td>
+                                                                <td class="text-end">
+                                                                    <div class="btn-group btn-group-sm">
+                                                                        <button type="button" class="btn btn-outline-primary edit-variant-btn"
+                                                                                data-id="@variant.Id"
+                                                                                data-size="@variant.Size"
+                                                                                data-color="@variant.Color"
+                                                                                data-colorcode="@variant.ColorCode"
+                                                                                data-sku="@variant.SKU"
+                                                                                data-stock="@variant.Stock"
+                                                                                data-additionalprice="@variant.AdditionalPrice"
+                                                                                data-isavailable="@variant.IsAvailable.ToString().ToLower()"
+                                                                                title="Edit">
+                                                                            <i class="fas fa-edit"></i>
+                                                                        </button>
+                                                                        <button type="button" class="btn btn-outline-danger delete-variant-btn" data-id="@variant.Id" title="Delete">
+                                                                            <i class="fas fa-trash"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="text-center py-4" id="noVariantsMessage">
+                                                <i class="fas fa-cubes fa-3x text-muted mb-3"></i>
+                                                <p class="text-muted mb-0">No variants added yet. Click "Add Variant" to create size/color options.</p>
+                                            </div>
+                                            <div class="table-responsive" id="variantsTableContainer" style="display: none;">
+                                                <table class="table table-hover align-middle mb-0">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>Size</th>
+                                                            <th>Color</th>
+                                                            <th>SKU</th>
+                                                            <th class="text-center">Stock</th>
+                                                            <th class="text-end">Additional Price</th>
+                                                            <th class="text-center">Status</th>
+                                                            <th class="text-end">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="variantsTableBody">
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Images Section -->
+                                <div class="card mb-4 border-secondary">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-images text-secondary me-2"></i>Product Images</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="alert alert-info mb-3">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Manage Images:</strong> Click <span class="badge bg-success"><i class="fas fa-star"></i></span> to set as primary,
+                                            <span class="badge bg-danger"><i class="fas fa-trash"></i></span> to delete. At least one image must remain.
+                                        </div>
+
+                                        <!-- Existing Images Grid -->
+                                        <div id="existingImagesGrid" class="row g-3 mb-4">
+                                            <!-- Main Image -->
+                                            @if (!string.IsNullOrEmpty(Model.ImageUrl) && !Model.ImageUrl.Contains("noimage.jpg"))
+                                            {
+                                                <div class="col-6 col-md-4 col-lg-3" id="mainImageCard">
+                                                    <div class="image-card primary" data-image-id="0" data-is-main="true">
+                                                        <span class="primary-badge"><i class="fas fa-star me-1"></i>Primary</span>
+                                                        <button type="button" class="remove-btn" onclick="deleteMainImage()" title="Delete image">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                        <div class="image-wrapper">
+                                                            <img src="~/@Model.ImageUrl" alt="Main Image" />
+                                                        </div>
+                                                        <div class="image-actions">
+                                                            <span class="badge bg-success"><i class="fas fa-check me-1"></i>Primary Image</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                            <!-- Gallery Images -->
+                                            @if (Model.Images != null && Model.Images.Any())
+                                            {
+                                                @foreach (var img in Model.Images.OrderBy(i => i.DisplayOrder))
+                                                {
+                                                    <div class="col-6 col-md-4 col-lg-3 gallery-image-card" data-image-id="@img.Id">
+                                                        <div class="image-card" data-image-id="@img.Id" data-is-main="false">
+                                                            <button type="button" class="remove-btn" onclick="deleteGalleryImage(@img.Id)" title="Delete image">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                            <div class="image-wrapper">
+                                                                <img src="~/@img.ImageUrl" alt="Gallery Image" />
+                                                            </div>
+                                                            <div class="image-actions">
+                                                                <button type="button" class="btn btn-sm btn-outline-success set-primary-btn" onclick="setAsPrimary(@img.Id)">
+                                                                    <i class="fas fa-star me-1"></i>Set Primary
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            }
+                                        </div>
+
+                                        <!-- Add New Images -->
+                                        <div class="border-top pt-3">
+                                            <label class="form-label fw-semibold">Add More Images</label>
+                                            <div class="input-group">
+                                                <input name="AdditionalImages" class="form-control" type="file" accept="image/*" multiple id="newImagesInput" />
+                                                <!-- Native camera capture for mobile (works on HTTP) -->
+                                                <input type="file" accept="image/*" capture="environment" id="nativeCameraInput" class="d-none" />
+                                                <button type="button" class="btn btn-outline-info camera-capture-btn" id="openCameraBtn" title="Capture from Camera">
+                                                    <i class="fas fa-camera"></i>
+                                                </button>
+                                            </div>
+                                            <small class="text-muted">Select additional images or use camera to capture</small>
+                                            <div id="newImagesPreview" class="row g-2 mt-2"></div>
+                                        </div>
+
+                                        <input type="hidden" asp-for="ImageUrl" id="imageUrlHidden" />
+
+                                        <div class="row mt-4">
+                                            <div class="col-md-12 mb-3">
+                                                <label asp-for="VideoUrl" class="form-label fw-semibold">Video URL</label>
+                                                <input asp-for="VideoUrl" class="form-control" placeholder="YouTube or video URL" />
+                                                <small class="text-muted">Product demonstration video</small>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-12 mb-3">
+                                                <label asp-for="Has360View" class="form-label fw-semibold d-block">360° View</label>
+                                                <div class="form-check form-switch mb-2">
+                                                    <input asp-for="Has360View" class="form-check-input" type="checkbox" id="has360ViewCheck" />
+                                                    <label class="form-check-label" for="has360ViewCheck">Enable 360° View</label>
+                                                </div>
+                                                <input asp-for="View360Url" class="form-control" placeholder="360° view URL" id="view360UrlInput" disabled="@(!Model.Has360View)" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Shipping & Returns Section -->
+                                <div class="card mb-4 border-info">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-truck text-info me-2"></i>Shipping & Returns</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="EstimatedDeliveryDays" class="form-label fw-semibold">Estimated Delivery (Days)</label>
+                                                <input asp-for="EstimatedDeliveryDays" class="form-control" type="text" placeholder="e.g., 3-5" oninput="this.value = this.value.replace(/[^0-9-]/g, '')" />
+                                                <small class="text-muted">Leave empty for default (3-5 days)</small>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="ReturnDays" class="form-label fw-semibold">Return Period (Days)</label>
+                                                <input asp-for="ReturnDays" class="form-control" type="number" min="0" id="returnDaysInput" />
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="IsCODAvailable" class="form-label fw-semibold d-block">Cash on Delivery</label>
+                                                <div class="form-check form-switch">
+                                                    <input asp-for="IsCODAvailable" class="form-check-input" type="checkbox" />
+                                                    <label class="form-check-label" for="IsCODAvailable">COD Available</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="IsReturnable" class="form-label fw-semibold d-block">Returnable</label>
+                                                <div class="form-check form-switch">
+                                                    <input asp-for="IsReturnable" class="form-check-input" type="checkbox" id="isReturnableCheck" />
+                                                    <label class="form-check-label" for="isReturnableCheck">Accept Returns</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right Column - Stats & Info -->
+                            <div class="col-lg-4">
+                                <!-- Product Stats -->
+                                <div class="card mb-4 border-0 shadow-sm sticky-top" style="top: 20px;">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Product Statistics</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-6 mb-3">
+                                                <div class="fw-bold text-primary fs-3">@Model.ViewCount</div>
+                                                <small class="text-muted">Total Views</small>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <div class="fw-bold text-success fs-3">@Model.SoldCount</div>
+                                                <small class="text-muted">Total Sold</small>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <div class="mb-2">
+                                            <i class="fas fa-box me-2 text-info"></i>
+                                            <span class="fw-semibold">Stock:</span>
+                                            <span class="@(Model.Stock > 0 ? "text-success" : "text-danger")">@Model.Stock units</span>
+                                        </div>
+                                        <div class="mb-2">
+                                            @{
+                                                var statusColor = Model.Status switch {
+                                                    ProductStatus.Active => "text-success",
+                                                    ProductStatus.Draft => "text-warning",
+                                                    ProductStatus.Inactive => "text-secondary",
+                                                    ProductStatus.OutOfStock => "text-danger",
+                                                    ProductStatus.Discontinued => "text-dark",
+                                                    _ => "text-muted"
+                                                };
+                                            }
+                                            <i class="fas fa-circle me-2 @statusColor"></i>
+                                            <span class="fw-semibold">Status:</span>
+                                            @Model.Status.GetDisplayName()
+                                        </div>
+                                    </div>
+
+                                    <div class="card-footer bg-transparent">
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-clock me-1"></i>Created: @Model.CreatedAt.ToBangladeshString("dd MMM yyyy, hh:mm tt")
+                                        </small>
+                                        <small class="text-muted d-block mt-1">
+                                            <i class="fas fa-sync-alt me-1"></i>Updated: @Model.UpdatedAt.ToBangladeshString("dd MMM yyyy, hh:mm tt")
+                                        </small>
+                                    </div>
+
+                                    <div class="card-footer bg-transparent">
+                                        <div class="d-grid gap-2">
+                                            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-info btn-sm">
+                                                <i class="fas fa-eye me-2"></i>View Public Details
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to List
+                            </a>
+                            <div>
+                                <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-info me-2">
+                                    <i class="fas fa-eye me-2"></i>View Details
+                                </a>
+                                <button type="submit" class="btn btn-info text-white">
+                                    <i class="fas fa-save me-2"></i>Update Product
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+</div>
+
+<!-- Camera Capture Modal -->
+<div class="modal fade" id="cameraCaptureModal" tabindex="-1" aria-labelledby="cameraCaptureModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="cameraCaptureModalLabel"><i class="fas fa-camera me-2"></i>Capture Image</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="closeCameraModal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="cameraContainer">
+                    <video id="cameraVideo" autoplay playsinline class="w-100 rounded"></video>
+                </div>
+                <div id="cameraError" class="alert alert-danger d-none mt-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <span id="cameraErrorText">Unable to access camera</span>
+                </div>
+                <div id="cameraControls" class="mt-3">
+                    <select id="cameraSelect" class="form-select mb-3" style="max-width: 300px; margin: 0 auto;">
+                        <option value="">Select Camera</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelCameraBtn">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-info text-white" id="capturePhotoBtn">
+                    <i class="fas fa-camera me-2"></i>Capture Photo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Editor Modal - Powered by Cropper.js -->
+<div class="modal fade" id="imageEditorModal" tabindex="-1" aria-labelledby="imageEditorModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-fullscreen-lg-down modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient modal-header-primary-gradient">
+                <h5 class="modal-title text-white" id="imageEditorModalLabel">
+                    <i class="fas fa-magic me-2"></i>Image Editor
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="closeEditorModal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="row g-0 h-100">
+                    <!-- Image Preview Area -->
+                    <div class="col-lg-8 editor-main-area">
+                        <div id="editorPreviewContainer" class="cropper-container-wrapper">
+                            <img id="cropperImage" src="" alt="Edit Image" style="max-width: 100%; display: block;">
+                        </div>
+                        <!-- Zoom slider below image -->
+                        <div class="zoom-control-bar">
+                            <button type="button" class="btn btn-sm btn-light" id="zoomOutBtn">
+                                <i class="fas fa-search-minus"></i>
+                            </button>
+                            <input type="range" class="form-range mx-2" id="zoomSlider" min="50" max="200" step="5" value="100">
+                            <button type="button" class="btn btn-sm btn-light" id="zoomInBtn">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                            <span class="zoom-value ms-2"><span id="zoomValue">100</span>%</span>
+                        </div>
+                    </div>
+                    <!-- Editor Controls Sidebar -->
+                    <div class="col-lg-4 editor-sidebar">
+                        <div class="editor-controls-wrapper">
+                            <!-- Quick Actions -->
+                            <div class="control-section">
+                                <h6 class="control-title"><i class="fas fa-bolt me-2"></i>Quick Actions</h6>
+                                <div class="btn-grid">
+                                    <button type="button" class="btn btn-editor" id="rotateLeftBtn" title="Rotate Left">
+                                        <i class="fas fa-undo"></i>
+                                        <span>Rotate Left</span>
+                                    </button>
+                                    <button type="button" class="btn btn-editor" id="rotateRightBtn" title="Rotate Right">
+                                        <i class="fas fa-redo"></i>
+                                        <span>Rotate Right</span>
+                                    </button>
+                                    <button type="button" class="btn btn-editor" id="flipHorizontalBtn" title="Flip Horizontal">
+                                        <i class="fas fa-arrows-alt-h"></i>
+                                        <span>Flip H</span>
+                                    </button>
+                                    <button type="button" class="btn btn-editor" id="flipVerticalBtn" title="Flip Vertical">
+                                        <i class="fas fa-arrows-alt-v"></i>
+                                        <span>Flip V</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Aspect Ratio -->
+                            <div class="control-section">
+                                <h6 class="control-title"><i class="fas fa-crop-alt me-2"></i>Aspect Ratio</h6>
+                                <div class="ratio-grid">
+                                    <button type="button" class="btn btn-ratio active" data-ratio="NaN" title="Free crop">
+                                        <i class="fas fa-expand"></i>
+                                        <span>Free</span>
+                                    </button>
+                                    <button type="button" class="btn btn-ratio" data-ratio="1" title="Square 1:1">
+                                        <i class="fas fa-square"></i>
+                                        <span>1:1</span>
+                                    </button>
+                                    <button type="button" class="btn btn-ratio" data-ratio="1.333" title="4:3">
+                                        <i class="fas fa-image"></i>
+                                        <span>4:3</span>
+                                    </button>
+                                    <button type="button" class="btn btn-ratio" data-ratio="1.777" title="16:9">
+                                        <i class="fas fa-tv"></i>
+                                        <span>16:9</span>
+                                    </button>
+                                    <button type="button" class="btn btn-ratio" data-ratio="0.75" title="3:4 Portrait">
+                                        <i class="fas fa-mobile-alt"></i>
+                                        <span>3:4</span>
+                                    </button>
+                                    <button type="button" class="btn btn-ratio" data-ratio="0.5625" title="9:16 Story">
+                                        <i class="fas fa-mobile"></i>
+                                        <span>9:16</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Background Removal -->
+                            <div class="control-section">
+                                <h6 class="control-title"><i class="fas fa-eraser me-2"></i>Background</h6>
+                                <div class="bg-controls">
+                                    <button type="button" class="btn btn-remove-bg w-100 mb-2" id="removeBackgroundBtn">
+                                        <i class="fas fa-magic me-2"></i>Remove Background
+                                    </button>
+                                    <div class="bg-options" id="bgColorOptions" style="display: none;">
+                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                            <span class="small text-muted">Replace with:</span>
+                                            <input type="color" class="form-control form-control-color" id="bgColorPicker" value="#ffffff" title="Background color">
+                                            <button type="button" class="btn btn-sm btn-primary" id="applyBgColorBtn">Apply</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="transparentBgBtn" title="Keep transparent">
+                                                <i class="fas fa-chess-board"></i>
+                                            </button>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="undoBackgroundBtn">
+                                            <i class="fas fa-undo me-1"></i>Undo Background Removal
+                                        </button>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">Works best with solid color backgrounds</small>
+                                </div>
+                            </div>
+
+                            <!-- Reset -->
+                            <div class="control-section">
+                                <button type="button" class="btn btn-outline-danger w-100" id="resetAllBtn">
+                                    <i class="fas fa-undo-alt me-2"></i>Reset All Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer editor-footer">
+                <button type="button" class="btn btn-outline-secondary" id="retakePhotoBtn">
+                    <i class="fas fa-camera me-2"></i>Retake
+                </button>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="discardImageBtn">
+                    <i class="fas fa-times me-2"></i>Discard
+                </button>
+                <button type="button" class="btn btn-success btn-lg" id="confirmImageBtn">
+                    <i class="fas fa-check me-2"></i>Save & Add Image
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden canvas for image processing -->
+<canvas id="hiddenCanvas" style="display: none;"></canvas>
+
+<!-- Add/Edit Variant Modal -->
+<div class="modal fade" id="variantModal" tabindex="-1" aria-labelledby="variantModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header modal-header-purple-gradient">
+                <h5 class="modal-title text-white" id="variantModalLabel">
+                    <i class="fas fa-palette me-2"></i><span id="variantModalTitle">Add New Variant</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="variantId" value="0" />
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="variantSize" class="form-label fw-semibold">Size</label>
+                        <select id="variantSize" class="form-select">
+                            <option value="">Select Size</option>
+                            <option value="XS">XS</option>
+                            <option value="S">S</option>
+                            <option value="M">M</option>
+                            <option value="L">L</option>
+                            <option value="XL">XL</option>
+                            <option value="XXL">XXL</option>
+                            <option value="XXXL">XXXL</option>
+                            <option value="Free Size">Free Size</option>
+                            <option value="Custom">Custom...</option>
+                        </select>
+                        <input type="text" id="customSize" class="form-control mt-2" placeholder="Enter custom size" style="display: none;" />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="variantColor" class="form-label fw-semibold">Color</label>
+                        <input type="text" id="variantColor" class="form-control" placeholder="e.g., Red, Blue" />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="variantColorCode" class="form-label fw-semibold">Color Code</label>
+                        <div class="input-group">
+                            <input type="color" id="variantColorPicker" class="form-control form-control-color" value="#6f42c1" />
+                            <input type="text" id="variantColorCode" class="form-control" placeholder="#FFFFFF" />
+                        </div>
+                        <small class="text-muted">Pick or enter hex color code</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="variantSKU" class="form-label fw-semibold">SKU</label>
+                        <input type="text" id="variantSKU" class="form-control" placeholder="Variant SKU" />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="variantStock" class="form-label fw-semibold">Stock Quantity</label>
+                        <input type="number" id="variantStock" class="form-control" min="0" value="0" />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="variantAdditionalPrice" class="form-label fw-semibold">Additional Price (BDT)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">+৳</span>
+                            <input type="number" id="variantAdditionalPrice" class="form-control" min="0" step="1" value="0" />
+                        </div>
+                        <small class="text-muted">Extra charge for this variant</small>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="variantIsAvailable" checked />
+                            <label class="form-check-label" for="variantIsAvailable">Available for purchase</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn text-white" id="saveVariantBtn" style="background: #6f42c1;">
+                    <i class="fas fa-save me-1"></i>Save Variant
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Variant Confirmation Modal -->
+<div class="modal fade" id="deleteVariantModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-danger">
+                        <i class="fas fa-trash-alt" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">Delete Variant?</h4>
+                <p class="text-muted mb-1">Are you sure you want to delete this variant?</p>
+                <p class="text-muted small mb-0">This action cannot be undone.</p>
+                <input type="hidden" id="deleteVariantId" />
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmDeleteVariantBtn">
+                    <i class="fas fa-check me-1"></i> Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <!-- Cropper.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" integrity="sha512-hvNR0F/e2J7zPPfLC9auFe3/SE0yG4aJCOd/qxew74NN7eyiSKjr7xJJMu1Jy2wf7FXITpWS1E/RY8yzuXN7VA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Dark mode styles for input fields */
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background-color: #2d2d3d;
+            border-color: #404050;
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] .form-control:focus,
+        [data-theme="dark"] .form-select:focus {
+            background-color: #353545;
+            border-color: #17a2b8;
+            color: #f0f0f0;
+            box-shadow: 0 0 0 0.2rem rgba(23, 162, 184, 0.25);
+        }
+        [data-theme="dark"] .form-control::placeholder {
+            color: #9090a0;
+        }
+        [data-theme="dark"] .form-control:disabled,
+        [data-theme="dark"] .form-select:disabled {
+            background-color: #1d1d2d;
+            color: #808090;
+        }
+        [data-theme="dark"] .input-group-text {
+            background-color: #3d3d4d;
+            border-color: #404050;
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] .card {
+            background-color: #1e1e2e;
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] .card-header.bg-light {
+            background-color: #252535 !important;
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] .card-footer.bg-transparent {
+            border-color: #404050;
+        }
+        [data-theme="dark"] .form-label {
+            color: #d0d0e0;
+        }
+        [data-theme="dark"] .text-muted {
+            color: #9090a0 !important;
+        }
+        [data-theme="dark"] .form-check-label {
+            color: #d0d0e0;
+        }
+
+        /* Card section styles */
+        .card.border-info { border-width: 2px; }
+        .card.border-success { border-width: 2px; }
+        .card.border-primary { border-width: 2px; }
+        .card.border-warning { border-width: 2px; }
+        .card.border-secondary { border-width: 2px; }
+
+        /* Image management card styles */
+        .image-card {
+            position: relative;
+            border: 3px solid #dee2e6;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .image-card:hover {
+            border-color: #17a2b8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .image-card.primary {
+            border-color: #28a745;
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.3);
+        }
+        .image-card .image-wrapper {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+        }
+        [data-theme="dark"] .image-card .image-wrapper {
+            background: #2d2d3d;
+        }
+        .image-card img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .image-card .primary-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: #28a745;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 10;
+        }
+        .image-card .remove-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+        .image-card:hover .remove-btn {
+            opacity: 1;
+        }
+        .image-card .image-actions {
+            padding: 8px;
+            background: #f8f9fa;
+            text-align: center;
+        }
+        [data-theme="dark"] .image-card .image-actions {
+            background: #252535;
+        }
+        .image-card .set-primary-btn {
+            font-size: 11px;
+            padding: 4px 10px;
+        }
+        [data-theme="dark"] .image-card {
+            border-color: #404050;
+        }
+        [data-theme="dark"] .image-card.primary {
+            border-color: #28a745;
+        }
+
+        /* Custom validation icon styles */
+        .form-control,
+        .form-select,
+        textarea.form-control {
+            background-image: none !important;
+        }
+
+        .validation-input-wrapper {
+            position: relative;
+        }
+
+        .validation-input-wrapper .form-control,
+        .validation-input-wrapper .form-select {
+            padding-right: 2.5rem;
+        }
+
+        .validation-input-wrapper textarea.form-control {
+            padding-right: 2.5rem;
+        }
+
+        .validation-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+            pointer-events: none;
+            display: none;
+        }
+
+        .validation-input-wrapper.textarea-wrapper .validation-icon {
+            top: 12px;
+            transform: none;
+        }
+
+        .validation-input-wrapper.is-valid .validation-icon.valid-icon {
+            display: block;
+            color: #198754;
+        }
+
+        .validation-input-wrapper.is-invalid .validation-icon.invalid-icon {
+            display: block;
+            color: #dc3545;
+        }
+
+        .validation-input-wrapper.is-valid .form-control,
+        .validation-input-wrapper.is-valid .form-select {
+            border-color: #198754;
+        }
+
+        .validation-input-wrapper.is-invalid .form-control,
+        .validation-input-wrapper.is-invalid .form-select {
+            border-color: #dc3545;
+        }
+
+        [data-theme="dark"] .validation-input-wrapper.is-valid .form-control,
+        [data-theme="dark"] .validation-input-wrapper.is-valid .form-select {
+            border-color: #198754;
+        }
+
+        [data-theme="dark"] .validation-input-wrapper.is-invalid .form-control,
+        [data-theme="dark"] .validation-input-wrapper.is-invalid .form-select {
+            border-color: #dc3545;
+        }
+
+        /* Camera capture button styles */
+        .camera-capture-btn {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            padding: 0.375rem 1rem;
+            font-size: 1.1rem;
+        }
+        .camera-capture-btn:hover {
+            background-color: #17a2b8;
+            color: #fff;
+        }
+        [data-theme="dark"] .camera-capture-btn {
+            border-color: #404050;
+            color: #17a2b8;
+        }
+        [data-theme="dark"] .camera-capture-btn:hover {
+            background-color: #17a2b8;
+            color: #fff;
+            border-color: #17a2b8;
+        }
+
+        /* Camera capture modal styles */
+        #cameraVideo {
+            max-height: 400px;
+            background: #000;
+            border-radius: 8px;
+        }
+        #cameraContainer {
+            position: relative;
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        [data-theme="dark"] #cameraCaptureModal .modal-content {
+            background-color: #1e1e2e;
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] #cameraCaptureModal .modal-header {
+            border-bottom-color: #404050;
+        }
+        [data-theme="dark"] #cameraCaptureModal .modal-footer {
+            border-top-color: #404050;
+        }
+
+        /* Cropper.js image editor styles */
+        .editor-main-area {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            min-height: 500px;
+        }
+
+        .cropper-container-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #cropperImage {
+            max-width: 100%;
+            max-height: 450px;
+            display: block;
+        }
+
+        .zoom-control-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .zoom-control-bar .form-range {
+            width: 200px;
+            accent-color: #667eea;
+        }
+
+        .zoom-value {
+            color: #fff;
+            font-weight: 600;
+            min-width: 50px;
+        }
+
+        .editor-sidebar {
+            background: #f8f9fa;
+            border-left: 1px solid #dee2e6;
+            overflow-y: auto;
+            max-height: 600px;
+        }
+
+        [data-theme="dark"] .editor-sidebar {
+            background: #1e1e2e;
+            border-left-color: #404050;
+        }
+
+        .editor-controls-wrapper {
+            padding: 20px;
+        }
+
+        .control-section {
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .control-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        [data-theme="dark"] .control-section {
+            border-bottom-color: #404050;
+        }
+
+        .control-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        [data-theme="dark"] .control-title {
+            color: #adb5bd;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .btn-editor {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 8px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            background: #fff;
+            color: #495057;
+            transition: all 0.2s ease;
+            font-size: 0.75rem;
+        }
+
+        .btn-editor:hover {
+            border-color: #667eea;
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .btn-editor i {
+            font-size: 1.25rem;
+            margin-bottom: 4px;
+        }
+
+        [data-theme="dark"] .btn-editor {
+            background: #252535;
+            border-color: #404050;
+            color: #e0e0e0;
+        }
+
+        [data-theme="dark"] .btn-editor:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .ratio-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .btn-ratio {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 6px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            background: #fff;
+            color: #495057;
+            transition: all 0.2s ease;
+            font-size: 0.7rem;
+        }
+
+        .btn-ratio:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .btn-ratio.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-ratio i {
+            font-size: 1rem;
+            margin-bottom: 2px;
+        }
+
+        [data-theme="dark"] .btn-ratio {
+            background: #252535;
+            border-color: #404050;
+            color: #e0e0e0;
+        }
+
+        [data-theme="dark"] .btn-ratio:hover {
+            border-color: #667eea;
+        }
+
+        .btn-remove-bg {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border: none;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-remove-bg:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(240, 147, 251, 0.4);
+            color: #fff;
+        }
+
+        .btn-remove-bg:disabled {
+            opacity: 0.6;
+            transform: none;
+        }
+
+        .bg-options {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 10px;
+        }
+
+        [data-theme="dark"] .bg-options {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .editor-footer {
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            padding: 15px 20px;
+        }
+
+        [data-theme="dark"] .editor-footer {
+            background: #1e1e2e;
+            border-top-color: #404050;
+        }
+
+        [data-theme="dark"] #imageEditorModal .modal-content {
+            background-color: #1e1e2e;
+            color: #e0e0e0;
+        }
+
+        .processing-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            z-index: 1000;
+        }
+
+        .processing-overlay .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            color: #667eea;
+        }
+
+        .processing-overlay .processing-text {
+            color: #fff;
+            margin-top: 15px;
+            font-weight: 500;
+        }
+
+        /* Cropper.js Custom Styles */
+        .cropper-view-box,
+        .cropper-face {
+            border-radius: 0;
+        }
+
+        .cropper-view-box {
+            outline: 2px solid #667eea;
+            outline-offset: -2px;
+        }
+
+        .cropper-point {
+            background-color: #667eea;
+            width: 10px;
+            height: 10px;
+        }
+
+        .cropper-line {
+            background-color: #667eea;
+        }
+
+        .cropper-dashed {
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        body.modal-open {
+            overflow: hidden !important;
+        }
+
+        #imageEditorModal .modal-dialog {
+            max-height: 100vh;
+            margin: 0 auto;
+        }
+
+        #imageEditorModal .modal-content {
+            max-height: 100vh;
+            overflow: hidden;
+        }
+
+        #imageEditorModal .modal-body {
+            overflow-y: auto;
+            overflow-x: hidden;
+            max-height: calc(100vh - 130px);
+        }
+
+        .cropper-container-wrapper {
+            overflow: hidden !important;
+            max-width: 100%;
+        }
+
+        .cropper-container {
+            max-width: 100% !important;
+        }
+
+        /* Edit button for uploaded images */
+        .image-upload-card {
+            position: relative;
+            border: 3px solid #dee2e6;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .image-upload-card .image-wrapper {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+        }
+        .image-upload-card img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .image-upload-card .edit-btn {
+            position: absolute;
+            top: 8px;
+            right: 40px;
+            background: #667eea;
+            color: white;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 12px;
+        }
+        .image-upload-card .remove-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 12px;
+        }
+
+        .image-upload-card:hover .edit-btn,
+        .image-upload-card:hover .remove-btn {
+            opacity: 1;
+        }
+
+        .image-upload-card .edit-btn:hover {
+            background: #764ba2;
+        }
+
+        /* Responsive adjustments */
+        @@media (max-width: 991.98px) {
+            .editor-main-area {
+                min-height: 250px;
+                max-height: 45vh;
+            }
+
+            #cropperImage {
+                max-height: 200px;
+            }
+
+            .cropper-container-wrapper {
+                padding: 10px;
+                max-height: 40vh;
+            }
+
+            .editor-sidebar {
+                max-height: 40vh;
+                overflow-y: auto;
+                border-left: none;
+                border-top: 1px solid #dee2e6;
+            }
+
+            [data-theme="dark"] .editor-sidebar {
+                border-top-color: #404050;
+            }
+
+            .editor-controls-wrapper {
+                padding: 12px;
+            }
+
+            .control-section {
+                margin-bottom: 12px;
+                padding-bottom: 12px;
+            }
+
+            .btn-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .ratio-grid {
+                grid-template-columns: repeat(6, 1fr);
+            }
+
+            .btn-editor span,
+            .btn-ratio span {
+                display: none;
+            }
+
+            .btn-editor i,
+            .btn-ratio i {
+                margin-bottom: 0;
+            }
+
+            .btn-editor {
+                padding: 8px 4px;
+            }
+
+            .btn-ratio {
+                padding: 6px 4px;
+            }
+
+            .zoom-control-bar {
+                padding: 8px 10px;
+            }
+
+            .zoom-control-bar .form-range {
+                width: 120px;
+            }
+
+            #imageEditorModal .modal-body {
+                max-height: calc(100vh - 120px);
+            }
+
+            .image-upload-card .edit-btn,
+            .image-upload-card .remove-btn {
+                opacity: 1;
+            }
+        }
+
+        @@media (max-width: 576px) {
+            .editor-main-area {
+                min-height: 200px;
+                max-height: 40vh;
+            }
+
+            #cropperImage {
+                max-height: 180px;
+            }
+
+            .cropper-container-wrapper {
+                max-height: 35vh;
+            }
+
+            .editor-sidebar {
+                max-height: 35vh;
+            }
+
+            .d-flex.justify-content-between.align-items-center.pt-3.border-top {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch !important;
+            }
+
+            .d-flex.justify-content-between.align-items-center.pt-3.border-top > a:first-child {
+                width: 100%;
+                text-align: center;
+                order: 2;
+            }
+
+            .d-flex.justify-content-between.align-items-center.pt-3.border-top > div {
+                width: 100%;
+                display: flex;
+                gap: 0.5rem;
+                order: 1;
+            }
+
+            .d-flex.justify-content-between.align-items-center.pt-3.border-top > div .btn {
+                flex: 1;
+                padding: 0.625rem 0.5rem;
+                font-size: 0.875rem;
+            }
+
+            .d-flex.justify-content-between.align-items-center.pt-3.border-top > div .btn i {
+                margin-right: 0.25rem !important;
+            }
+        }
+    </style>
+}
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <!-- Cropper.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js" integrity="sha512-9KkIqdfN7ipEW6B6k+Aq20PV31bjODg4AA52W+tYtAE0jE0kMx49bjJ3FgvS56wzmyfMUHbQ4Km2b7l9+Y/+Eg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        $(document).ready(function () {
+            // Cascading Category Selection
+            var categorySelections = [];
+            var existingCategoryId = @(Model.CategoryId.HasValue ? Model.CategoryId.Value.ToString() : "null");
+
+            function updateCategoryPath() {
+                if (categorySelections.length > 0) {
+                    var pathNames = categorySelections.map(function(s) { return s.name; });
+                    $('#categoryPath').text(pathNames.join(' > '));
+                    $('#categoryBreadcrumb').show();
+                } else {
+                    $('#categoryBreadcrumb').hide();
+                }
+            }
+
+            function loadChildCategories(parentId, level, callback) {
+                $.get('@Url.Action("GetCategoriesByParent", "Product", new { area = "Seller" })', { parentId: parentId }, function (data) {
+                    if (data && data.length > 0) {
+                        var newSelect = $('<div class="col-md-4 category-level" data-level="' + level + '">' +
+                            '<select class="form-select category-select" data-level="' + level + '">' +
+                            '<option value="">Select Subcategory</option>' +
+                            '</select></div>');
+
+                        $.each(data, function (i, item) {
+                            newSelect.find('select').append(
+                                $('<option></option>')
+                                    .val(item.id)
+                                    .text(item.name)
+                                    .data('hasChildren', item.hasChildren)
+                            );
+                        });
+
+                        $('#cascadingCategories').append(newSelect);
+                        if (callback) callback(newSelect.find('select'));
+                    }
+                });
+            }
+
+            $(document).on('change', '.category-select', function () {
+                var $this = $(this);
+                var level = parseInt($this.data('level'));
+                var selectedId = $this.val();
+                var selectedText = $this.find('option:selected').text();
+                var hasChildren = $this.find('option:selected').data('hasChildren');
+
+                $('.category-level').filter(function() {
+                    return parseInt($(this).data('level')) > level;
+                }).remove();
+
+                categorySelections = categorySelections.slice(0, level);
+
+                if (selectedId) {
+                    categorySelections.push({ id: selectedId, name: selectedText });
+                    $('#finalCategoryId').val(selectedId);
+                    if (hasChildren) {
+                        loadChildCategories(selectedId, level + 1);
+                    }
+                } else {
+                    if (categorySelections.length > 0) {
+                        $('#finalCategoryId').val(categorySelections[categorySelections.length - 1].id);
+                    } else {
+                        $('#finalCategoryId').val('');
+                    }
+                }
+
+                updateCategoryPath();
+            });
+
+            function restoreCategoryPath(categoryId) {
+                if (!categoryId) return;
+
+                $.get('@Url.Action("GetCategoryPath", "Product", new { area = "Seller" })', { categoryId: categoryId }, function (path) {
+                    if (path && path.length > 0) {
+                        categorySelections = [];
+                        var level = 0;
+
+                        function selectNextLevel() {
+                            if (level >= path.length) {
+                                updateCategoryPath();
+                                return;
+                            }
+
+                            var cat = path[level];
+                            var $select = $('.category-select[data-level="' + level + '"]');
+
+                            if ($select.length) {
+                                $select.val(cat.id);
+                                categorySelections.push({ id: cat.id, name: cat.name });
+
+                                level++;
+                                if (level < path.length) {
+                                    loadChildCategories(cat.id, level, function() {
+                                        selectNextLevel();
+                                    });
+                                } else {
+                                    var hasChildren = $select.find('option:selected').data('hasChildren');
+                                    if (hasChildren) {
+                                        loadChildCategories(cat.id, level);
+                                    }
+                                    updateCategoryPath();
+                                }
+                            }
+                        }
+
+                        $.get('@Url.Action("GetCategoriesByParent", "Product", new { area = "Seller" })', { parentId: null }, function (data) {
+                            var $rootSelect = $('.category-select[data-level="0"]');
+                            $rootSelect.find('option:not(:first)').remove();
+                            $.each(data, function (i, item) {
+                                $rootSelect.append(
+                                    $('<option></option>')
+                                        .val(item.id)
+                                        .text(item.name)
+                                        .data('hasChildren', item.hasChildren)
+                                );
+                            });
+                            selectNextLevel();
+                        });
+                    }
+                });
+            }
+
+            if (existingCategoryId) {
+                restoreCategoryPath(existingCategoryId);
+            } else {
+                $.get('@Url.Action("GetCategoriesByParent", "Product", new { area = "Seller" })', { parentId: null }, function (data) {
+                    var $rootSelect = $('.category-select[data-level="0"]');
+                    $rootSelect.find('option:not(:first)').remove();
+                    $.each(data, function (i, item) {
+                        $rootSelect.append(
+                            $('<option></option>')
+                                .val(item.id)
+                                .text(item.name)
+                                .data('hasChildren', item.hasChildren)
+                        );
+                    });
+                });
+            }
+
+            // Stock-Status auto-update
+            $('#stockInput').on('input', function () {
+                var stock = parseInt($(this).val()) || 0;
+                var statusSelect = $('#statusSelect');
+                var currentStatus = statusSelect.val();
+
+                if (stock <= 0) {
+                    statusSelect.val('OutOfStock');
+                } else if (currentStatus === 'OutOfStock') {
+                    statusSelect.val('Active');
+                }
+            });
+
+            // 360 View toggle
+            $('#has360ViewCheck').change(function () {
+                $('#view360UrlInput').prop('disabled', !$(this).is(':checked'));
+            });
+
+            // Return days toggle based on returnable
+            $('#isReturnableCheck').change(function () {
+                $('#returnDaysInput').prop('disabled', !$(this).is(':checked'));
+            });
+
+            // Bengali text validation
+            $('.bengali-only').on('input', function () {
+                var text = $(this).val();
+                var bengaliPattern = /^[\u0980-\u09FF\s\.,!?;:\-\(\)\[\]'"0-9]*$/;
+                var errorSpan = $(this).siblings('.bengali-error');
+
+                if (text && !bengaliPattern.test(text)) {
+                    errorSpan.show();
+                    $(this).addClass('is-invalid');
+                } else {
+                    errorSpan.hide();
+                    $(this).removeClass('is-invalid');
+                }
+            });
+
+            // English text validation
+            $('.english-only').on('input', function () {
+                var text = $(this).val();
+                var englishPattern = /^[a-zA-Z0-9\s\.,!?;:\-\(\)\[\]'"]*$/;
+                var errorSpan = $(this).siblings('.english-error');
+
+                if (text && !englishPattern.test(text)) {
+                    errorSpan.show();
+                    $(this).addClass('is-invalid');
+                } else {
+                    errorSpan.hide();
+                    $(this).removeClass('is-invalid');
+                }
+            });
+
+            // New images management
+            var uploadedNewImages = [];
+            var editingImageIndex = -1;
+
+            $('#newImagesInput').change(function () {
+                var files = Array.from(this.files);
+
+                files.forEach(function (file) {
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        uploadedNewImages.push({
+                            file: file,
+                            dataUrl: e.target.result,
+                            name: file.name
+                        });
+                        renderNewImageGrid();
+                    };
+                    reader.readAsDataURL(file);
+                });
+
+                $(this).val('');
+            });
+
+            function renderNewImageGrid() {
+                var preview = $('#newImagesPreview');
+                preview.empty();
+
+                if (uploadedNewImages.length === 0) return;
+
+                uploadedNewImages.forEach(function (img, index) {
+                    var cardHtml = '<div class="col-6 col-md-3 col-lg-2">' +
+                        '<div class="image-upload-card" data-index="' + index + '">' +
+                        '<button type="button" class="edit-btn" onclick="editNewImage(' + index + '); event.stopPropagation();" title="Edit image">' +
+                        '<i class="fas fa-edit"></i></button>' +
+                        '<button type="button" class="remove-btn" onclick="removeNewImage(' + index + '); event.stopPropagation();" title="Remove image">' +
+                        '<i class="fas fa-times"></i></button>' +
+                        '<div class="image-wrapper">' +
+                        '<img src="' + img.dataUrl + '" alt="' + img.name + '" />' +
+                        '</div>' +
+                        '</div></div>';
+                    preview.append(cardHtml);
+                });
+
+                updateNewImagesInput();
+            }
+
+            function updateNewImagesInput() {
+                var dt = new DataTransfer();
+                uploadedNewImages.forEach(function (img) {
+                    dt.items.add(img.file);
+                });
+                document.getElementById('newImagesInput').files = dt.files;
+            }
+
+            window.removeNewImage = function(index) {
+                uploadedNewImages.splice(index, 1);
+                renderNewImageGrid();
+            };
+
+            window.editNewImage = function(index) {
+                editingImageIndex = index;
+                var img = uploadedNewImages[index];
+                if (img && img.dataUrl) {
+                    openImageEditor(img.dataUrl);
+                }
+            };
+
+            // Form validation before submit
+            $('#productForm').on('submit', function (e) {
+                var bengaliField = $('.bengali-only');
+                var englishField = $('.english-only');
+
+                if (bengaliField.hasClass('is-invalid')) {
+                    e.preventDefault();
+                    if (typeof alertify !== 'undefined') {
+                        alertify.error('Please fix Bengali description field - only Bengali text allowed');
+                    }
+                    bengaliField.focus();
+                    return false;
+                }
+
+                if (englishField.hasClass('is-invalid')) {
+                    e.preventDefault();
+                    if (typeof alertify !== 'undefined') {
+                        alertify.error('Please fix English description field - only English text allowed');
+                    }
+                    englishField.focus();
+                    return false;
+                }
+            });
+
+            // Validation Icons Management
+            function initValidationIcons() {
+                var formControls = $('#productForm').find('input.form-control, textarea.form-control, select.form-select');
+
+                formControls.each(function () {
+                    var $input = $(this);
+
+                    if ($input.attr('type') === 'hidden' || $input.attr('type') === 'file' || $input.css('display') === 'none') {
+                        return;
+                    }
+
+                    if ($input.closest('.input-group').length > 0) {
+                        return;
+                    }
+
+                    if (!$input.parent().hasClass('validation-input-wrapper')) {
+                        var isTextarea = $input.is('textarea');
+                        $input.wrap('<div class="validation-input-wrapper' + (isTextarea ? ' textarea-wrapper' : '') + '"></div>');
+
+                        var $wrapper = $input.parent();
+                        $wrapper.append('<i class="fas fa-check-circle validation-icon valid-icon"></i>');
+                        $wrapper.append('<i class="fas fa-exclamation-circle validation-icon invalid-icon"></i>');
+                    }
+
+                    $input.off('input.validation blur.validation change.validation').on('input.validation blur.validation change.validation', function () {
+                        updateValidationState($(this));
+                    });
+
+                    updateValidationState($input);
+                });
+            }
+
+            function updateValidationState($input) {
+                var $wrapper = $input.parent('.validation-input-wrapper');
+                if (!$wrapper.length) return;
+
+                var value = $input.val();
+                var isRequired = $input.prop('required') || $input.attr('data-val-required');
+                var hasCustomError = $input.hasClass('is-invalid');
+                var $validationSpan = $input.siblings('span[data-valmsg-for]').add($input.parent().siblings('span[data-valmsg-for]'));
+                var hasServerError = $validationSpan.length && $validationSpan.text().trim().length > 0 && $validationSpan.hasClass('field-validation-error');
+
+                $wrapper.removeClass('is-valid is-invalid');
+                $input.removeClass('is-valid');
+
+                if (hasCustomError || hasServerError) {
+                    $wrapper.addClass('is-invalid');
+                } else if (value && value.toString().trim().length > 0) {
+                    $wrapper.addClass('is-valid');
+                }
+            }
+
+            setTimeout(function () {
+                initValidationIcons();
+            }, 100);
+
+            // Camera and Image Editor functionality
+            var cameraStream = null;
+            var cameraCaptureModal = new bootstrap.Modal(document.getElementById('cameraCaptureModal'));
+            var imageEditorModal = new bootstrap.Modal(document.getElementById('imageEditorModal'));
+
+            var cropper = null;
+            var originalImageDataUrl = null;
+            var imageBeforeBgRemoval = null;
+            var scaleX = 1;
+            var scaleY = 1;
+            var capturedFiles = [];
+
+            function isMediaDevicesAvailable() {
+                return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+            }
+
+            function isSecureContext() {
+                return window.isSecureContext ||
+                       location.protocol === 'https:' ||
+                       location.hostname === 'localhost' ||
+                       location.hostname === '127.0.0.1';
+            }
+
+            $('#openCameraBtn').click(function() {
+                if (isSecureContext() && isMediaDevicesAvailable()) {
+                    openCameraDirectly();
+                } else {
+                    $('#nativeCameraInput').click();
+                }
+            });
+
+            $('#nativeCameraInput').change(function() {
+                var file = this.files[0];
+                if (file) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        openImageEditor(e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+                $(this).val('');
+            });
+
+            function openCameraDirectly() {
+                $('#cameraError').addClass('d-none');
+                $('#cameraVideo').show();
+
+                var constraints = { video: { facingMode: 'environment' }, audio: false };
+
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(function(stream) {
+                        cameraStream = stream;
+                        var video = document.getElementById('cameraVideo');
+                        video.srcObject = stream;
+                        video.play();
+                        cameraCaptureModal.show();
+
+                        navigator.mediaDevices.enumerateDevices()
+                            .then(function(devices) {
+                                var videoDevices = devices.filter(function(d) { return d.kind === 'videoinput'; });
+                                var cameraSelect = $('#cameraSelect');
+                                cameraSelect.empty().append('<option value="">Select Camera</option>');
+                                videoDevices.forEach(function(device, index) {
+                                    cameraSelect.append($('<option></option>').val(device.deviceId).text(device.label || 'Camera ' + (index + 1)));
+                                });
+                                var currentTrack = stream.getVideoTracks()[0];
+                                if (currentTrack) {
+                                    var settings = currentTrack.getSettings();
+                                    if (settings.deviceId) cameraSelect.val(settings.deviceId);
+                                }
+                            });
+                    })
+                    .catch(function(err) {
+                        console.log('Camera API failed, using native capture:', err.message);
+                        $('#nativeCameraInput').click();
+                    });
+            }
+
+            function startCamera(deviceId) {
+                stopCamera();
+                var constraints = { video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }, audio: false };
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(function(stream) {
+                        cameraStream = stream;
+                        var video = document.getElementById('cameraVideo');
+                        video.srcObject = stream;
+                        video.play();
+                        $('#cameraError').addClass('d-none');
+                    })
+                    .catch(function(err) { showCameraError('Camera access denied: ' + err.message); });
+            }
+
+            function stopCamera() {
+                if (cameraStream) {
+                    cameraStream.getTracks().forEach(function(track) { track.stop(); });
+                    cameraStream = null;
+                }
+            }
+
+            function showCameraError(message) {
+                $('#cameraErrorText').text(message);
+                $('#cameraError').removeClass('d-none');
+                $('#cameraVideo').hide();
+            }
+
+            $('#cameraSelect').change(function() { var deviceId = $(this).val(); if (deviceId) startCamera(deviceId); });
+
+            $('#capturePhotoBtn').click(function() {
+                var video = document.getElementById('cameraVideo');
+                var canvas = document.getElementById('hiddenCanvas');
+                var ctx = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+                var imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                stopCamera();
+                cameraCaptureModal.hide();
+                openImageEditor(imageDataUrl);
+            });
+
+            $('#cameraCaptureModal').on('hidden.bs.modal', function() { stopCamera(); });
+
+            // CROPPER.JS IMAGE EDITOR
+            var initialZoomRatio = 1;
+            var displayZoomPercent = 100;
+            var minDisplayPercent = 50;
+            var maxDisplayPercent = 200;
+            var processedImageDataUrl = null;
+
+            function openImageEditor(imageDataUrl) {
+                originalImageDataUrl = imageDataUrl;
+                imageBeforeBgRemoval = null;
+                scaleX = 1;
+                scaleY = 1;
+
+                $('#bgColorOptions').hide();
+                $('#undoBackgroundBtn').prop('disabled', true);
+                $('.btn-ratio').removeClass('active');
+                $('.btn-ratio[data-ratio="NaN"]').addClass('active');
+                $('#zoomSlider').val(1);
+                $('#zoomValue').text('100');
+
+                var cropperImage = document.getElementById('cropperImage');
+                cropperImage.src = imageDataUrl;
+
+                if (cropper) { cropper.destroy(); cropper = null; }
+
+                imageEditorModal.show();
+                $('#imageEditorModal').one('shown.bs.modal', function() { initCropper(); });
+            }
+
+            function initCropper() {
+                var cropperImage = document.getElementById('cropperImage');
+                cropper = new Cropper(cropperImage, {
+                    viewMode: 1,
+                    dragMode: 'move',
+                    aspectRatio: NaN,
+                    autoCropArea: 0.9,
+                    restore: false,
+                    guides: true,
+                    center: true,
+                    highlight: true,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: true,
+                    background: true,
+                    responsive: true,
+                    checkCrossOrigin: false,
+                    ready: function() {
+                        var imageData = cropper.getImageData();
+                        initialZoomRatio = imageData.width / imageData.naturalWidth;
+                        displayZoomPercent = 100;
+                        $('#zoomValue').text('100');
+                        $('#zoomSlider').val(100);
+                    },
+                    zoom: function(e) {
+                        if (initialZoomRatio > 0) {
+                            var imageData = cropper.getImageData();
+                            var absoluteZoom = imageData.width / imageData.naturalWidth;
+                            var percent = (absoluteZoom / initialZoomRatio) * 100;
+                            if (percent < minDisplayPercent || percent > maxDisplayPercent) {
+                                e.preventDefault();
+                                return;
+                            }
+                        }
+                        updateZoomValue();
+                    }
+                });
+            }
+
+            function updateZoomValue() {
+                if (cropper && initialZoomRatio > 0) {
+                    var imageData = cropper.getImageData();
+                    var naturalWidth = imageData.naturalWidth;
+                    var currentWidth = imageData.width;
+                    var absoluteZoom = currentWidth / naturalWidth;
+
+                    displayZoomPercent = Math.round((absoluteZoom / initialZoomRatio) * 100);
+                    displayZoomPercent = Math.max(minDisplayPercent, Math.min(maxDisplayPercent, displayZoomPercent));
+
+                    $('#zoomValue').text(displayZoomPercent);
+                    $('#zoomSlider').val(displayZoomPercent);
+                }
+            }
+
+            $('#zoomSlider').on('input', function() {
+                if (cropper && initialZoomRatio > 0) {
+                    var percent = parseInt($(this).val());
+                    percent = Math.max(minDisplayPercent, Math.min(maxDisplayPercent, percent));
+                    var absoluteZoom = (percent / 100) * initialZoomRatio;
+                    cropper.zoomTo(absoluteZoom);
+                    displayZoomPercent = percent;
+                    $('#zoomValue').text(percent);
+                }
+            });
+
+            $('#zoomInBtn').click(function() {
+                if (cropper && initialZoomRatio > 0) {
+                    var newPercent = Math.min(maxDisplayPercent, displayZoomPercent + 10);
+                    var absoluteZoom = (newPercent / 100) * initialZoomRatio;
+                    cropper.zoomTo(absoluteZoom);
+                    displayZoomPercent = newPercent;
+                    $('#zoomSlider').val(newPercent);
+                    $('#zoomValue').text(newPercent);
+                }
+            });
+
+            $('#zoomOutBtn').click(function() {
+                if (cropper && initialZoomRatio > 0) {
+                    var newPercent = Math.max(minDisplayPercent, displayZoomPercent - 10);
+                    var absoluteZoom = (newPercent / 100) * initialZoomRatio;
+                    cropper.zoomTo(absoluteZoom);
+                    displayZoomPercent = newPercent;
+                    $('#zoomSlider').val(newPercent);
+                    $('#zoomValue').text(newPercent);
+                }
+            });
+
+            $('#rotateLeftBtn').click(function() { if (cropper) cropper.rotate(-90); });
+            $('#rotateRightBtn').click(function() { if (cropper) cropper.rotate(90); });
+            $('#flipHorizontalBtn').click(function() { if (cropper) { scaleX *= -1; cropper.scaleX(scaleX); } });
+            $('#flipVerticalBtn').click(function() { if (cropper) { scaleY *= -1; cropper.scaleY(scaleY); } });
+
+            $('.btn-ratio').click(function() {
+                $('.btn-ratio').removeClass('active');
+                $(this).addClass('active');
+                if (cropper) cropper.setAspectRatio(parseFloat($(this).data('ratio')));
+            });
+
+            $('#resetAllBtn').click(function() {
+                if (cropper) {
+                    cropper.reset();
+                    scaleX = 1; scaleY = 1;
+                    var imageData = cropper.getImageData();
+                    initialZoomRatio = imageData.width / imageData.naturalWidth;
+                    displayZoomPercent = 100;
+                    processedImageDataUrl = null;
+                    imageBeforeBgRemoval = null;
+                    $('#bgColorOptions').hide();
+                    $('#undoBackgroundBtn').prop('disabled', true);
+                    $('.btn-ratio').removeClass('active');
+                    $('.btn-ratio[data-ratio="NaN"]').addClass('active');
+                    $('#zoomSlider').val(100);
+                    $('#zoomValue').text('100');
+                    if (typeof alertify !== 'undefined') alertify.message('All changes reset');
+                }
+            });
+
+            // Image enhancement functions
+            function enhanceImage(imageData) {
+                var data = imageData.data;
+                var len = data.length;
+
+                var minR = 255, maxR = 0, minG = 255, maxG = 0, minB = 255, maxB = 0;
+                for (var i = 0; i < len; i += 4) {
+                    if (data[i] < minR) minR = data[i];
+                    if (data[i] > maxR) maxR = data[i];
+                    if (data[i+1] < minG) minG = data[i+1];
+                    if (data[i+1] > maxG) maxG = data[i+1];
+                    if (data[i+2] < minB) minB = data[i+2];
+                    if (data[i+2] > maxB) maxB = data[i+2];
+                }
+
+                var rangeR = Math.max(1, maxR - minR);
+                var rangeG = Math.max(1, maxG - minG);
+                var rangeB = Math.max(1, maxB - minB);
+
+                for (var i = 0; i < len; i += 4) {
+                    data[i] = Math.min(255, Math.max(0, Math.round(((data[i] - minR) / rangeR) * 255)));
+                    data[i+1] = Math.min(255, Math.max(0, Math.round(((data[i+1] - minG) / rangeG) * 255)));
+                    data[i+2] = Math.min(255, Math.max(0, Math.round(((data[i+2] - minB) / rangeB) * 255)));
+                }
+
+                return imageData;
+            }
+
+            function calculateGradient(data, width, height) {
+                var gradient = new Float32Array(width * height);
+
+                for (var y = 1; y < height - 1; y++) {
+                    for (var x = 1; x < width - 1; x++) {
+                        var gxR = -data[((y-1)*width+x-1)*4] + data[((y-1)*width+x+1)*4]
+                                  - 2*data[(y*width+x-1)*4] + 2*data[(y*width+x+1)*4]
+                                  - data[((y+1)*width+x-1)*4] + data[((y+1)*width+x+1)*4];
+                        var gyR = -data[((y-1)*width+x-1)*4] - 2*data[((y-1)*width+x)*4] - data[((y-1)*width+x+1)*4]
+                                  + data[((y+1)*width+x-1)*4] + 2*data[((y+1)*width+x)*4] + data[((y+1)*width+x+1)*4];
+
+                        var gxG = -data[((y-1)*width+x-1)*4+1] + data[((y-1)*width+x+1)*4+1]
+                                  - 2*data[(y*width+x-1)*4+1] + 2*data[(y*width+x+1)*4+1]
+                                  - data[((y+1)*width+x-1)*4+1] + data[((y+1)*width+x+1)*4+1];
+                        var gyG = -data[((y-1)*width+x-1)*4+1] - 2*data[((y-1)*width+x)*4+1] - data[((y-1)*width+x+1)*4+1]
+                                  + data[((y+1)*width+x-1)*4+1] + 2*data[((y+1)*width+x)*4+1] + data[((y+1)*width+x+1)*4+1];
+
+                        var gxB = -data[((y-1)*width+x-1)*4+2] + data[((y-1)*width+x+1)*4+2]
+                                  - 2*data[(y*width+x-1)*4+2] + 2*data[(y*width+x+1)*4+2]
+                                  - data[((y+1)*width+x-1)*4+2] + data[((y+1)*width+x+1)*4+2];
+                        var gyB = -data[((y-1)*width+x-1)*4+2] - 2*data[((y-1)*width+x)*4+2] - data[((y-1)*width+x+1)*4+2]
+                                  + data[((y+1)*width+x-1)*4+2] + 2*data[((y+1)*width+x)*4+2] + data[((y+1)*width+x+1)*4+2];
+
+                        var magR = Math.sqrt(gxR*gxR + gyR*gyR);
+                        var magG = Math.sqrt(gxG*gxG + gyG*gyG);
+                        var magB = Math.sqrt(gxB*gxB + gyB*gyB);
+
+                        gradient[y * width + x] = (magR + magG + magB) / 3;
+                    }
+                }
+
+                return gradient;
+            }
+
+            function rgbToLab(r, g, b) {
+                r = r / 255; g = g / 255; b = b / 255;
+                r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+                g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+                b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+                var x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
+                var y = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 1.00000;
+                var z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+                x = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x) + 16/116;
+                y = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y) + 16/116;
+                z = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z) + 16/116;
+                return { L: (116 * y) - 16, a: 500 * (x - y), b: 200 * (y - z) };
+            }
+
+            function deltaE(lab1, lab2) {
+                return Math.sqrt(Math.pow(lab1.L - lab2.L, 2) + Math.pow(lab1.a - lab2.a, 2) + Math.pow(lab1.b - lab2.b, 2));
+            }
+
+            $('#removeBackgroundBtn').click(function() {
+                var btn = $(this);
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+                var overlay = $('<div class="processing-overlay"><div class="spinner-border" role="status"></div><p class="processing-text">Removing background...</p></div>');
+                $('.cropper-container-wrapper').append(overlay);
+
+                setTimeout(function() {
+                    removeBackgroundAdvanced();
+                    overlay.remove();
+                    btn.prop('disabled', false).html('<i class="fas fa-magic me-2"></i>Remove Background');
+                    $('#bgColorOptions').show();
+                    $('#undoBackgroundBtn').prop('disabled', false);
+                }, 100);
+            });
+
+            function removeBackgroundAdvanced() {
+                if (!cropper) return;
+                imageBeforeBgRemoval = cropper.getCroppedCanvas().toDataURL('image/png');
+
+                var canvas = cropper.getCroppedCanvas();
+                var ctx = canvas.getContext('2d');
+                var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                var enhancedData = enhanceImage(ctx.getImageData(0, 0, canvas.width, canvas.height));
+                var data = imageData.data;
+                var enhData = enhancedData.data;
+                var width = canvas.width, height = canvas.height;
+
+                var gradient = calculateGradient(enhData, width, height);
+
+                var edgeDepth = Math.max(8, Math.floor(Math.min(width, height) * 0.03));
+                var edgeSamples = [];
+                for (var d = 0; d < edgeDepth; d++) {
+                    for (var x = d; x < width - d; x += 2) {
+                        var idx1 = (d * width + x) * 4;
+                        edgeSamples.push({ r: enhData[idx1], g: enhData[idx1+1], b: enhData[idx1+2] });
+                        var idx2 = ((height - 1 - d) * width + x) * 4;
+                        edgeSamples.push({ r: enhData[idx2], g: enhData[idx2+1], b: enhData[idx2+2] });
+                    }
+                    for (var y = d; y < height - d; y += 2) {
+                        var idx3 = (y * width + d) * 4;
+                        edgeSamples.push({ r: enhData[idx3], g: enhData[idx3+1], b: enhData[idx3+2] });
+                        var idx4 = (y * width + (width - 1 - d)) * 4;
+                        edgeSamples.push({ r: enhData[idx4], g: enhData[idx4+1], b: enhData[idx4+2] });
+                    }
+                }
+
+                var clusters = {};
+                edgeSamples.forEach(function(c) {
+                    var lab = rgbToLab(c.r, c.g, c.b);
+                    var key = Math.floor(lab.L/10)*10 + ',' + Math.floor(lab.a/10)*10 + ',' + Math.floor(lab.b/10)*10;
+                    if (!clusters[key]) clusters[key] = { count: 0, r: 0, g: 0, b: 0, L: 0, a: 0, bb: 0 };
+                    clusters[key].count++;
+                    clusters[key].r += c.r; clusters[key].g += c.g; clusters[key].b += c.b;
+                    clusters[key].L += lab.L; clusters[key].a += lab.a; clusters[key].bb += lab.b;
+                });
+
+                var sortedClusters = Object.values(clusters).sort((a, b) => b.count - a.count).slice(0, 3);
+                var bgColors = sortedClusters.map(function(c) {
+                    return {
+                        r: Math.round(c.r / c.count), g: Math.round(c.g / c.count), b: Math.round(c.b / c.count),
+                        lab: { L: c.L / c.count, a: c.a / c.count, b: c.bb / c.count }
+                    };
+                });
+                if (bgColors.length === 0) bgColors = [{ r: 255, g: 255, b: 255, lab: rgbToLab(255, 255, 255) }];
+
+                var mask = new Float32Array(width * height);
+                var visited = new Uint8Array(width * height);
+                var baseTolerance = 25;
+                var edgeThreshold = 100;
+
+                function getMinLabDistance(idx) {
+                    var lab = rgbToLab(enhData[idx], enhData[idx+1], enhData[idx+2]);
+                    var minDist = Infinity;
+                    bgColors.forEach(function(bg) { var dist = deltaE(lab, bg.lab); if (dist < minDist) minDist = dist; });
+                    return minDist;
+                }
+
+                var queue = [];
+                for (var x = 0; x < width; x++) { queue.push({ pos: x }); queue.push({ pos: (height-1) * width + x }); }
+                for (var y = 1; y < height-1; y++) { queue.push({ pos: y * width }); queue.push({ pos: y * width + width - 1 }); }
+
+                while (queue.length > 0) {
+                    var item = queue.shift(), pos = item.pos;
+                    if (visited[pos]) continue;
+                    visited[pos] = 1;
+
+                    var dist = getMinLabDistance(pos * 4);
+                    var grad = gradient[pos] || 0;
+
+                    var effectiveTolerance = baseTolerance;
+                    if (grad > edgeThreshold) {
+                        effectiveTolerance = baseTolerance * 0.5;
+                    } else if (grad > edgeThreshold * 0.5) {
+                        effectiveTolerance = baseTolerance * 0.75;
+                    }
+
+                    if (dist < effectiveTolerance) {
+                        mask[pos] = 1.0;
+                        var x = pos % width, y = Math.floor(pos / width);
+                        if (x > 0) queue.push({ pos: pos - 1 });
+                        if (x < width-1) queue.push({ pos: pos + 1 });
+                        if (y > 0) queue.push({ pos: pos - width });
+                        if (y < height-1) queue.push({ pos: pos + width });
+                    }
+                }
+
+                var tempMask = new Float32Array(mask);
+                for (var y = 1; y < height-1; y++) {
+                    for (var x = 1; x < width-1; x++) {
+                        var pos = y * width + x;
+                        if (mask[pos] === 1) {
+                            var hasNonMask = false;
+                            for (var dy = -1; dy <= 1 && !hasNonMask; dy++) {
+                                for (var dx = -1; dx <= 1 && !hasNonMask; dx++) {
+                                    if (mask[(y+dy) * width + (x+dx)] === 0) hasNonMask = true;
+                                }
+                            }
+                            if (hasNonMask) tempMask[pos] = 0.5;
+                        }
+                    }
+                }
+                mask = tempMask;
+
+                var featherRadius = 4;
+                var alphaMask = new Float32Array(width * height);
+                for (var i = 0; i < mask.length; i++) {
+                    if (mask[i] > 0) {
+                        var x = i % width, y = Math.floor(i / width);
+                        var minDistToForeground = Infinity;
+                        for (var dy = -featherRadius; dy <= featherRadius; dy++) {
+                            for (var dx = -featherRadius; dx <= featherRadius; dx++) {
+                                var nx = x + dx, ny = y + dy;
+                                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                    if (mask[ny * width + nx] === 0) {
+                                        var d = Math.sqrt(dx*dx + dy*dy);
+                                        if (d < minDistToForeground) minDistToForeground = d;
+                                    }
+                                }
+                            }
+                        }
+                        alphaMask[i] = minDistToForeground <= featherRadius ? 0.5 * (1 + Math.cos(Math.PI * minDistToForeground / featherRadius)) : 0;
+                    } else {
+                        alphaMask[i] = 1;
+                    }
+                }
+
+                for (var i = 0; i < alphaMask.length; i++) {
+                    data[i * 4 + 3] = Math.round(255 * alphaMask[i]);
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+                processedImageDataUrl = canvas.toDataURL('image/png');
+                cropper.replace(processedImageDataUrl);
+                if (typeof alertify !== 'undefined') alertify.success('Background removed successfully');
+            }
+
+            $('#applyBgColorBtn').click(function() {
+                if (!cropper) return;
+                var color = $('#bgColorPicker').val();
+                var canvas = cropper.getCroppedCanvas();
+                var newCanvas = document.createElement('canvas');
+                newCanvas.width = canvas.width; newCanvas.height = canvas.height;
+                var ctx = newCanvas.getContext('2d');
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
+                ctx.drawImage(canvas, 0, 0);
+                processedImageDataUrl = newCanvas.toDataURL('image/png');
+                cropper.replace(processedImageDataUrl);
+                $('#bgColorOptions').hide();
+                if (typeof alertify !== 'undefined') alertify.success('Background color applied');
+            });
+
+            $('#transparentBgBtn').click(function() { $('#bgColorOptions').hide(); if (typeof alertify !== 'undefined') alertify.message('Keeping transparent background'); });
+
+            $('#undoBackgroundBtn').click(function() {
+                if (imageBeforeBgRemoval && cropper) {
+                    cropper.replace(imageBeforeBgRemoval);
+                    imageBeforeBgRemoval = null;
+                    processedImageDataUrl = null;
+                    $(this).prop('disabled', true);
+                    $('#bgColorOptions').hide();
+                    if (typeof alertify !== 'undefined') alertify.message('Background removal undone');
+                }
+            });
+
+            $('#retakePhotoBtn').click(function() {
+                if (cropper) { cropper.destroy(); cropper = null; }
+                processedImageDataUrl = null;
+                imageEditorModal.hide();
+                setTimeout(function() {
+                    if (isSecureContext() && isMediaDevicesAvailable()) openCameraDirectly();
+                    else $('#nativeCameraInput').click();
+                }, 300);
+            });
+
+            $('#confirmImageBtn').click(function() {
+                if (!cropper) return;
+                var canvas = cropper.getCroppedCanvas({ maxWidth: 2000, maxHeight: 2000, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
+
+                var hasTransparency = processedImageDataUrl !== null;
+                var mimeType = hasTransparency ? 'image/png' : 'image/jpeg';
+                var extension = hasTransparency ? 'png' : 'jpg';
+                var quality = hasTransparency ? undefined : 0.92;
+
+                canvas.toBlob(function(blob) {
+                    var timestamp = new Date().getTime();
+                    var file = new File([blob], 'edited_image_' + timestamp + '.' + extension, { type: mimeType });
+
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        if (editingImageIndex >= 0) {
+                            uploadedNewImages[editingImageIndex] = {
+                                file: file,
+                                dataUrl: e.target.result,
+                                name: file.name
+                            };
+                            if (typeof alertify !== 'undefined') alertify.success('Image updated successfully');
+                            editingImageIndex = -1;
+                        } else {
+                            capturedFiles.push(file);
+                            uploadedNewImages.push({
+                                file: file,
+                                dataUrl: e.target.result,
+                                name: file.name
+                            });
+                            if (typeof alertify !== 'undefined') alertify.success('Image added successfully');
+                        }
+                        renderNewImageGrid();
+                        processedImageDataUrl = null;
+                    };
+                    reader.readAsDataURL(file);
+
+                    if (cropper) { cropper.destroy(); cropper = null; }
+                    imageEditorModal.hide();
+                }, mimeType, quality);
+            });
+
+            $('#imageEditorModal').on('hidden.bs.modal', function() {
+                if (cropper) { cropper.destroy(); cropper = null; }
+                editingImageIndex = -1;
+                processedImageDataUrl = null;
+                imageBeforeBgRemoval = null;
+            });
+            $('#discardImageBtn, #closeEditorModal').click(function() {
+                if (cropper) { cropper.destroy(); cropper = null; }
+                editingImageIndex = -1;
+                processedImageDataUrl = null;
+                imageBeforeBgRemoval = null;
+            });
+        });
+
+        // Product ID for API calls
+        var productId = @Model.Id;
+
+        function getTotalImageCount() {
+            return $('#existingImagesGrid .image-card').length;
+        }
+
+        function deleteMainImage() {
+            if (getTotalImageCount() <= 1) {
+                if (typeof alertify !== 'undefined') {
+                    alertify.warning('Cannot delete the last image. Every product must have at least one image.');
+                } else {
+                    alert('Cannot delete the last image. Every product must have at least one image.');
+                }
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete the main image?')) return;
+
+            $.ajax({
+                url: '@Url.Action("DeleteMainImage", "Product", new { area = "Seller" })',
+                type: 'POST',
+                data: { productId: productId },
+                success: function (response) {
+                    if (response.success) {
+                        if (typeof alertify !== 'undefined') alertify.success(response.message);
+                        location.reload();
+                    } else {
+                        if (typeof alertify !== 'undefined') alertify.error(response.message);
+                        else alert(response.message);
+                    }
+                },
+                error: function () {
+                    if (typeof alertify !== 'undefined') alertify.error('An error occurred while deleting the image.');
+                    else alert('An error occurred while deleting the image.');
+                }
+            });
+        }
+
+        function deleteGalleryImage(imageId) {
+            if (getTotalImageCount() <= 1) {
+                if (typeof alertify !== 'undefined') {
+                    alertify.warning('Cannot delete the last image. Every product must have at least one image.');
+                } else {
+                    alert('Cannot delete the last image. Every product must have at least one image.');
+                }
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete this image?')) return;
+
+            $.ajax({
+                url: '@Url.Action("DeleteImage", "Product", new { area = "Seller" })',
+                type: 'POST',
+                data: { imageId: imageId, productId: productId },
+                success: function (response) {
+                    if (response.success) {
+                        if (typeof alertify !== 'undefined') alertify.success(response.message);
+                        $('[data-image-id="' + imageId + '"]').closest('.gallery-image-card').fadeOut(300, function() {
+                            $(this).remove();
+                        });
+                    } else {
+                        if (typeof alertify !== 'undefined') alertify.error(response.message);
+                        else alert(response.message);
+                    }
+                },
+                error: function () {
+                    if (typeof alertify !== 'undefined') alertify.error('An error occurred while deleting the image.');
+                    else alert('An error occurred while deleting the image.');
+                }
+            });
+        }
+
+        function setAsPrimary(imageId) {
+            $.ajax({
+                url: '@Url.Action("SetPrimaryImage", "Product", new { area = "Seller" })',
+                type: 'POST',
+                data: { imageId: imageId, productId: productId },
+                success: function (response) {
+                    if (response.success) {
+                        if (typeof alertify !== 'undefined') alertify.success(response.message);
+                        location.reload();
+                    } else {
+                        if (typeof alertify !== 'undefined') alertify.error(response.message);
+                        else alert(response.message);
+                    }
+                },
+                error: function () {
+                    if (typeof alertify !== 'undefined') alertify.error('An error occurred while setting the primary image.');
+                    else alert('An error occurred while setting the primary image.');
+                }
+            });
+        }
+
+        // =============================================
+        // PRODUCT VARIANTS MANAGEMENT
+        // =============================================
+
+        var variantModal = new bootstrap.Modal(document.getElementById('variantModal'));
+        var editingVariantId = 0;
+
+        // Show/hide custom size input
+        $('#variantSize').on('change', function() {
+            if ($(this).val() === 'Custom') {
+                $('#customSize').show().focus();
+            } else {
+                $('#customSize').hide().val('');
+            }
+        });
+
+        // Sync color picker with text input
+        $('#variantColorPicker').on('input', function() {
+            $('#variantColorCode').val($(this).val());
+        });
+        $('#variantColorCode').on('input', function() {
+            var val = $(this).val();
+            if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+                $('#variantColorPicker').val(val);
+            }
+        });
+
+        function resetVariantForm() {
+            editingVariantId = 0;
+            $('#variantId').val('0');
+            $('#variantSize').val('');
+            $('#customSize').hide().val('');
+            $('#variantColor').val('');
+            $('#variantColorCode').val('');
+            $('#variantColorPicker').val('#6f42c1');
+            $('#variantSKU').val('');
+            $('#variantStock').val('0');
+            $('#variantAdditionalPrice').val('0');
+            $('#variantIsAvailable').prop('checked', true);
+            $('#variantModalTitle').text('Add New Variant');
+        }
+
+        // Add Variant button
+        $('#addVariantBtn').on('click', function() {
+            resetVariantForm();
+            variantModal.show();
+        });
+
+        // Edit variant button
+        $(document).on('click', '.edit-variant-btn', function() {
+            var btn = $(this);
+            editingVariantId = btn.data('id');
+            $('#variantId').val(editingVariantId);
+
+            var size = btn.data('size') || '';
+            var sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'Free Size'];
+            if (size && sizeOptions.indexOf(size) === -1) {
+                $('#variantSize').val('Custom');
+                $('#customSize').show().val(size);
+            } else {
+                $('#variantSize').val(size);
+                $('#customSize').hide().val('');
+            }
+
+            $('#variantColor').val(btn.data('color') || '');
+            var colorCode = btn.data('colorcode') || '';
+            $('#variantColorCode').val(colorCode);
+            if (colorCode && /^#[0-9A-Fa-f]{6}$/.test(colorCode)) {
+                $('#variantColorPicker').val(colorCode);
+            }
+            $('#variantSKU').val(btn.data('sku') || '');
+            $('#variantStock').val(btn.data('stock') || 0);
+            $('#variantAdditionalPrice').val(btn.data('additionalprice') || 0);
+            $('#variantIsAvailable').prop('checked', btn.data('isavailable') === true || btn.data('isavailable') === 'true');
+            $('#variantModalTitle').text('Edit Variant');
+
+            variantModal.show();
+        });
+
+        // Save variant
+        $('#saveVariantBtn').on('click', function() {
+            var size = $('#variantSize').val() === 'Custom' ? $('#customSize').val() : $('#variantSize').val();
+            var color = $('#variantColor').val();
+
+            if (!size && !color) {
+                if (typeof alertify !== 'undefined') {
+                    alertify.error('Please enter at least a size or color');
+                } else {
+                    alert('Please enter at least a size or color');
+                }
+                return;
+            }
+
+            var variantData = {
+                Id: editingVariantId,
+                ProductId: productId,
+                Size: size,
+                Color: color,
+                ColorCode: $('#variantColorCode').val(),
+                SKU: $('#variantSKU').val(),
+                Stock: parseInt($('#variantStock').val()) || 0,
+                AdditionalPrice: parseFloat($('#variantAdditionalPrice').val()) || 0,
+                IsAvailable: $('#variantIsAvailable').is(':checked')
+            };
+
+            var url = editingVariantId > 0
+                ? '@Url.Action("UpdateVariant", "Product", new { area = "Seller" })'
+                : '@Url.Action("AddVariant", "Product", new { area = "Seller" })';
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(variantData),
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        if (typeof alertify !== 'undefined') {
+                            alertify.success(editingVariantId > 0 ? 'Variant updated successfully!' : 'Variant added successfully!');
+                        }
+                        variantModal.hide();
+                        location.reload();
+                    } else {
+                        if (typeof alertify !== 'undefined') {
+                            alertify.error(response.message || 'Failed to save variant');
+                        } else {
+                            alert(response.message || 'Failed to save variant');
+                        }
+                    }
+                },
+                error: function() {
+                    if (typeof alertify !== 'undefined') {
+                        alertify.error('An error occurred while saving the variant');
+                    } else {
+                        alert('An error occurred while saving the variant');
+                    }
+                }
+            });
+        });
+
+        // Delete variant - show modal
+        var deleteVariantModal = new bootstrap.Modal(document.getElementById('deleteVariantModal'));
+
+        $(document).on('click', '.delete-variant-btn', function() {
+            $('#deleteVariantId').val($(this).data('id'));
+            deleteVariantModal.show();
+        });
+
+        // Confirm delete variant
+        $('#confirmDeleteVariantBtn').on('click', function() {
+            var variantId = $('#deleteVariantId').val();
+
+            $.ajax({
+                url: '@Url.Action("DeleteVariant", "Product", new { area = "Seller" })',
+                type: 'POST',
+                data: { id: variantId },
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        if (typeof alertify !== 'undefined') alertify.success('Variant deleted successfully!');
+                        deleteVariantModal.hide();
+                        $('tr[data-variant-id="' + variantId + '"]').fadeOut(300, function() {
+                            $(this).remove();
+                            // Show no variants message if empty
+                            if ($('#variantsTableBody tr').length === 0) {
+                                $('#variantsTableContainer').hide();
+                                $('#noVariantsMessage').show();
+                            }
+                        });
+                    } else {
+                        if (typeof alertify !== 'undefined') alertify.error(response.message || 'Failed to delete variant');
+                        else alert(response.message || 'Failed to delete variant');
+                    }
+                },
+                error: function() {
+                    if (typeof alertify !== 'undefined') alertify.error('An error occurred while deleting the variant');
+                    else alert('An error occurred while deleting the variant');
+                }
+            });
+        });
+    </script>
+}

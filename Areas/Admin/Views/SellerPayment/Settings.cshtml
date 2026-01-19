@@ -1,0 +1,183 @@
+@model Bangaliyana.Models.SellerPaymentSettings
+@{
+    ViewData["Title"] = "Payment Settings";
+}
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Index")">Seller Payments</a></li>
+                    <li class="breadcrumb-item active">Settings</li>
+                </ol>
+            </nav>
+            <h4 class="mb-0"><i class="fas fa-cog text-primary me-2"></i>Payment Settings</h4>
+        </div>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Payments
+        </a>
+    </div>
+
+    <!-- Alerts -->
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+
+                <!-- Payment Configuration -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-sliders-h me-2"></i>Payment Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label asp-for="MinimumPayoutAmount" class="form-label">Minimum Payout Amount (BDT)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">BDT</span>
+                                    <input asp-for="MinimumPayoutAmount" class="form-control" type="number" step="1" min="0" />
+                                </div>
+                                <small class="text-muted">Sellers with balance below this amount won't receive payments.</small>
+                                <span asp-validation-for="MinimumPayoutAmount" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="PaymentDayOfMonth" class="form-label">Payment Day of Month</label>
+                                <select asp-for="PaymentDayOfMonth" class="form-select">
+                                    @for (int i = 1; i <= 28; i++)
+                                    {
+                                        <option value="@i">@i</option>
+                                    }
+                                </select>
+                                <small class="text-muted">Day of the month when payments are processed.</small>
+                                <span asp-validation-for="PaymentDayOfMonth" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="PaymentHour" class="form-label">Payment Hour (Bangladesh Time)</label>
+                                <select asp-for="PaymentHour" class="form-select">
+                                    @for (int i = 0; i < 24; i++)
+                                    {
+                                        var hour12 = i == 0 ? 12 : (i > 12 ? i - 12 : i);
+                                        var ampm = i < 12 ? "AM" : "PM";
+                                        <option value="@i">@hour12:00 @ampm</option>
+                                    }
+                                </select>
+                                <small class="text-muted">Time of day when automatic payments are processed.</small>
+                                <span asp-validation-for="PaymentHour" class="text-danger small"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Automation Settings -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-robot me-2"></i>Automation Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                            <input asp-for="AutoProcessPayments" class="form-check-input" type="checkbox" role="switch" />
+                            <label asp-for="AutoProcessPayments" class="form-check-label">
+                                <strong>Auto-process Payments</strong>
+                                <small class="d-block text-muted">Automatically create payment records on the scheduled date.</small>
+                            </label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input asp-for="SendEmailNotifications" class="form-check-input" type="checkbox" role="switch" />
+                            <label asp-for="SendEmailNotifications" class="form-check-label">
+                                <strong>Send Email Notifications</strong>
+                                <small class="d-block text-muted">Send email notifications to sellers when payments are processed.</small>
+                            </label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input asp-for="RequireBankAccountVerification" class="form-check-input" type="checkbox" role="switch" />
+                            <label asp-for="RequireBankAccountVerification" class="form-check-label">
+                                <strong>Require Bank Account Verification</strong>
+                                <small class="d-block text-muted">Only process payments for sellers with verified bank accounts.</small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="@Url.Action("Index")" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Info Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>How It Works</h5>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0 ps-3">
+                        <li class="mb-2">
+                            <strong>Automatic Processing</strong>
+                            <small class="d-block text-muted">On the scheduled day, the system automatically creates payment records for eligible sellers.</small>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Payment Creation</strong>
+                            <small class="d-block text-muted">Sellers with balance above the minimum threshold get a payment record created.</small>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Admin Review</strong>
+                            <small class="d-block text-muted">Payments are created in "Pending" status for admin review and processing.</small>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Manual Processing</strong>
+                            <small class="d-block text-muted">Admins manually process payments and mark them as paid or failed.</small>
+                        </li>
+                        <li>
+                            <strong>Seller Notification</strong>
+                            <small class="d-block text-muted">Sellers are notified of payment status changes.</small>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Hangfire Link -->
+            @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Background Jobs</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">Monitor and manage background payment processing jobs.</p>
+                        <a href="/hangfire" target="_blank" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-external-link-alt me-1"></i>Open Hangfire Dashboard
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

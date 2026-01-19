@@ -1,0 +1,1412 @@
+@page
+@model Bangaliyana.Areas.Identity.Pages.Account.BecomeSellerModel
+@using Bangaliyana.Extensions
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Localizer["BecomeSeller"].Value;
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="text-center mb-4">
+                <div class="seller-icon mb-3">
+                    <i class="fas fa-store"></i>
+                </div>
+                <h2 class="fw-bold">@Localizer["BecomeSellerTitle"]</h2>
+                <p class="text-muted">@Localizer["BecomeSellerSubtitle"]</p>
+            </div>
+
+            <partial name="_StatusMessage" for="StatusMessage" />
+
+            @if (Model.AlreadySeller)
+            {
+                <!-- Already a Seller -->
+                <div class="card border-success">
+                    <div class="card-body text-center py-5">
+                        <div class="success-icon mb-3">
+                            <i class="fas fa-check-circle text-success"></i>
+                        </div>
+                        <h4 class="text-success">@Localizer["AlreadyASeller"]</h4>
+                        <p class="text-muted mb-4">@Localizer["AlreadyASellerDesc"]</p>
+                        <div class="d-flex justify-content-center gap-3 flex-wrap">
+                            <a asp-area="Seller" asp-controller="Dashboard" asp-action="Index" class="btn btn-primary">
+                                <i class="fas fa-tachometer-alt me-2"></i>@Localizer["SellerDashboard"]
+                            </a>
+                            <a asp-area="Seller" asp-controller="Shop" asp-action="Index" class="btn btn-success">
+                                <i class="fas fa-store me-2"></i>@Localizer["MyShop"]
+                            </a>
+                            <a asp-area="Seller" asp-controller="Product" asp-action="Index" class="btn btn-outline-primary">
+                                <i class="fas fa-box me-2"></i>@Localizer["MyProducts"]
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+            else if (Model.HasPendingApplication)
+            {
+                <!-- Pending Application -->
+                <div class="card border-warning">
+                    <div class="card-body text-center py-5">
+                        <div class="pending-icon mb-3">
+                            <i class="fas fa-clock text-warning"></i>
+                        </div>
+                        <h4 class="text-warning">@Localizer["ApplicationUnderReview"]</h4>
+                        <p class="text-muted mb-3">@Localizer["ApplicationUnderReviewDesc"]</p>
+                        @if (Model.ExistingSeller != null)
+                        {
+                            <div class="application-details bg-light rounded p-3 text-start mx-auto" style="max-width: 400px;">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">@Localizer["ShopName"]:</span>
+                                    <strong>@Model.ExistingSeller.ShopName</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">@Localizer["Applicant"]:</span>
+                                    <strong>@Model.ExistingSeller.FullName</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">@Localizer["Applied"]:</span>
+                                    <strong>@Model.ExistingSeller.AppliedAt?.ToBangladeshShortDateString()</strong>
+                                </div>
+                            </div>
+                        }
+                        <p class="text-muted mt-4 small">
+                            <i class="fas fa-info-circle me-1"></i>
+                            @Localizer["ApplicationReviewTime"]
+                        </p>
+                    </div>
+                </div>
+            }
+            else if (Model.ExistingSeller != null && Model.ExistingSeller.ApplicationStatus == ApplicationStatus.Rejected)
+            {
+                <!-- Previously Rejected -->
+                <div class="card border-danger">
+                    <div class="card-body text-center py-5">
+                        <div class="rejected-icon mb-3">
+                            <i class="fas fa-times-circle text-danger"></i>
+                        </div>
+                        <h4 class="text-danger">@Localizer["ApplicationRejected"]</h4>
+                        <p class="text-muted mb-3">@Localizer["ApplicationRejectedDesc"]</p>
+                        @if (!string.IsNullOrEmpty(Model.ExistingSeller.RejectionReason))
+                        {
+                            <div class="alert alert-light text-start mx-auto" style="max-width: 500px;">
+                                <strong>@Localizer["Reason"]:</strong> @Model.ExistingSeller.RejectionReason
+                            </div>
+                        }
+                        <p class="text-muted small">
+                            @Localizer["ApplicationRejectedContactSupport"]
+                        </p>
+                        <a asp-page="./Manage/SupportTickets" class="btn btn-outline-primary">
+                            <i class="fas fa-headset me-2"></i>@Localizer["ContactSupport"]
+                        </a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Multi-Step Wizard -->
+                @if (Model.RequiresModification && Model.ExistingSeller != null)
+                {
+                    <div class="alert alert-warning mb-4">
+                        <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>@Localizer["ModificationRequired"]</h5>
+                        <p class="mb-0">@Model.ExistingSeller.ModificationNotes</p>
+                        <hr />
+                        <p class="mb-0 small">@Localizer["ModificationRequiredDesc"]</p>
+                    </div>
+                }
+
+                <!-- Progress Steps -->
+                <div class="step-progress mb-4">
+                    <div class="step-container">
+                        <div class="step @(Model.CurrentStep >= 1 ? "active" : "") @(Model.CurrentStep > 1 ? "completed" : "")">
+                            <div class="step-circle">
+                                @if (Model.CurrentStep > 1)
+                                {
+                                    <i class="fas fa-check"></i>
+                                }
+                                else
+                                {
+                                    <span>1</span>
+                                }
+                            </div>
+                            <div class="step-label">@Localizer["PersonalInfo"]</div>
+                        </div>
+                        <div class="step-line @(Model.CurrentStep > 1 ? "active" : "")"></div>
+                        <div class="step @(Model.CurrentStep >= 2 ? "active" : "") @(Model.CurrentStep > 2 ? "completed" : "")">
+                            <div class="step-circle">
+                                @if (Model.CurrentStep > 2)
+                                {
+                                    <i class="fas fa-check"></i>
+                                }
+                                else
+                                {
+                                    <span>2</span>
+                                }
+                            </div>
+                            <div class="step-label">@Localizer["Identity"]</div>
+                        </div>
+                        <div class="step-line @(Model.CurrentStep > 2 ? "active" : "")"></div>
+                        <div class="step @(Model.CurrentStep >= 3 ? "active" : "") @(Model.CurrentStep > 3 ? "completed" : "")">
+                            <div class="step-circle">
+                                @if (Model.CurrentStep > 3)
+                                {
+                                    <i class="fas fa-check"></i>
+                                }
+                                else
+                                {
+                                    <span>3</span>
+                                }
+                            </div>
+                            <div class="step-label">@Localizer["ShopDetails"]</div>
+                        </div>
+                        <div class="step-line @(Model.CurrentStep > 3 ? "active" : "")"></div>
+                        <div class="step @(Model.CurrentStep >= 4 ? "active" : "")">
+                            <div class="step-circle"><span>4</span></div>
+                            <div class="step-label">@Localizer["BankAndSubmit"]</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <!-- Step 1: Personal Information -->
+                        @if (Model.CurrentStep == 1)
+                        {
+                            <h5 class="card-title mb-4"><i class="fas fa-user text-primary me-2"></i>@Localizer["PersonalInformation"]</h5>
+                            <form method="post" asp-page-handler="Step1" enctype="multipart/form-data">
+                                <div class="row">
+                                    <div class="col-md-4 mb-4 text-center">
+                                        <label class="form-label d-block">@Localizer["PassportSizePhoto"] <span class="text-danger">*</span></label>
+                                        <div class="passport-photo-upload">
+                                            @if (!string.IsNullOrEmpty(Model.Step1.ExistingPassportPhotoUrl))
+                                            {
+                                                <img src="@Model.Step1.ExistingPassportPhotoUrl" id="passportPreview" class="passport-preview" />
+                                            }
+                                            else
+                                            {
+                                                <div id="passportPlaceholder" class="passport-placeholder">
+                                                    <i class="fas fa-camera fa-2x text-muted"></i>
+                                                    <div class="small text-muted mt-2">@Localizer["ClickToUpload"]</div>
+                                                </div>
+                                                <img id="passportPreview" class="passport-preview d-none" />
+                                            }
+                                            <input type="file" asp-for="Step1.PassportPhoto" class="passport-input" accept=".jpg,.jpeg,.png" onchange="previewPassport(this)" />
+                                        </div>
+                                        <small class="text-muted">@Localizer["Max2MBJPGPNG"]</small>
+                                        <span asp-validation-for="Step1.PassportPhoto" class="text-danger d-block"></span>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label asp-for="Step1.FullName" class="form-label">@Localizer["FullNameAsPerDocument"] <span class="text-danger">*</span></label>
+                                            <input asp-for="Step1.FullName" class="form-control" />
+                                            <span asp-validation-for="Step1.FullName" class="text-danger"></span>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="Step1.FatherName" class="form-label">@Localizer["FatherName"] <span class="text-danger">*</span></label>
+                                                <input asp-for="Step1.FatherName" class="form-control" />
+                                                <span asp-validation-for="Step1.FatherName" class="text-danger"></span>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label asp-for="Step1.MotherName" class="form-label">@Localizer["MotherName"] <span class="text-danger">*</span></label>
+                                                <input asp-for="Step1.MotherName" class="form-control" />
+                                                <span asp-validation-for="Step1.MotherName" class="text-danger"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Step1.PermanentAddress" class="form-label">@Localizer["PermanentAddress"] <span class="text-danger">*</span></label>
+                                    <textarea asp-for="Step1.PermanentAddress" class="form-control" rows="2"></textarea>
+                                    <span asp-validation-for="Step1.PermanentAddress" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" asp-for="Step1.SameAsPermament" class="form-check-input" id="sameAddress" />
+                                    <label class="form-check-label" for="sameAddress">@Localizer["SameAsPermanentAddress"]</label>
+                                </div>
+
+                                <div class="mb-3" id="presentAddressDiv">
+                                    <label asp-for="Step1.PresentAddress" class="form-label">@Localizer["PresentAddress"]</label>
+                                    <textarea asp-for="Step1.PresentAddress" class="form-control" rows="2"></textarea>
+                                    <span asp-validation-for="Step1.PresentAddress" class="text-danger"></span>
+                                </div>
+
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        @Localizer["NextIdentityVerification"] <i class="fas fa-arrow-right ms-2"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        }
+
+                        <!-- Step 2: Identity Verification -->
+                        @if (Model.CurrentStep == 2)
+                        {
+                            <h5 class="card-title mb-4"><i class="fas fa-id-card text-primary me-2"></i>@Localizer["IdentityVerification"]</h5>
+                            <form method="post" asp-page-handler="Step2" enctype="multipart/form-data">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label asp-for="Step2.DocumentType" class="form-label">@Localizer["DocumentType"] <span class="text-danger">*</span></label>
+                                        <select asp-for="Step2.DocumentType" class="form-select">
+                                            @foreach (var docType in Enum.GetValues<DocumentType>())
+                                            {
+                                                <option value="@docType">@docType.GetDisplayName()</option>
+                                            }
+                                        </select>
+                                        <span asp-validation-for="Step2.DocumentType" class="text-danger"></span>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label asp-for="Step2.DocumentNumber" class="form-label">@Localizer["DocumentNumber"] <span class="text-danger">*</span></label>
+                                        <input asp-for="Step2.DocumentNumber" class="form-control" placeholder="@Localizer["EnterDocumentNumber"]" />
+                                        <span asp-validation-for="Step2.DocumentNumber" class="text-danger"></span>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>@Localizer["Important"]:</strong> @Localizer["OneDocumentOneShop"]
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">@Localizer["DocumentPhoto"] <span class="text-danger">*</span></label>
+                                    <div class="document-upload-area" onclick="document.getElementById('Step2_DocumentPhoto').click()">
+                                        @if (!string.IsNullOrEmpty(Model.Step2.ExistingDocumentPhotoUrl))
+                                        {
+                                            <img src="@Model.Step2.ExistingDocumentPhotoUrl" id="docPreview" style="max-width: 100%; max-height: 200px;" />
+                                        }
+                                        else
+                                        {
+                                            <div id="docPlaceholder">
+                                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-2"></i>
+                                                <div>@Localizer["ClickToUploadDocument"]</div>
+                                                <small class="text-muted">@Localizer["Max5MBJPGPNGPDF"]</small>
+                                            </div>
+                                            <img id="docPreview" class="d-none" style="max-width: 100%; max-height: 200px;" />
+                                        }
+                                    </div>
+                                    <input type="file" asp-for="Step2.DocumentPhoto" id="Step2_DocumentPhoto" class="d-none" accept=".jpg,.jpeg,.png,.pdf" onchange="previewDocument(this)" />
+                                    <span asp-validation-for="Step2.DocumentPhoto" class="text-danger"></span>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <a asp-page="./BecomeSeller" asp-route-step="1" class="btn btn-outline-secondary">
+                                        <i class="fas fa-arrow-left me-2"></i>@Localizer["Back"]
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        @Localizer["NextShopDetails"] <i class="fas fa-arrow-right ms-2"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        }
+
+                        <!-- Step 3: Shop Details -->
+                        @if (Model.CurrentStep == 3)
+                        {
+                            <h5 class="card-title mb-4"><i class="fas fa-store text-primary me-2"></i>@Localizer["ShopDetails"]</h5>
+                            <form method="post" asp-page-handler="Step3" enctype="multipart/form-data">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label asp-for="Step3.ShopName" class="form-label">@Localizer["ShopName"] <span class="text-danger">*</span></label>
+                                        <input asp-for="Step3.ShopName" class="form-control" placeholder="@Localizer["ShopNamePlaceholder"]" />
+                                        <span asp-validation-for="Step3.ShopName" class="text-danger"></span>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label asp-for="Step3.BusinessTypeId" class="form-label">@Localizer["BusinessType"] <span class="text-danger">*</span></label>
+                                        <select asp-for="Step3.BusinessTypeId" asp-items="Model.BusinessTypes" class="form-select">
+                                            <option value="">-- @Localizer["SelectBusinessType"] --</option>
+                                        </select>
+                                        <span asp-validation-for="Step3.BusinessTypeId" class="text-danger"></span>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="Step3.BusinessAddress" class="form-label">@Localizer["ShopBusinessAddress"] <span class="text-danger">*</span></label>
+                                    <textarea asp-for="Step3.BusinessAddress" class="form-control" rows="2"></textarea>
+                                    <span asp-validation-for="Step3.BusinessAddress" class="text-danger"></span>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label asp-for="Step3.BusinessPhone" class="form-label">@Localizer["MobileNumber"] <span class="text-danger">*</span></label>
+                                        <input asp-for="Step3.BusinessPhone" class="form-control" placeholder="+880 1XXX-XXXXXX" />
+                                        <span asp-validation-for="Step3.BusinessPhone" class="text-danger"></span>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label asp-for="Step3.BusinessEmail" class="form-label">@Localizer["EmailAddress"] <span class="text-danger">*</span></label>
+                                        <input asp-for="Step3.BusinessEmail" type="email" class="form-control" />
+                                        <span asp-validation-for="Step3.BusinessEmail" class="text-danger"></span>
+                                    </div>
+                                </div>
+
+                                <hr class="my-4" />
+                                <h6 class="mb-3">@Localizer["TradeLicenseOptional"]</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label asp-for="Step3.TradeLicenseNumber" class="form-label">@Localizer["TradeLicenseNumber"]</label>
+                                        <input asp-for="Step3.TradeLicenseNumber" class="form-control" />
+                                        <span asp-validation-for="Step3.TradeLicenseNumber" class="text-danger"></span>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">@Localizer["TradeLicenseDocument"]</label>
+                                        <input type="file" asp-for="Step3.TradeLicenseDocument" class="form-control" accept=".jpg,.jpeg,.png,.pdf" />
+                                        @if (!string.IsNullOrEmpty(Model.Step3.ExistingTradeLicenseUrl))
+                                        {
+                                            <small class="text-success"><i class="fas fa-check-circle"></i> @Localizer["DocumentUploaded"]</small>
+                                        }
+                                        <span asp-validation-for="Step3.TradeLicenseDocument" class="text-danger"></span>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <a asp-page="./BecomeSeller" asp-route-step="2" class="btn btn-outline-secondary">
+                                        <i class="fas fa-arrow-left me-2"></i>@Localizer["Back"]
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        @Localizer["NextBankDetails"] <i class="fas fa-arrow-right ms-2"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        }
+
+                        <!-- Step 4: Payment Accounts & Submit -->
+                        @if (Model.CurrentStep == 4)
+                        {
+                            <h5 class="card-title mb-4"><i class="fas fa-university text-primary me-2"></i>@Localizer["PaymentAccountsAndSubmit"]</h5>
+                            <form method="post" asp-page-handler="Step4" enctype="multipart/form-data">
+
+                                <!-- Bank Account (Required) -->
+                                <div class="border rounded p-3 mb-4">
+                                    <h6 class="mb-3"><i class="fas fa-landmark text-success me-2"></i>@Localizer["BankAccount"] <span class="badge bg-danger">@Localizer["Required"]</span></h6>
+                                    <p class="text-muted small mb-3">@Localizer["BankAccountDesc"]</p>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="Step4.BankName" class="form-label">@Localizer["BankName"] <span class="text-danger">*</span></label>
+                                            <input asp-for="Step4.BankName" class="form-control" placeholder="@Localizer["BankNamePlaceholder"]" />
+                                            <span asp-validation-for="Step4.BankName" class="text-danger"></span>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="Step4.BranchName" class="form-label">@Localizer["BranchName"] <span class="text-danger">*</span></label>
+                                            <input asp-for="Step4.BranchName" class="form-control" placeholder="@Localizer["BranchNamePlaceholder"]" />
+                                            <span asp-validation-for="Step4.BranchName" class="text-danger"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="Step4.AccountHolderName" class="form-label">@Localizer["AccountHolderName"] <span class="text-danger">*</span></label>
+                                            <input asp-for="Step4.AccountHolderName" class="form-control" />
+                                            <span asp-validation-for="Step4.AccountHolderName" class="text-danger"></span>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="Step4.AccountNumber" class="form-label">@Localizer["AccountNumber"] <span class="text-danger">*</span></label>
+                                            <input asp-for="Step4.AccountNumber" class="form-control" />
+                                            <span asp-validation-for="Step4.AccountNumber" class="text-danger"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="Step4.RoutingNumber" class="form-label">@Localizer["RoutingNumber"]</label>
+                                            <input asp-for="Step4.RoutingNumber" class="form-control" />
+                                            <span asp-validation-for="Step4.RoutingNumber" class="text-danger"></span>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="Step4.SwiftBicCode" class="form-label">@Localizer["SwiftBicCode"]</label>
+                                            <input asp-for="Step4.SwiftBicCode" class="form-control" placeholder="@Localizer["SwiftBicCodePlaceholder"]" />
+                                            <span asp-validation-for="Step4.SwiftBicCode" class="text-danger"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-12 mb-3">
+                                            <label class="form-label">@Localizer["CheckbookPagePhoto"] <span class="text-danger">*</span></label>
+                                            <small class="d-block text-muted mb-2">@Localizer["CheckbookPhotoHint"]</small>
+                                            <div class="checkbook-upload-wrapper" onclick="document.getElementById('checkbookFileInput').click()">
+                                                <input asp-for="Step4.CheckbookPhoto" id="checkbookFileInput" type="file" accept=".jpg,.jpeg,.png" class="d-none" onchange="handleCheckbookPreview(this)" />
+                                                <div id="checkbookUploadArea" class="checkbook-upload-area">
+                                                    @if (!string.IsNullOrEmpty(Model.Step4.ExistingCheckbookPhotoUrl))
+                                                    {
+                                                        <div id="checkbookPlaceholder" class="checkbook-upload-placeholder d-none">
+                                                            <i class="fas fa-cloud-upload-alt"></i>
+                                                            <span class="checkbook-upload-text">@Localizer["ClickToUpload"]</span>
+                                                            <span class="checkbook-upload-hint">@Localizer["JPGPNGMax5MB"]</span>
+                                                        </div>
+                                                        <div id="checkbookPreviewContainer" class="checkbook-preview-container">
+                                                            <img id="checkbookPreviewImg" src="@Model.Step4.ExistingCheckbookPhotoUrl" alt="Preview" class="checkbook-preview-img" />
+                                                            <div class="checkbook-preview-overlay">
+                                                                <i class="fas fa-edit"></i>
+                                                                <span>@Localizer["Change"]</span>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div id="checkbookPlaceholder" class="checkbook-upload-placeholder">
+                                                            <i class="fas fa-cloud-upload-alt"></i>
+                                                            <span class="checkbook-upload-text">@Localizer["ClickToUpload"]</span>
+                                                            <span class="checkbook-upload-hint">@Localizer["JPGPNGMax5MB"]</span>
+                                                        </div>
+                                                        <div id="checkbookPreviewContainer" class="checkbook-preview-container d-none">
+                                                            <img id="checkbookPreviewImg" src="" alt="Preview" class="checkbook-preview-img" />
+                                                            <div class="checkbook-preview-overlay">
+                                                                <i class="fas fa-edit"></i>
+                                                                <span>@Localizer["Change"]</span>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <span asp-validation-for="Step4.CheckbookPhoto" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="alert alert-info small mb-0">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>@Localizer["Note"]:</strong> @Localizer["BankChangeRequiresApproval"]
+                                    </div>
+                                </div>
+
+                                <!-- Mobile Banking (Optional) -->
+                                <div class="border rounded p-3 mb-4">
+                                    <h6 class="mb-3"><i class="fas fa-mobile-alt text-info me-2"></i>@Localizer["MobileBanking"] <span class="badge bg-secondary">@Localizer["Optional"]</span></h6>
+                                    <p class="text-muted small mb-3">@Localizer["MobileBankingDesc"]</p>
+
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label asp-for="Step4.MobileBankingProvider" class="form-label">@Localizer["Provider"]</label>
+                                            <select asp-for="Step4.MobileBankingProvider" class="form-select">
+                                                <option value="@MobileBankingProvider.None">-- @Localizer["None"] --</option>
+                                                <option value="@MobileBankingProvider.bKash">bKash</option>
+                                                <option value="@MobileBankingProvider.Nagad">Nagad</option>
+                                                <option value="@MobileBankingProvider.Rocket">Rocket</option>
+                                                <option value="@MobileBankingProvider.Upay">Upay</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label asp-for="Step4.MobileBankingNumber" class="form-label">@Localizer["MobileNumber"]</label>
+                                            <input asp-for="Step4.MobileBankingNumber" class="form-control" placeholder="01XXXXXXXXX" />
+                                            <span asp-validation-for="Step4.MobileBankingNumber" class="text-danger"></span>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label asp-for="Step4.MobileBankingAccountName" class="form-label">@Localizer["AccountName"]</label>
+                                            <input asp-for="Step4.MobileBankingAccountName" class="form-control" />
+                                            <span asp-validation-for="Step4.MobileBankingAccountName" class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr class="my-4" />
+
+                                <div class="mb-4">
+                                    <div class="form-check">
+                                        <input asp-for="Step4.AcceptTerms" class="form-check-input" />
+                                        <label asp-for="Step4.AcceptTerms" class="form-check-label">
+                                            @Localizer["IHaveReadAndAccept"] <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">@Localizer["SellerTermsAndConditions"]</a> <span class="text-danger">*</span>
+                                        </label>
+                                        <span asp-validation-for="Step4.AcceptTerms" class="text-danger d-block"></span>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <a asp-page="./BecomeSeller" asp-route-step="3" class="btn btn-outline-secondary">
+                                        <i class="fas fa-arrow-left me-2"></i>@Localizer["Back"]
+                                    </a>
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="fas fa-paper-plane me-2"></i>@Localizer["SubmitApplication"]
+                                    </button>
+                                </div>
+                            </form>
+                        }
+                    </div>
+                </div>
+
+                <!-- Benefits Section -->
+                <div class="mt-4">
+                    <h5 class="text-center mb-3">@Localizer["WhySellOnBangaliyana"]</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="benefit-card text-center p-3">
+                                <i class="fas fa-users text-primary mb-2"></i>
+                                <h6>@Localizer["LargeCustomerBase"]</h6>
+                                <small class="text-muted">@Localizer["LargeCustomerBaseDesc"]</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="benefit-card text-center p-3">
+                                <i class="fas fa-percentage text-success mb-2"></i>
+                                <h6>@Localizer["LowCommission"]</h6>
+                                <small class="text-muted">@Localizer["LowCommissionDesc"]</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="benefit-card text-center p-3">
+                                <i class="fas fa-tools text-info mb-2"></i>
+                                <h6>@Localizer["EasyManagement"]</h6>
+                                <small class="text-muted">@Localizer["EasyManagementDesc"]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Terms Modal -->
+<div class="modal fade" id="termsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@Localizer["SellerTermsAndConditions"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>@Localizer["SellerTermsEligibilityTitle"]</h6>
+                <p>@Localizer["SellerTermsEligibilityText"]</p>
+
+                <h6>@Localizer["SellerTermsProductListingsTitle"]</h6>
+                <p>@Localizer["SellerTermsProductListingsText"]</p>
+
+                <h6>@Localizer["SellerTermsCommissionTitle"]</h6>
+                <p>@Localizer["SellerTermsCommissionText"]</p>
+
+                <h6>@Localizer["SellerTermsOrderFulfillmentTitle"]</h6>
+                <p>@Localizer["SellerTermsOrderFulfillmentText"]</p>
+
+                <h6>@Localizer["SellerTermsReturnsTitle"]</h6>
+                <p>@Localizer["SellerTermsReturnsText"]</p>
+
+                <h6>@Localizer["SellerTermsSuspensionTitle"]</h6>
+                <p>@Localizer["SellerTermsSuspensionText"]</p>
+
+                <h6>@Localizer["SellerTermsIPTitle"]</h6>
+                <p>@Localizer["SellerTermsIPText"]</p>
+
+                <h6>@Localizer["SellerTermsDocVerificationTitle"]</h6>
+                <p>@Localizer["SellerTermsDocVerificationText"]</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Close"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ===== Modern Seller Registration UI ===== */
+
+    /* Hero Icon */
+    .seller-icon {
+        width: 90px;
+        height: 90px;
+        border-radius: 24px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        font-size: 2.25rem;
+        color: white;
+        box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.5);
+        position: relative;
+    }
+
+    .seller-icon::before {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        border-radius: 27px;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), transparent);
+        z-index: -1;
+    }
+
+    .success-icon i, .pending-icon i, .rejected-icon i {
+        font-size: 4rem;
+    }
+
+    /* ===== Step Progress - Modern Design ===== */
+    .step-progress {
+        padding: 30px 0;
+        background: linear-gradient(180deg, rgba(79, 70, 229, 0.03) 0%, transparent 100%);
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+    }
+
+    .step-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+    }
+
+    .step-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #f3f4f6, #e5e7eb);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1rem;
+        color: #9ca3af;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border: 3px solid transparent;
+    }
+
+    .step.active .step-circle {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        color: white;
+        box-shadow: 0 8px 25px -5px rgba(79, 70, 229, 0.5);
+        transform: scale(1.1);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .step.completed .step-circle {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        box-shadow: 0 4px 15px -3px rgba(16, 185, 129, 0.4);
+    }
+
+    .step-label {
+        margin-top: 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.3s;
+    }
+
+    .step.active .step-label {
+        color: #4f46e5;
+        font-weight: 700;
+    }
+
+    .step.completed .step-label {
+        color: #10b981;
+    }
+
+    .step-line {
+        width: 80px;
+        height: 4px;
+        background: linear-gradient(90deg, #e5e7eb, #f3f4f6);
+        margin: 0 8px;
+        margin-bottom: 36px;
+        border-radius: 2px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .step-line.active {
+        background: linear-gradient(90deg, #10b981, #34d399);
+    }
+
+    .step-line.active::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        animation: shimmer 2s infinite;
+    }
+
+    @@keyframes shimmer {
+        100% { left: 100%; }
+    }
+
+    /* ===== Card Design ===== */
+    .card {
+        border: none;
+        border-radius: 20px;
+        background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+                    0 10px 15px -3px rgba(0, 0, 0, 0.05),
+                    0 20px 25px -5px rgba(0, 0, 0, 0.03);
+        overflow: hidden;
+        position: relative;
+    }
+
+    .card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #4f46e5, #7c3aed, #10b981);
+    }
+
+    .card-body {
+        padding: 2.5rem;
+    }
+
+    .card-title {
+        font-size: 1.35rem;
+        font-weight: 700;
+        padding-bottom: 1.25rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid #f3f4f6;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .card-title i {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        border-radius: 12px;
+        color: white;
+        font-size: 1rem;
+    }
+
+    /* ===== Form Styling ===== */
+    .form-label {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .form-control,
+    .form-select {
+        border-radius: 12px;
+        padding: 0.875rem 1rem;
+        border: 2px solid #e5e7eb;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        background-color: #f9fafb;
+    }
+
+    .form-control:hover,
+    .form-select:hover {
+        border-color: #d1d5db;
+        background-color: #ffffff;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+        background-color: #ffffff;
+        outline: none;
+    }
+
+    textarea.form-control {
+        min-height: 80px;
+    }
+
+    /* ===== Photo Upload - Modern Design ===== */
+    .passport-photo-upload {
+        width: 160px;
+        height: 200px;
+        border: 3px dashed #d1d5db;
+        border-radius: 16px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        margin: 0 auto;
+        transition: all 0.3s ease;
+        background: linear-gradient(145deg, #f9fafb, #f3f4f6);
+    }
+
+    .passport-photo-upload:hover {
+        border-color: #4f46e5;
+        background: linear-gradient(145deg, #f5f3ff, #ede9fe);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.2);
+    }
+
+    .passport-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        padding: 1rem;
+    }
+
+    .passport-placeholder i {
+        font-size: 2.5rem;
+        color: #9ca3af;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s;
+    }
+
+    .passport-photo-upload:hover .passport-placeholder i {
+        color: #4f46e5;
+        transform: scale(1.1);
+    }
+
+    .passport-preview {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .passport-input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    /* ===== Document Upload ===== */
+    .document-upload-area {
+        border: 3px dashed #d1d5db;
+        border-radius: 16px;
+        padding: 2.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: linear-gradient(145deg, #f9fafb, #f3f4f6);
+    }
+
+    .document-upload-area:hover {
+        border-color: #4f46e5;
+        background: linear-gradient(145deg, #f5f3ff, #ede9fe);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.15);
+    }
+
+    .document-upload-area i {
+        transition: all 0.3s;
+    }
+
+    .document-upload-area:hover i {
+        color: #4f46e5 !important;
+        transform: scale(1.1);
+    }
+
+    /* ===== Checkbook Upload ===== */
+    .checkbook-upload-wrapper {
+        cursor: pointer;
+    }
+
+    .checkbook-upload-area {
+        border: 2px dashed #d1d5db;
+        border-radius: 12px;
+        padding: 1.25rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        background: linear-gradient(145deg, #f9fafb, #f3f4f6);
+        min-height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .checkbook-upload-area:hover {
+        border-color: #10b981;
+        background: linear-gradient(145deg, #ecfdf5, #d1fae5);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+    }
+
+    .checkbook-upload-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .checkbook-upload-placeholder i {
+        font-size: 1.75rem;
+        color: #9ca3af;
+        transition: all 0.3s;
+    }
+
+    .checkbook-upload-area:hover .checkbook-upload-placeholder i {
+        color: #10b981;
+        transform: scale(1.1);
+    }
+
+    .checkbook-upload-text {
+        font-weight: 600;
+        color: #4b5563;
+        font-size: 0.9rem;
+    }
+
+    .checkbook-upload-hint {
+        font-size: 0.75rem;
+        color: #9ca3af;
+    }
+
+    .checkbook-preview-container {
+        position: relative;
+        width: 100%;
+        max-width: 180px;
+    }
+
+    .checkbook-preview-img {
+        width: 100%;
+        height: auto;
+        max-height: 120px;
+        object-fit: contain;
+        border-radius: 8px;
+    }
+
+    .checkbook-preview-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s;
+        color: white;
+        gap: 0.25rem;
+    }
+
+    .checkbook-preview-container:hover .checkbook-preview-overlay {
+        opacity: 1;
+    }
+
+    .checkbook-preview-overlay i {
+        font-size: 1.25rem;
+    }
+
+    .checkbook-preview-overlay span {
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    /* Dark mode checkbook upload */
+    [data-theme="dark"] .checkbook-upload-area {
+        background: linear-gradient(145deg, #374151, #1f2937);
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .checkbook-upload-area:hover {
+        border-color: #10b981;
+        background: linear-gradient(145deg, #064e3b, #065f46);
+    }
+
+    [data-theme="dark"] .checkbook-upload-text {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .checkbook-upload-placeholder i {
+        color: #6b7280;
+    }
+
+    [data-theme="dark"] .checkbook-upload-area:hover .checkbook-upload-placeholder i {
+        color: #34d399;
+    }
+
+    /* ===== Buttons ===== */
+    .btn-primary {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        border: none;
+        padding: 0.875rem 2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px -3px rgba(79, 70, 229, 0.4);
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px -5px rgba(79, 70, 229, 0.5);
+    }
+
+    .btn-primary:active {
+        transform: translateY(0);
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        padding: 0.875rem 2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        box-shadow: 0 4px 15px -3px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-success:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px -5px rgba(16, 185, 129, 0.5);
+    }
+
+    .btn-outline-secondary {
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        color: #6b7280;
+        background: transparent;
+        transition: all 0.2s;
+    }
+
+    .btn-outline-secondary:hover {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+        color: #374151;
+    }
+
+    /* ===== Section Boxes ===== */
+    .border {
+        border-radius: 16px !important;
+        border: 2px solid #e5e7eb !important;
+        background: linear-gradient(145deg, #ffffff, #f9fafb);
+    }
+
+    /* ===== Benefit Cards ===== */
+    .benefit-card {
+        background: linear-gradient(145deg, #ffffff, #f8fafc);
+        border-radius: 16px;
+        transition: all 0.3s ease;
+        border: 1px solid #f3f4f6;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .benefit-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.1);
+    }
+
+    .benefit-card i {
+        font-size: 2.25rem;
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .benefit-card:nth-child(2) i {
+        background: linear-gradient(135deg, #10b981, #059669);
+        -webkit-background-clip: text;
+        background-clip: text;
+    }
+
+    .benefit-card:nth-child(3) i {
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        -webkit-background-clip: text;
+        background-clip: text;
+    }
+
+    /* ===== Alert Styling ===== */
+    .alert-info {
+        background: linear-gradient(135deg, #eff6ff, #dbeafe);
+        border: none;
+        border-left: 4px solid #3b82f6;
+        border-radius: 12px;
+        color: #1e40af;
+    }
+
+    .alert-warning {
+        background: linear-gradient(135deg, #fffbeb, #fef3c7);
+        border: none;
+        border-left: 4px solid #f59e0b;
+        border-radius: 12px;
+    }
+
+    /* ===== Validation Styling ===== */
+    .form-control.is-valid,
+    .form-select.is-valid,
+    .form-control.valid,
+    .form-select.valid {
+        background-image: none !important;
+        border-color: #e5e7eb !important;
+        padding-right: 1rem !important;
+    }
+
+    .form-control.is-invalid,
+    .form-select.is-invalid,
+    .form-control.input-validation-error,
+    .form-select.input-validation-error {
+        border-color: #ef4444 !important;
+        background-color: #fef2f2 !important;
+    }
+
+    .text-danger {
+        font-size: 0.8rem;
+        font-weight: 500;
+        margin-top: 0.25rem;
+    }
+
+    /* ===== Dark Mode ===== */
+    [data-theme="dark"] .card {
+        background: linear-gradient(145deg, #1f2937, #111827);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3),
+                    0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="dark"] .card::before {
+        background: linear-gradient(90deg, #6366f1, #8b5cf6, #10b981);
+    }
+
+    [data-theme="dark"] .card-title {
+        color: #f3f4f6;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .form-label {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .form-control:hover,
+    [data-theme="dark"] .form-select:hover {
+        background-color: #4b5563;
+        border-color: #6b7280;
+    }
+
+    [data-theme="dark"] .form-control:focus,
+    [data-theme="dark"] .form-select:focus {
+        background-color: #374151;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+    }
+
+    [data-theme="dark"] .passport-photo-upload,
+    [data-theme="dark"] .document-upload-area {
+        background: linear-gradient(145deg, #374151, #1f2937);
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .passport-photo-upload:hover,
+    [data-theme="dark"] .document-upload-area:hover {
+        border-color: #6366f1;
+        background: linear-gradient(145deg, #4b5563, #374151);
+    }
+
+    [data-theme="dark"] .step-circle {
+        background: linear-gradient(145deg, #374151, #1f2937);
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .step-line {
+        background: linear-gradient(90deg, #374151, #4b5563);
+    }
+
+    [data-theme="dark"] .step-progress {
+        background: linear-gradient(180deg, rgba(99, 102, 241, 0.05) 0%, transparent 100%);
+    }
+
+    [data-theme="dark"] .benefit-card {
+        background: linear-gradient(145deg, #1f2937, #111827);
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .border {
+        background: linear-gradient(145deg, #1f2937, #111827) !important;
+        border-color: #374151 !important;
+    }
+
+    [data-theme="dark"] .alert-info {
+        background: linear-gradient(135deg, #1e3a5f, #1e3a8a);
+        border-left-color: #3b82f6;
+        color: #93c5fd;
+    }
+
+    [data-theme="dark"] .btn-outline-secondary {
+        border-color: #4b5563;
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .btn-outline-secondary:hover {
+        background: #374151;
+        border-color: #6b7280;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .modal-content {
+        background: linear-gradient(145deg, #1f2937, #111827);
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .modal-header {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .application-details {
+        background: #374151 !important;
+    }
+
+    /* ===== Responsive ===== */
+    @@media (max-width: 768px) {
+        .step-line {
+            width: 25px;
+        }
+
+        .step-label {
+            font-size: 0.65rem;
+        }
+
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            font-size: 0.85rem;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .passport-photo-upload {
+            width: 140px;
+            height: 175px;
+        }
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Passport photo preview
+        function previewPassport(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    $('#passportPreview').attr('src', e.target.result).removeClass('d-none');
+                    $('#passportPlaceholder').addClass('d-none');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Document preview
+        function previewDocument(input) {
+            if (input.files && input.files[0]) {
+                var file = input.files[0];
+                if (file.type.startsWith('image/')) {
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        $('#docPreview').attr('src', e.target.result).removeClass('d-none');
+                        $('#docPlaceholder').addClass('d-none');
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    // PDF file
+                    $('#docPlaceholder').html('<i class="fas fa-file-pdf fa-3x text-danger mb-2"></i><div>' + file.name + '</div>');
+                }
+            }
+        }
+
+        // Checkbook photo preview
+        function handleCheckbookPreview(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#checkbookPreviewImg').attr('src', e.target.result);
+                    $('#checkbookPlaceholder').addClass('d-none');
+                    $('#checkbookPreviewContainer').removeClass('d-none');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Toggle present address
+        $(document).ready(function () {
+            $('#sameAddress').on('change', function () {
+                if ($(this).is(':checked')) {
+                    $('#presentAddressDiv').hide();
+                } else {
+                    $('#presentAddressDiv').show();
+                }
+            });
+
+            // Initial state
+            if ($('#sameAddress').is(':checked')) {
+                $('#presentAddressDiv').hide();
+            }
+
+            // Configure jQuery validation - remove green checkmarks
+            var settings = {
+                errorClass: 'input-validation-error is-invalid',
+                validClass: '', // Don't add any valid class
+                errorElement: 'span',
+                errorPlacement: function(error, element) {
+                    error.addClass('text-danger');
+                    error.insertAfter(element);
+                },
+                highlight: function(element, errorClass, validClass) {
+                    $(element).addClass(errorClass).removeClass('is-valid valid');
+                },
+                unhighlight: function(element, errorClass, validClass) {
+                    $(element).removeClass(errorClass + ' is-valid valid');
+                }
+            };
+
+            // Apply settings to all forms
+            $('form').each(function() {
+                var validator = $(this).data('validator');
+                if (validator) {
+                    validator.settings.errorClass = settings.errorClass;
+                    validator.settings.validClass = settings.validClass;
+                    validator.settings.highlight = settings.highlight;
+                    validator.settings.unhighlight = settings.unhighlight;
+                }
+            });
+
+            // Remove any existing valid/is-valid classes on page load
+            $('.form-control, .form-select').removeClass('is-valid valid');
+
+            // Form submit validation with smooth scroll to first error
+            $('form').on('submit', function (e) {
+                var $form = $(this);
+                var validator = $form.data('validator');
+
+                if (validator) {
+                    // Trigger validation
+                    if (!validator.form()) {
+                        e.preventDefault();
+
+                        // Find the first invalid field
+                        var $firstError = $form.find('.is-invalid, .input-validation-error').first();
+
+                        if ($firstError.length) {
+                            // Smooth scroll to the first invalid field with offset
+                            var offset = $firstError.offset().top - 120;
+                            $('html, body').animate({
+                                scrollTop: offset
+                            }, 500, function() {
+                                // Focus the field after scrolling
+                                $firstError.focus();
+                            });
+                        }
+
+                        return false;
+                    }
+                }
+            });
+        });
+    </script>
+}

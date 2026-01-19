@@ -1,0 +1,92 @@
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    if (ViewData.TryGetValue("ParentLayout", out var parentLayout) && parentLayout !=  null)
+    {
+        Layout = parentLayout.ToString();
+    }
+    else
+    {
+        Layout = "/Areas/Identity/Pages/_Layout.cshtml";
+    }
+}
+
+<style>
+    /* Dark mode styles for Manage Account page */
+    [data-theme="dark"] h2 {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] h2 i {
+        color: #4a6cf7;
+    }
+
+    /* Dark mode support for disabled form controls */
+    [data-theme="dark"] .form-control:disabled,
+    [data-theme="dark"] .form-control[disabled] {
+        background-color: #374151 !important;
+        border-color: #4b5563 !important;
+        color: #9ca3af !important;
+        opacity: 1;
+    }
+    [data-theme="dark"] .form-floating > .form-control:disabled ~ label,
+    [data-theme="dark"] .form-floating > .form-control[disabled] ~ label {
+        color: #9ca3af;
+    }
+
+    /* Dark mode for cards */
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+    [data-theme="dark"] .card-header {
+        background-color: #111827;
+        border-color: #374151;
+        color: #f3f4f6;
+    }
+    [data-theme="dark"] .card-header h5 {
+        color: #f3f4f6;
+    }
+    [data-theme="dark"] .card-body {
+        color: #e5e7eb;
+    }
+
+    /* Dark mode for form controls */
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+    [data-theme="dark"] .form-control:focus,
+    [data-theme="dark"] .form-select:focus {
+        background-color: #374151;
+        border-color: #6366f1;
+        color: #f3f4f6;
+    }
+    [data-theme="dark"] .form-floating > label {
+        color: #9ca3af;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fa fa-user-circle"></i> @Localizer["ManageYourAccount"]
+            </h2>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-3 mb-4">
+            <partial name="_ManageNav" />
+        </div>
+        <div class="col-md-9">
+            @RenderBody()
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @RenderSection("Scripts", required: false)
+}

@@ -1,0 +1,171 @@
+@model X.PagedList.IPagedList<Bangaliyana.Models.SellerMonthlyReport>
+@using X.PagedList.Mvc.Core
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = "My Monthly Reports";
+    var seller = ViewBag.Seller as Bangaliyana.Models.Seller;
+    var currentMonthReport = ViewBag.CurrentMonthReport as Bangaliyana.Models.SellerMonthlyReport;
+}
+
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h4 class="mb-1">
+                        <i class="fas fa-file-invoice-dollar text-primary me-2"></i>My Monthly Reports
+                    </h4>
+                    <p class="text-muted mb-0">Track your monthly earnings and payment status</p>
+                </div>
+                <div>
+                    <a href="@Url.Action("CurrentMonth")" class="btn btn-primary">
+                        <i class="fas fa-calendar-alt me-1"></i>Current Month
+                    </a>
+                    <a href="@Url.Action("PendingBalance")" class="btn btn-warning">
+                        <i class="fas fa-wallet me-1"></i>Pending Balance
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100 border-start border-success border-4">
+                <div class="card-body text-center">
+                    <h3 class="text-success mb-1">@ViewBag.TotalPaidAmount.ToString("N0") BDT</h3>
+                    <small class="text-muted">Total Received</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100 border-start border-warning border-4">
+                <div class="card-body text-center">
+                    <h3 class="text-warning mb-1">@ViewBag.PendingPayoutAmount.ToString("N0") BDT</h3>
+                    <small class="text-muted">Pending Payout</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100 border-start border-primary border-4">
+                <div class="card-body text-center">
+                    <h3 class="text-primary mb-1">@(currentMonthReport?.TotalSales.ToString("N0") ?? "0") BDT</h3>
+                    <small class="text-muted">This Month Sales</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent">
+            <h6 class="mb-0"><i class="fas fa-history me-2"></i>Report History</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Report #</th>
+                            <th class="text-end">Sales</th>
+                            <th class="text-end">Commission</th>
+                            <th class="text-end">Net Payable</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            foreach (var report in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@(new DateTime(report.Year, report.Month, 1).ToString("MMMM yyyy"))</strong>
+                                    </td>
+                                    <td>@report.ReportNumber</td>
+                                    <td class="text-end">@report.TotalSales.ToString("N0")</td>
+                                    <td class="text-end text-danger">-@report.CommissionAmount.ToString("N0")</td>
+                                    <td class="text-end fw-bold text-success">@report.NetPayable.ToString("N0")</td>
+                                    <td class="text-center">
+                                        @{
+                                            var statusClass = report.Status switch
+                                            {
+                                                MonthlyReportStatus.Open => "bg-primary",
+                                                MonthlyReportStatus.Finalized => "bg-info",
+                                                MonthlyReportStatus.PendingPayout => "bg-warning",
+                                                MonthlyReportStatus.PayoutCreated => "bg-secondary",
+                                                MonthlyReportStatus.Paid => "bg-success",
+                                                MonthlyReportStatus.CarriedForward => "bg-dark",
+                                                _ => "bg-secondary"
+                                            };
+                                            var statusText = report.Status switch
+                                            {
+                                                MonthlyReportStatus.Open => "Ongoing",
+                                                MonthlyReportStatus.Finalized => "Finalized",
+                                                MonthlyReportStatus.PendingPayout => "Pending Payout",
+                                                MonthlyReportStatus.PayoutCreated => "Payout Processing",
+                                                MonthlyReportStatus.Paid => "Paid",
+                                                MonthlyReportStatus.CarriedForward => "Carried Forward",
+                                                _ => report.Status.ToString()
+                                            };
+                                        }
+                                        <span class="badge @statusClass">@statusText</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="@Url.Action("Details", new { id = report.Id })" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                        <a href="@Url.Action("PrintReport", new { id = report.Id })" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fas fa-print"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                    No reports found yet. Reports will be generated as your orders are delivered.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @if (Model.PageCount > 1)
+        {
+            <div class="card-footer bg-transparent">
+                <nav>
+                    @Html.PagedListPager(Model, page => Url.Action("Index", new { page }),
+                        new PagedListRenderOptions
+                        {
+                            LiElementClasses = new[] { "page-item" },
+                            PageClasses = new[] { "page-link" },
+                            UlElementClasses = new[] { "pagination", "justify-content-center", "mb-0" }
+                        })
+                </nav>
+            </div>
+        }
+    </div>
+
+    <!-- Info Card -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body">
+            <h6><i class="fas fa-info-circle text-info me-2"></i>How Monthly Reports Work</h6>
+            <ul class="mb-0 small text-muted">
+                <li>Your sales are tracked on a monthly basis (1st to last day of each month)</li>
+                <li>On the 1st of each month, the previous month's report is finalized</li>
+                <li>Minimum payout amount is <strong>500 BDT</strong></li>
+                <li>If your payable amount is less than 500 BDT, it will be carried forward to the next month</li>
+                <li>Returns and refunds after delivery are deducted from your balance</li>
+            </ul>
+        </div>
+    </div>
+</div>

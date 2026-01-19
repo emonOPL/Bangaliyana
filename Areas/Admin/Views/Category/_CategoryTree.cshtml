@@ -1,0 +1,98 @@
+@model Bangaliyana.Models.Category
+
+@{
+    var hasChildren = Model.Children?.Any() == true;
+    var levelClass = $"level-{Math.Min(Model.Level, 4)}";
+}
+
+<div class="tree-item" data-id="@Model.Id">
+    <div class="category-card @levelClass" data-active="@Model.IsActive.ToString().ToLower()" data-level="@Model.Level">
+        <div class="category-info">
+            @if (hasChildren)
+            {
+                <span class="toggle-children" title="@Localizer["ToggleSubcategories"]">
+                    <i class="fas fa-chevron-right icon-right"></i>
+                    <i class="fas fa-chevron-down icon-down" style="display: none;"></i>
+                </span>
+            }
+            else
+            {
+                <span style="width: 32px;"></span>
+            }
+
+            <div class="category-icon">
+                @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                {
+                    <img src="@Model.ImageUrl" alt="@Model.Name" />
+                }
+                else if (!string.IsNullOrEmpty(Model.IconClass))
+                {
+                    <i class="@Model.IconClass"></i>
+                }
+                else
+                {
+                    <i class="fas fa-folder"></i>
+                }
+            </div>
+
+            <div class="category-details">
+                <h6>
+                    @Model.Name
+                    @if (!Model.IsActive)
+                    {
+                        <span class="badge bg-secondary ms-2 inactive-badge" style="font-size: 0.65rem;">@Localizer["Inactive"]</span>
+                    }
+                    @if (Model.IsFeatured)
+                    {
+                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">
+                            <i class="fas fa-star"></i> @Localizer["Featured"]
+                        </span>
+                    }
+                </h6>
+                <div class="category-meta">
+                    <span class="level-indicator">@Localizer["Level"] @Model.Level</span>
+                    @if (hasChildren)
+                    {
+                        <span><i class="fas fa-sitemap me-1"></i>@Localizer["SubcategoriesCount", Model.Children!.Count]</span>
+                    }
+                    @if (Model.Products?.Any() == true)
+                    {
+                        <span><i class="fas fa-box me-1"></i>@Localizer["ProductsCount", Model.Products.Count]</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="category-actions">
+            <a asp-action="Create" asp-route-parentId="@Model.Id" class="btn btn-outline-success btn-sm" title="@Localizer["AddSubcategory"]">
+                <i class="fas fa-plus"></i>
+            </a>
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-info btn-sm" title="@Localizer["ViewDetails"]">
+                <i class="fas fa-eye"></i>
+            </a>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary btn-sm" title="@Localizer["Edit"]">
+                <i class="fas fa-edit"></i>
+            </a>
+            <button type="button" class="btn @(Model.IsActive ? "btn-outline-danger" : "btn-outline-success") btn-sm toggle-active"
+                    data-id="@Model.Id" title="@(Model.IsActive ? Localizer["Deactivate"] : Localizer["Activate"])">
+                <i class="fas @(Model.IsActive ? "fa-toggle-on" : "fa-toggle-off")"></i>
+            </button>
+            <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="button" class="btn btn-outline-danger btn-sm delete-category" data-name="@Model.Name" title="@Localizer["Delete"]">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    @if (hasChildren)
+    {
+        <div class="tree-children" style="display: none;">
+            @foreach (var child in Model.Children!.OrderBy(c => c.DisplayOrder).ThenBy(c => c.Name))
+            {
+                @await Html.PartialAsync("_CategoryTree", child)
+            }
+        </div>
+    }
+</div>

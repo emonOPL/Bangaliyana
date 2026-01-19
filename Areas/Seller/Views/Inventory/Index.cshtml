@@ -1,0 +1,313 @@
+@using Bangaliyana.Models
+@model IEnumerable<Products>
+@{
+    ViewData["Title"] = "Inventory Management";
+    var currentPage = ViewBag.CurrentPage as int? ?? 1;
+    var totalPages = ViewBag.TotalPages as int? ?? 1;
+    var totalProducts = ViewBag.TotalProducts as int? ?? 0;
+    var inStockProducts = ViewBag.InStockProducts as int? ?? 0;
+    var lowStockProducts = ViewBag.LowStockProducts as int? ?? 0;
+    var outOfStockProducts = ViewBag.OutOfStockProducts as int? ?? 0;
+    var totalStockUnits = ViewBag.TotalStockUnits as int? ?? 0;
+    var totalStockValue = ViewBag.TotalStockValue as decimal? ?? 0;
+    var lowStockThreshold = ViewBag.LowStockThreshold as int? ?? 5;
+    var search = ViewBag.Search as string;
+    var status = ViewBag.Status as string;
+}
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-warehouse text-info me-2"></i>My Inventory</h1>
+            <p class="text-muted mb-0">Monitor and manage your product stock levels</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Settings" class="btn btn-outline-primary">
+                <i class="fas fa-cog me-1"></i>Alert Settings
+            </a>
+            <a asp-action="History" class="btn btn-outline-secondary">
+                <i class="fas fa-history me-1"></i>Stock History
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm h-100 bg-primary bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="fas fa-boxes text-primary fa-lg mb-2"></i>
+                    <h4 class="mb-0 fw-bold">@totalProducts</h4>
+                    <small class="text-muted">Products</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm h-100 bg-success bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle text-success fa-lg mb-2"></i>
+                    <h4 class="mb-0 fw-bold">@inStockProducts</h4>
+                    <small class="text-muted">In Stock</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm h-100 bg-warning bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle text-warning fa-lg mb-2"></i>
+                    <h4 class="mb-0 fw-bold">@lowStockProducts</h4>
+                    <small class="text-muted">Low Stock</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm h-100 bg-danger bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="fas fa-times-circle text-danger fa-lg mb-2"></i>
+                    <h4 class="mb-0 fw-bold">@outOfStockProducts</h4>
+                    <small class="text-muted">Out of Stock</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm h-100 bg-info bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="fas fa-cubes text-info fa-lg mb-2"></i>
+                    <h4 class="mb-0 fw-bold">@totalStockUnits.ToString("N0")</h4>
+                    <small class="text-muted">Total Units</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm h-100 bg-secondary bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="fas fa-dollar-sign text-secondary fa-lg mb-2"></i>
+                    <h4 class="mb-0 fw-bold">@totalStockValue.ToString("N0")</h4>
+                    <small class="text-muted">Stock Value</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Search -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form asp-action="Index" method="get" class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small">Search</label>
+                    <input type="text" name="search" class="form-control" placeholder="Search by name or SKU..." value="@search">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Stock Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Products</option>
+                        <option value="outofstock" selected="@(status == "outofstock")">Out of Stock</option>
+                        <option value="lowstock" selected="@(status == "lowstock")">Low Stock (&le; @lowStockThreshold)</option>
+                        <option value="instock" selected="@(status == "instock")">In Stock</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-1"></i>Filter
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick Status Tabs -->
+    <ul class="nav nav-pills mb-3">
+        <li class="nav-item">
+            <a class="nav-link @(string.IsNullOrEmpty(status) ? "active" : "")" asp-action="Index">All (@totalProducts)</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(status == "instock" ? "active" : "")" asp-action="Index" asp-route-status="instock">
+                <i class="fas fa-check-circle text-success me-1"></i>In Stock (@inStockProducts)
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(status == "lowstock" ? "active" : "")" asp-action="Index" asp-route-status="lowstock">
+                <i class="fas fa-exclamation-triangle text-warning me-1"></i>Low Stock (@lowStockProducts)
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(status == "outofstock" ? "active" : "")" asp-action="Index" asp-route-status="outofstock">
+                <i class="fas fa-times-circle text-danger me-1"></i>Out of Stock (@outOfStockProducts)
+            </a>
+        </li>
+    </ul>
+
+    <!-- Products Table -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th>SKU</th>
+                                <th class="text-center">Stock</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-center" style="width: 200px;">Quick Update</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var product in Model)
+                            {
+                                var firstImage = product.Images?.FirstOrDefault()?.ImageUrl ?? product.ImageUrl ?? "images/products/noimage.jpg";
+                                var stockClass = product.Stock <= 0 ? "text-danger" : (product.Stock <= lowStockThreshold ? "text-warning" : "text-success");
+                                var statusBadge = product.Stock <= 0 ? "bg-danger" : (product.Stock <= lowStockThreshold ? "bg-warning" : "bg-success");
+                                var statusText = product.Stock <= 0 ? "Out of Stock" : (product.Stock <= lowStockThreshold ? "Low Stock" : "In Stock");
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="~/@firstImage" alt="@product.Name" class="rounded me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                            <span class="fw-medium">@product.Name</span>
+                                        </div>
+                                    </td>
+                                    <td><small class="text-muted">@(product.SKU ?? "-")</small></td>
+                                    <td class="text-center">
+                                        <span class="fw-bold @stockClass fs-5">@product.Stock</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge @statusBadge">@statusText</span>
+                                    </td>
+                                    <td class="text-end">@product.EffectivePrice.ToString("N0")</td>
+                                    <td class="text-center">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control stock-input" value="@product.Stock" min="0"
+                                                   data-product-id="@product.Id" data-original="@product.Stock" style="max-width: 80px;">
+                                            <button class="btn btn-outline-primary update-stock-btn" type="button" disabled data-product-id="@product.Id">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <a asp-action="Adjust" asp-route-id="@product.Id" class="btn btn-outline-secondary" title="Full Adjustment">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-boxes fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No products found</h5>
+                    <p class="text-muted mb-0">Try adjusting your filters or add new products</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    @if (totalPages > 1)
+    {
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@(currentPage - 1)"
+                       asp-route-search="@search" asp-route-status="@status">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@i"
+                           asp-route-search="@search" asp-route-status="@status">@i</a>
+                    </li>
+                }
+                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@(currentPage + 1)"
+                       asp-route-search="@search" asp-route-status="@status">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Track changes to stock inputs
+            document.querySelectorAll('.stock-input').forEach(input => {
+                input.addEventListener('input', function() {
+                    const productId = this.dataset.productId;
+                    const original = parseInt(this.dataset.original);
+                    const current = parseInt(this.value) || 0;
+                    const btn = document.querySelector(`.update-stock-btn[data-product-id="${productId}"]`);
+
+                    if (current !== original) {
+                        btn.disabled = false;
+                        btn.classList.remove('btn-outline-primary');
+                        btn.classList.add('btn-primary');
+                    } else {
+                        btn.disabled = true;
+                        btn.classList.add('btn-outline-primary');
+                        btn.classList.remove('btn-primary');
+                    }
+                });
+            });
+
+            // Handle quick update
+            document.querySelectorAll('.update-stock-btn').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const productId = this.dataset.productId;
+                    const input = document.querySelector(`.stock-input[data-product-id="${productId}"]`);
+                    const newStock = parseInt(input.value) || 0;
+
+                    this.disabled = true;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+                    try {
+                        const response = await fetch('/Seller/Inventory/QuickUpdate', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                            },
+                            body: `productId=${productId}&newStock=${newStock}`
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            input.dataset.original = newStock;
+                            this.classList.remove('btn-primary');
+                            this.classList.add('btn-outline-success');
+                            this.innerHTML = '<i class="fas fa-check"></i>';
+
+                            setTimeout(() => {
+                                this.classList.remove('btn-outline-success');
+                                this.classList.add('btn-outline-primary');
+                                this.disabled = true;
+                            }, 2000);
+
+                            alertify.success(result.message);
+                        } else {
+                            alertify.error(result.message);
+                            this.disabled = false;
+                            this.innerHTML = '<i class="fas fa-check"></i>';
+                        }
+                    } catch (error) {
+                        alertify.error('Failed to update stock');
+                        this.disabled = false;
+                        this.innerHTML = '<i class="fas fa-check"></i>';
+                    }
+                });
+            });
+        });
+    </script>
+}

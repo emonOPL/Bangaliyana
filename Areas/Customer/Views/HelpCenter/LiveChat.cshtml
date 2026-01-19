@@ -1,0 +1,2380 @@
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Localizer["LiveChatSupport"].Value;
+    var siteSettings = ViewBag.SiteSettings as SiteSettings;
+    var userName = ViewBag.UserName as string;
+    var userEmail = ViewBag.UserEmail as string;
+    var existingSession = ViewBag.ExistingSession as SupportChatSession;
+
+    // Role detection
+    var userRole = ViewBag.UserRole as string ?? "Customer";
+    var isSeller = ViewBag.IsSeller as bool? ?? false;
+    var isAdmin = ViewBag.IsAdmin as bool? ?? false;
+    var isModerator = ViewBag.IsModerator as bool? ?? false;
+    var shopName = ViewBag.ShopName as string;
+    var sellerGreeting = ViewBag.SellerGreeting as string;
+    var sellerId = ViewBag.SellerId;
+}
+
+<div class="live-chat-page">
+    <!-- Header -->
+    <section class="chat-header py-4 bg-gradient-primary text-white">
+        <div class="container">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb breadcrumb-light">
+                    <li class="breadcrumb-item"><a asp-area="Customer" asp-controller="Home" asp-action="Index">@Localizer["Home"]</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Index">@Localizer["HelpCenter"]</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">@Localizer["LiveChat"]</li>
+                </ol>
+            </nav>
+            <h1 class="h3 fw-bold mb-2">
+                <i class="fas fa-robot me-2"></i>@Localizer["AIChatAssistant"]
+                @if (isSeller)
+                {
+                    <span class="badge bg-success ms-2">@Localizer["Seller"]</span>
+                }
+                else if (isAdmin)
+                {
+                    <span class="badge bg-danger ms-2">@Localizer["Admin"]</span>
+                }
+                else if (isModerator)
+                {
+                    <span class="badge bg-warning ms-2">@Localizer["Moderator"]</span>
+                }
+            </h1>
+            <p class="mb-0 header-subtitle">
+                @if (isSeller && !string.IsNullOrEmpty(shopName))
+                {
+                    <text><i class="fas fa-store me-1"></i>@shopName - আপনার ব্যবসার সহকারী</text>
+                }
+                else
+                {
+                    <text>আমি আপনার বাংলালিয়ানা সহকারী - আমাকে যেকোনো প্রশ্ন করুন!</text>
+                }
+            </p>
+        </div>
+    </section>
+
+    <div class="container py-4">
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Chat Container -->
+                <div class="chat-container" id="chatContainer">
+                    <!-- Start Chat Form -->
+                    <div id="startChatForm" class="start-chat-section @(existingSession != null ? "d-none" : "")">
+                        <div class="start-chat-header text-center mb-4">
+                            <div class="chat-avatar mb-3">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <h4>@Localizer["StartAIChat"]</h4>
+                            <p class="text-muted">@Localizer["AIAssistantAvailable247"]</p>
+                        </div>
+
+                        <form id="initChatForm" class="chat-form" novalidate>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="visitorName" class="form-label">@Localizer["YourName"] *</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                            <input type="text" class="form-control" id="visitorName"
+                                                   placeholder="@Localizer["EnterYourName"]" value="@userName"
+                                                   data-required="true" data-error-msg="@Localizer["PleaseEnterYourName"]">
+                                        </div>
+                                        <div class="invalid-feedback" id="visitorName-error"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="visitorEmail" class="form-label">@Localizer["EmailAddress"] *</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                            <input type="email" class="form-control" id="visitorEmail"
+                                                   placeholder="@Localizer["EnterYourEmail"]" value="@userEmail"
+                                                   data-required="true" data-type="email" data-error-msg="@Localizer["PleaseEnterYourEmail"]" data-email-error="@Localizer["EnterValidEmail"]">
+                                        </div>
+                                        <div class="invalid-feedback" id="visitorEmail-error"></div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <label for="chatDepartment" class="form-label">@Localizer["Department"] *</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-building"></i></span>
+                                            <select class="form-select" id="chatDepartment"
+                                                    data-required="true" data-error-msg="@Localizer["PleaseSelectDepartment"]">
+                                                <option value="">@Localizer["SelectDepartment"]</option>
+                                                <option value="General">@Localizer["GeneralInquiry"]</option>
+                                                <option value="Sales">@Localizer["Sales"]</option>
+                                                <option value="Support" selected>@Localizer["TechnicalSupport"]</option>
+                                                <option value="Complaint">@Localizer["Complaint"]</option>
+                                                <option value="Other">@Localizer["Other"]</option>
+                                            </select>
+                                        </div>
+                                        <div class="invalid-feedback" id="chatDepartment-error"></div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <label for="initialQuery" class="form-label">@Localizer["HowCanWeHelpOptional"]</label>
+                                        <textarea class="form-control" id="initialQuery" placeholder="@Localizer["DescribeYourIssue"]"
+                                                  rows="4"></textarea>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary btn-lg w-100" id="startChatBtn">
+                                        <i class="fas fa-robot me-2"></i>@Localizer["StartAIChat"]
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="chat-availability mt-4 text-center" id="chatAvailability">
+                            <div class="availability-status online">
+                                <span class="status-dot"></span>
+                                <span>@Localizer["AIAssistantOnline247"]</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Chat Interface -->
+                    <div id="chatInterface" class="chat-interface @(existingSession == null ? "d-none" : "")">
+                        <!-- Chat Header -->
+                        <div class="chat-header-bar">
+                            <div class="chat-header-info">
+                                <div class="agent-avatar" id="agentAvatar">
+                                    <img src="/images/Emon.jpg" alt="Bot" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                                </div>
+                                <div class="agent-details">
+                                    <h6 class="mb-0" id="agentName">বাংলালিয়ানা সহকারী</h6>
+                                    <span class="status-text" id="chatStatus">
+                                        <span class="status-dot-small online"></span>
+                                        Online
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="chat-actions">
+                                <button class="btn btn-sm btn-outline-light" id="requestHumanBtn" title="@Localizer["RequestHumanAgent"]">
+                                    <i class="fas fa-user-tie"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-light" id="minimizeChat" title="@Localizer["Minimize"]" onclick="toggleMinimizeChat()">
+                                    <i class="fas fa-minus" id="minimizeIcon"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" id="endChatBtn" title="@Localizer["EndChat"]">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Messages Area -->
+                        <div class="chat-messages" id="chatMessages">
+                            <!-- Messages will be loaded here -->
+                            <div class="system-message">
+                                <p>@Localizer["WelcomeToLiveChat"]</p>
+                            </div>
+                        </div>
+
+                        <!-- Typing Indicator -->
+                        <div class="typing-indicator d-none" id="typingIndicator">
+                            <span class="typing-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </span>
+                            <span class="typing-text">@Localizer["AIIsThinking"]</span>
+                        </div>
+
+                        <!-- Quick Replies -->
+                        <div class="quick-replies-container d-none" id="quickReplies">
+                            <!-- Quick replies will be loaded here -->
+                        </div>
+
+                        <!-- Message Input -->
+                        <div class="chat-input-area">
+                            <form id="messageForm">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="messageInput"
+                                           placeholder="@Localizer["TypeYourMessagePlaceholder"]" autocomplete="off">
+                                    <button type="submit" class="btn btn-primary" id="sendMessageBtn">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="input-hints mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    @Localizer["ChatLanguageTip"]
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Rating (shown after chat ends) -->
+                    <div id="chatRating" class="chat-rating d-none">
+                        <div class="text-center py-4">
+                            <div class="rating-icon mb-3">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <h4>@Localizer["RateYourExperience"]</h4>
+                            <p class="text-muted mb-4">@Localizer["HowWasYourExperience"]</p>
+                            <div class="star-rating mb-4" id="starRating">
+                                <span class="star" data-value="1">★</span>
+                                <span class="star" data-value="2">★</span>
+                                <span class="star" data-value="3">★</span>
+                                <span class="star" data-value="4">★</span>
+                                <span class="star" data-value="5">★</span>
+                            </div>
+                            <input type="hidden" id="selectedRating" value="0" />
+                            <div class="mb-4">
+                                <textarea class="form-control" id="chatFeedback" placeholder="@Localizer["AdditionalFeedbackOptional"]"
+                                          rows="3"></textarea>
+                            </div>
+                            <button class="btn btn-primary" id="submitRatingBtn" onclick="submitChatRating()">
+                                <i class="fas fa-check me-2"></i>@Localizer["SubmitRating"]
+                            </button>
+                            <button class="btn btn-outline-secondary ms-2" id="skipRatingBtn" onclick="skipChatRating()">@Localizer["Skip"]</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                @if (isSeller)
+                {
+                    <!-- Seller Quick Stats -->
+                    <div class="sidebar-card mb-4" id="sellerQuickStats">
+                        <div class="sidebar-header">
+                            <i class="fas fa-chart-pie text-primary me-2"></i>
+                            আজকের সামারি
+                        </div>
+                        <div class="sidebar-body" id="quickStatsBody">
+                            <div class="d-flex justify-content-center py-3">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seller Topics -->
+                    <div class="sidebar-card mb-4">
+                        <div class="sidebar-header">
+                            <i class="fas fa-fire text-danger me-2"></i>
+                            সেলার সাপোর্ট
+                        </div>
+                        <div class="sidebar-body">
+                            <div class="popular-topics">
+                                <button class="topic-btn" data-message="আজকের অর্ডার দেখাও">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    <span>আজকের অর্ডার</span>
+                                </button>
+                                <button class="topic-btn" data-message="পেন্ডিং অর্ডার দেখাও">
+                                    <i class="fas fa-clock"></i>
+                                    <span>পেন্ডিং</span>
+                                </button>
+                                <button class="topic-btn" data-message="এই মাসের সেলস">
+                                    <i class="fas fa-chart-line"></i>
+                                    <span>সেলস রিপোর্ট</span>
+                                </button>
+                                <button class="topic-btn" data-message="পেমেন্ট কবে পাবো">
+                                    <i class="fas fa-wallet"></i>
+                                    <span>পেমেন্ট</span>
+                                </button>
+                                <button class="topic-btn" data-message="কম স্টক পণ্য দেখাও">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>স্টক এলার্ট</span>
+                                </button>
+                                <button class="topic-btn" data-message="কিভাবে সেলস বাড়াবো">
+                                    <i class="fas fa-lightbulb"></i>
+                                    <span>টিপস</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seller Quick Links -->
+                    <div class="other-options">
+                        <a asp-area="Seller" asp-controller="Order" asp-action="Index" class="alt-option">
+                            <i class="fas fa-shopping-bag text-primary"></i>
+                            <div>
+                                <h6>অর্ডার ম্যানেজ</h6>
+                                <small class="text-muted">সব অর্ডার দেখুন</small>
+                            </div>
+                        </a>
+                        <a asp-area="Seller" asp-controller="Product" asp-action="Index" class="alt-option">
+                            <i class="fas fa-boxes text-success"></i>
+                            <div>
+                                <h6>প্রোডাক্ট</h6>
+                                <small class="text-muted">স্টক ম্যানেজ</small>
+                            </div>
+                        </a>
+                        <a asp-area="Seller" asp-controller="Dashboard" asp-action="Index" class="alt-option">
+                            <i class="fas fa-tachometer-alt text-info"></i>
+                            <div>
+                                <h6>ড্যাশবোর্ড</h6>
+                                <small class="text-muted">পূর্ণ ড্যাশবোর্ড</small>
+                            </div>
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <!-- Customer Popular Topics -->
+                    <div class="sidebar-card mb-4">
+                        <div class="sidebar-header">
+                            <i class="fas fa-fire text-danger me-2"></i>
+                            @Localizer["PopularTopics"]
+                        </div>
+                        <div class="sidebar-body">
+                            <div class="popular-topics">
+                                <button class="topic-btn" data-message="আমার অর্ডার ট্র্যাক করুন">
+                                    <i class="fas fa-truck"></i>
+                                    <span>@Localizer["TrackOrder"]</span>
+                                </button>
+                                <button class="topic-btn" data-message="পণ্য দেখাও">
+                                    <i class="fas fa-search"></i>
+                                    <span>@Localizer["FindProducts"]</span>
+                                </button>
+                                <button class="topic-btn" data-message="কোন কুপন আছে?">
+                                    <i class="fas fa-tags"></i>
+                                    <span>@Localizer["FindCoupons"]</span>
+                                </button>
+                                <button class="topic-btn" data-message="রিটার্ন পলিসি কি?">
+                                    <i class="fas fa-undo"></i>
+                                    <span>@Localizer["ReturnPolicy"]</span>
+                                </button>
+                                <button class="topic-btn" data-message="পেমেন্ট মেথড কি কি?">
+                                    <i class="fas fa-credit-card"></i>
+                                    <span>@Localizer["PaymentMethods"]</span>
+                                </button>
+                                <button class="topic-btn" data-message="ডেলিভারি কত দিনে হয়">
+                                    <i class="fas fa-shipping-fast"></i>
+                                    <span>@Localizer["DeliveryTime"]</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alternative Options -->
+                    <div class="other-options">
+                        <a asp-action="FAQ" class="alt-option">
+                            <i class="fas fa-question-circle text-primary"></i>
+                            <div>
+                                <h6>@Localizer["FAQs"]</h6>
+                                <small class="text-muted">@Localizer["FindQuickAnswers"]</small>
+                            </div>
+                        </a>
+                        <a asp-action="Contact" class="alt-option">
+                            <i class="fas fa-envelope text-success"></i>
+                            <div>
+                                <h6>@Localizer["EmailUs"]</h6>
+                                <small class="text-muted">@Localizer["ResponseWithin24Hours"]</small>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- End Chat Confirmation Modal -->
+<div class="modal fade" id="endChatModal" tabindex="-1" aria-labelledby="endChatModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center">
+                <div class="confirm-icon-wrapper">
+                    <div class="confirm-icon-circle confirm-icon-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                </div>
+                <h5 class="mt-3 mb-2">@Localizer["EndChatQuestion"]</h5>
+                <p class="text-muted mb-0">@Localizer["EndChatConfirmMessage"]</p>
+            </div>
+            <div class="modal-footer justify-content-center border-0 pt-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmEndChatBtn">
+                    <i class="fas fa-sign-out-alt me-1"></i>@Localizer["YesEndChat"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Request Human Agent Modal -->
+<div class="modal fade" id="requestHumanModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-tie me-2"></i>@Localizer["ConnectToHumanAgent"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>@Localizer["WhyConnectToHumanAgent"]</p>
+                <div class="mb-3">
+                    <textarea class="form-control" id="handoffReason" rows="3" placeholder="@Localizer["DescribeYourProblemOptional"]"></textarea>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    @Localizer["ChatHistoryWillBeShared"]
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                <button type="button" class="btn btn-primary" id="confirmHandoffBtn">
+                    <i class="fas fa-user-tie me-2"></i>@Localizer["ConnectNow"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .breadcrumb-light .breadcrumb-item a {
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .breadcrumb-light .breadcrumb-item.active {
+        color: #fff;
+    }
+
+    .breadcrumb-light .breadcrumb-item + .breadcrumb-item::before {
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    /* Header Subtitle - Better visibility on gradient */
+    .header-subtitle {
+        color: #fff;
+        font-size: 1.05rem;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        letter-spacing: 0.3px;
+    }
+
+    .chat-container {
+        background: #fff;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+    }
+
+    .start-chat-section {
+        padding: 2.5rem;
+    }
+
+    .chat-form .form-group {
+        margin-bottom: 0;
+    }
+
+    .chat-form .invalid-feedback {
+        display: none;
+        font-size: 0.875rem;
+        color: #dc3545;
+        margin-top: 0.25rem;
+        padding-left: 0.25rem;
+    }
+
+    .chat-form .invalid-feedback.show {
+        display: block;
+    }
+
+    .chat-form .form-control.is-invalid,
+    .chat-form .form-select.is-invalid {
+        border-color: #dc3545;
+    }
+
+    .chat-form .input-group .form-control.is-invalid,
+    .chat-form .input-group .form-select.is-invalid {
+        border-color: #dc3545;
+        box-shadow: none;
+    }
+
+    .chat-form .input-group .form-control.is-invalid:focus,
+    .chat-form .input-group .form-select.is-invalid:focus {
+        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
+    }
+
+    .chat-form .form-label {
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .chat-form .input-group-text {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: #fff;
+    }
+
+    .chat-form .form-control,
+    .chat-form .form-select {
+        border-radius: 0 10px 10px 0;
+        border: 1px solid #e5e7eb;
+    }
+
+    .chat-form .input-group .form-control,
+    .chat-form .input-group .form-select {
+        border-left: none;
+    }
+
+    .chat-form .form-control:focus,
+    .chat-form .form-select:focus {
+        border-color: var(--bs-primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .chat-form textarea.form-control {
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .chat-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        animation: pulse-glow 2s infinite;
+    }
+
+    @@keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4); }
+        50% { box-shadow: 0 0 20px 5px rgba(102, 126, 234, 0.2); }
+    }
+
+    .chat-avatar i {
+        font-size: 2rem;
+        color: #fff;
+    }
+
+    .availability-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-size: 0.9rem;
+    }
+
+    .availability-status.online {
+        background: #ecfdf5;
+        color: #059669;
+    }
+
+    .status-dot, .status-dot-small {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #10b981;
+        animation: pulse 2s infinite;
+    }
+
+    .status-dot-small {
+        width: 8px;
+        height: 8px;
+        display: inline-block;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .chat-interface {
+        display: flex;
+        flex-direction: column;
+        height: 650px;
+        transition: height 0.3s ease;
+    }
+
+    .chat-interface.chat-minimized {
+        height: auto;
+    }
+
+    .chat-interface.chat-minimized .chat-messages,
+    .chat-interface.chat-minimized .chat-input-area,
+    .chat-interface.chat-minimized .typing-indicator,
+    .chat-interface.chat-minimized .quick-replies-container {
+        display: none !important;
+    }
+
+    .chat-header-bar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        padding: 1rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .chat-header-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .agent-avatar {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .agent-avatar i {
+        font-size: 1.25rem;
+    }
+
+    .status-text {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .chat-messages {
+        flex: 1;
+        padding: 1.5rem;
+        overflow-y: auto;
+        background: #f9fafb;
+    }
+
+    .message {
+        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+        animation: fadeInUp 0.3s ease;
+    }
+
+    @@keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.customer {
+        align-items: flex-end;
+    }
+
+    .message.agent {
+        align-items: flex-start;
+    }
+
+    .message-bubble {
+        max-width: 75%;
+        padding: 0.875rem 1.25rem;
+        border-radius: 18px;
+        position: relative;
+        line-height: 1.5;
+    }
+
+    .message.customer .message-bubble {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border-bottom-right-radius: 4px;
+    }
+
+    .message.agent .message-bubble {
+        background: #fff;
+        color: #1f2937;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .chat-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+        border-bottom: 1px dashed #667eea;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        padding: 0 2px;
+    }
+
+    .chat-link:hover {
+        color: #5a67d8;
+        border-bottom-color: #5a67d8;
+        border-bottom-style: solid;
+        background-color: rgba(102, 126, 234, 0.1);
+        border-radius: 2px;
+    }
+
+    .message-time {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        margin-top: 0.25rem;
+    }
+
+    .message-feedback {
+        margin-top: 0.5rem;
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .feedback-btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 50px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        color: #6b7280;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .feedback-btn:hover {
+        border-color: #667eea;
+        color: #667eea;
+    }
+
+    .feedback-btn.active {
+        background: #667eea;
+        border-color: #667eea;
+        color: #fff;
+    }
+
+    .feedback-response {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .feedback-response.positive {
+        color: #059669;
+        background: rgba(5, 150, 105, 0.1);
+    }
+
+    .feedback-response.negative {
+        color: #6366f1;
+        background: rgba(99, 102, 241, 0.1);
+    }
+
+    .feedback-response i {
+        font-size: 0.7rem;
+    }
+
+    .system-message {
+        text-align: center;
+        margin: 1rem 0;
+    }
+
+    .system-message p {
+        display: inline-block;
+        background: #fef3c7;
+        color: #92400e;
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        margin: 0;
+    }
+
+    .typing-indicator {
+        padding: 0.75rem 1.5rem;
+        background: #f9fafb;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .typing-dots {
+        display: flex;
+        gap: 3px;
+    }
+
+    .typing-dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #667eea;
+        animation: typingBounce 1.4s infinite;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @@keyframes typingBounce {
+        0%, 60%, 100% { transform: translateY(0); }
+        30% { transform: translateY(-5px); }
+    }
+
+    .typing-text {
+        color: #6b7280;
+        font-size: 0.85rem;
+    }
+
+    .quick-replies-container {
+        padding: 0.75rem 1.5rem;
+        background: #f9fafb;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .quick-reply-btn {
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        border: 1px solid #667eea;
+        background: #fff;
+        color: #667eea;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .quick-reply-btn:hover {
+        background: #667eea;
+        color: #fff;
+    }
+
+    .quick-reply-btn i {
+        margin-right: 0.5rem;
+    }
+
+    .chat-input-area {
+        padding: 1rem 1.5rem;
+        background: #fff;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .chat-input-area .form-control {
+        border-radius: 50px;
+        padding: 0.875rem 1.5rem;
+        border: 2px solid #e5e7eb;
+    }
+
+    .chat-input-area .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .chat-input-area .btn {
+        border-radius: 50px;
+        padding: 0.875rem 1.5rem;
+    }
+
+    /* Product Carousel */
+    .product-carousel {
+        display: flex;
+        gap: 0.75rem;
+        overflow-x: auto;
+        padding: 0.75rem 0;
+        margin-top: 0.75rem;
+    }
+
+    .product-card-mini {
+        min-width: 160px;
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+
+    .product-card-mini:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .product-card-mini img {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+    }
+
+    .product-card-mini .card-body {
+        padding: 0.6rem;
+    }
+
+    .product-card-mini .product-name {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .product-card-mini .product-price {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #667eea;
+    }
+
+    /* Seller Stats */
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+
+    .stat-label {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .stat-value.text-success { color: #10b981 !important; }
+    .stat-value.text-warning { color: #f59e0b !important; }
+    .stat-value.text-primary { color: #667eea !important; }
+    .stat-value.text-info { color: #3b82f6 !important; }
+
+    /* Sidebar */
+    .sidebar-card {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+
+    .sidebar-header {
+        background: #f9fafb;
+        padding: 1rem 1.25rem;
+        font-weight: 600;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .sidebar-body {
+        padding: 1.25rem;
+    }
+
+    .popular-topics {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .topic-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #fff;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .topic-btn:hover {
+        border-color: #667eea;
+        background: #f5f3ff;
+    }
+
+    .topic-btn i {
+        font-size: 1.25rem;
+        color: #667eea;
+    }
+
+    .topic-btn span {
+        font-size: 0.8rem;
+        color: #374151;
+    }
+
+    .other-options {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .alt-option {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        background: #fff;
+        border-radius: 12px;
+        text-decoration: none;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s;
+    }
+
+    .alt-option:hover {
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .alt-option i {
+        font-size: 1.25rem;
+    }
+
+    .alt-option h6 {
+        margin: 0;
+        color: #1f2937;
+    }
+
+    .chat-rating {
+        padding: 2rem;
+    }
+
+    .rating-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+    }
+
+    .rating-icon i {
+        font-size: 2rem;
+        color: #fff;
+    }
+
+    /* jQuery Star Rating */
+    .star-rating {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .star-rating .star {
+        cursor: pointer;
+        font-size: 2.5rem;
+        color: #d1d5db;
+        transition: color 0.15s ease-in-out, transform 0.15s ease;
+        line-height: 1;
+        user-select: none;
+    }
+
+    .star-rating .star:hover {
+        transform: scale(1.15);
+    }
+
+    .star-rating .star.hovered {
+        color: #fbbf24;
+    }
+
+    .star-rating .star.selected {
+        color: #f59e0b;
+    }
+
+    /* Dark Mode - Comprehensive Styles */
+    [data-theme="dark"] .live-chat-page {
+        color: #e5e7eb;
+    }
+
+    /* Chat Container */
+    [data-theme="dark"] .chat-container {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    /* Start Chat Section */
+    [data-theme="dark"] .start-chat-section {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .start-chat-header h4 {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .start-chat-header p,
+    [data-theme="dark"] .start-chat-header .text-muted {
+        color: #9ca3af !important;
+    }
+
+    /* Form Styles */
+    [data-theme="dark"] .chat-form .form-label {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .chat-form .form-control,
+    [data-theme="dark"] .chat-form .form-select,
+    [data-theme="dark"] .chat-form textarea.form-control {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .chat-form .form-control::placeholder,
+    [data-theme="dark"] .chat-form textarea::placeholder {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .chat-form .form-control:focus,
+    [data-theme="dark"] .chat-form .form-select:focus,
+    [data-theme="dark"] .chat-form textarea:focus {
+        background: #374151;
+        border-color: #667eea;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .form-select option {
+        background: #374151;
+        color: #f3f4f6;
+    }
+
+    /* Fix validation checkmark pattern on select */
+    .chat-form .form-select,
+    .chat-form .form-select:valid,
+    .chat-form .form-select.is-valid {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 16px 12px;
+        padding-right: 2.25rem;
+    }
+
+    [data-theme="dark"] .chat-form .form-select,
+    [data-theme="dark"] .chat-form .form-select:valid,
+    [data-theme="dark"] .chat-form .form-select.is-valid {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23f3f4f6' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 16px 12px;
+    }
+
+    /* Availability Status */
+    [data-theme="dark"] .availability-status.online {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+    }
+
+    /* Chat Messages Area */
+    [data-theme="dark"] .chat-messages {
+        background: #111827;
+    }
+
+    [data-theme="dark"] .message.agent .message-bubble {
+        background: #374151;
+        color: #f3f4f6;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-theme="dark"] .chat-link {
+        color: #818cf8;
+        border-bottom-color: #818cf8;
+    }
+
+    [data-theme="dark"] .chat-link:hover {
+        color: #a5b4fc;
+        border-bottom-color: #a5b4fc;
+        background-color: rgba(129, 140, 248, 0.15);
+    }
+
+    [data-theme="dark"] .message-time {
+        color: #6b7280;
+    }
+
+    /* System Message */
+    [data-theme="dark"] .system-message p {
+        background: rgba(254, 243, 199, 0.15);
+        color: #fbbf24;
+    }
+
+    /* Typing Indicator */
+    [data-theme="dark"] .typing-indicator {
+        background: #111827;
+    }
+
+    [data-theme="dark"] .typing-text {
+        color: #9ca3af;
+    }
+
+    /* Quick Replies */
+    [data-theme="dark"] .quick-replies-container {
+        background: #111827;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .quick-reply-btn {
+        background: #374151;
+        border-color: #667eea;
+        color: #a5b4fc;
+    }
+
+    [data-theme="dark"] .quick-reply-btn:hover {
+        background: #667eea;
+        color: #fff;
+    }
+
+    /* Chat Input Area */
+    [data-theme="dark"] .chat-input-area {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .chat-input-area .form-control {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .chat-input-area .form-control::placeholder {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .chat-input-area .form-control:focus {
+        background: #374151;
+        border-color: #667eea;
+    }
+
+    [data-theme="dark"] .input-hints .text-muted {
+        color: #6b7280 !important;
+    }
+
+    /* Feedback Buttons */
+    [data-theme="dark"] .feedback-btn {
+        background: #374151;
+        border-color: #4b5563;
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .feedback-btn:hover {
+        border-color: #667eea;
+        color: #a5b4fc;
+    }
+
+    [data-theme="dark"] .feedback-btn.active {
+        background: #667eea;
+        border-color: #667eea;
+        color: #fff;
+    }
+
+    [data-theme="dark"] .feedback-response {
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .feedback-response.positive {
+        color: #34d399;
+        background: rgba(52, 211, 153, 0.15);
+    }
+
+    [data-theme="dark"] .feedback-response.negative {
+        color: #a5b4fc;
+        background: rgba(165, 180, 252, 0.15);
+    }
+
+    /* Sidebar Card */
+    [data-theme="dark"] .sidebar-card {
+        background: #1f2937;
+        border-color: #374151;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-theme="dark"] .sidebar-header {
+        background: #111827;
+        border-color: #374151;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .sidebar-body {
+        background: #1f2937;
+    }
+
+    /* Stat Items */
+    [data-theme="dark"] .stat-item {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .stat-label {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .stat-value {
+        color: #f3f4f6;
+    }
+
+    /* Topic Buttons */
+    [data-theme="dark"] .topic-btn {
+        background: #374151;
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .topic-btn:hover {
+        background: rgba(102, 126, 234, 0.15);
+        border-color: #667eea;
+    }
+
+    [data-theme="dark"] .topic-btn i {
+        color: #a5b4fc;
+    }
+
+    [data-theme="dark"] .topic-btn span {
+        color: #e5e7eb;
+    }
+
+    /* Alternative Options */
+    [data-theme="dark"] .alt-option {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .alt-option:hover {
+        background: #374151;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="dark"] .alt-option h6 {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .alt-option .text-muted {
+        color: #9ca3af !important;
+    }
+
+    /* Chat Rating Section */
+    [data-theme="dark"] .chat-rating {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .chat-rating h4 {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .chat-rating p,
+    [data-theme="dark"] .chat-rating .text-muted {
+        color: #9ca3af !important;
+    }
+
+    [data-theme="dark"] .chat-rating .form-control {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .chat-rating .form-control::placeholder {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .star-rating .star {
+        color: #6b7280;
+    }
+
+    [data-theme="dark"] .star-rating .star.selected {
+        color: #fbbf24;
+    }
+
+    [data-theme="dark"] .star-rating .star.hovered {
+        color: #fcd34d;
+    }
+
+    /* Modal Styles */
+    [data-theme="dark"] .modal-content {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .modal-header {
+        border-color: #374151;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .modal-header .modal-title {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .modal-body {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .modal-body p {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .modal-body .form-control {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .modal-body .form-control::placeholder {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .modal-body .alert-info {
+        background: rgba(59, 130, 246, 0.15);
+        border-color: #3b82f6;
+        color: #93c5fd;
+    }
+
+    [data-theme="dark"] .modal-footer {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .confirm-modal-content {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .confirm-modal-content h5 {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .confirm-modal-content p,
+    [data-theme="dark"] .confirm-modal-content .text-muted {
+        color: #9ca3af !important;
+    }
+
+    /* Product Card Mini (in chat) */
+    [data-theme="dark"] .product-card-mini {
+        background: #374151;
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .product-card-mini:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="dark"] .product-card-mini .product-name {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .product-card-mini .product-price {
+        color: #a5b4fc;
+    }
+
+    [data-theme="dark"] .product-card-mini .card-body {
+        background: #374151;
+    }
+
+    /* Breadcrumb */
+    [data-theme="dark"] .breadcrumb-light .breadcrumb-item + .breadcrumb-item::before {
+        color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* Spinner */
+    [data-theme="dark"] .spinner-border.text-primary {
+        color: #a5b4fc !important;
+    }
+
+    /* Text color fixes */
+    [data-theme="dark"] .text-muted {
+        color: #9ca3af !important;
+    }
+
+    [data-theme="dark"] h4,
+    [data-theme="dark"] h5,
+    [data-theme="dark"] h6 {
+        color: #f3f4f6;
+    }
+
+    @@media (max-width: 768px) {
+        .chat-interface {
+            height: 550px;
+        }
+
+        .message-bubble {
+            max-width: 85%;
+        }
+
+        .popular-topics {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .topic-btn {
+            padding: 0.75rem 0.5rem;
+        }
+
+        .topic-btn span {
+            font-size: 0.7rem;
+        }
+    }
+</style>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        // AI Chat JavaScript
+        (function() {
+            let connection = null;
+            let currentSessionId = @(existingSession?.Id ?? 0);
+            let aiSessionId = 0;
+            let selectedRating = 0;
+            let soundEnabled = true;
+
+            // Initialize SignalR connection
+            async function initConnection() {
+                try {
+                    connection = new signalR.HubConnectionBuilder()
+                        .withUrl("/supportChatHub")
+                        .withAutomaticReconnect()
+                        .configureLogging(signalR.LogLevel.Information)
+                        .build();
+
+                    // Event handlers
+                    connection.on("ChatStarted", onChatStarted);
+                    connection.on("SessionResumed", onSessionResumed);
+                    connection.on("SessionJoined", onSessionJoined);
+                    connection.on("AgentJoined", onAgentJoined);
+                    connection.on("ReceiveMessage", onReceiveMessage);
+                    connection.on("ChatClosed", onChatClosed);
+                    connection.on("UserTyping", onUserTyping);
+                    connection.on("Error", onError);
+                    connection.on("RatingSubmitted", onRatingSubmitted);
+                    connection.on("HandoffRequested", onHandoffRequested);
+                    connection.on("SuggestHumanAgent", onSuggestHumanAgent);
+                    connection.on("FeedbackSubmitted", onFeedbackSubmitted);
+                    connection.on("NewWaitingChat", onNewWaitingChat);
+                    connection.on("SessionClosed", onSessionClosed);
+
+                    // Connection state change handlers
+                    connection.onclose((error) => {
+                        console.log("Connection closed", error);
+                        updateConnectionStatus(false);
+                    });
+
+                    connection.onreconnecting((error) => {
+                        console.log("Reconnecting...", error);
+                        updateConnectionStatus(false, "Reconnecting...");
+                    });
+
+                    connection.onreconnected((connectionId) => {
+                        console.log("Reconnected", connectionId);
+                        updateConnectionStatus(true);
+                    });
+
+                    await connection.start();
+                    console.log("Connected to chat hub");
+                    updateConnectionStatus(true);
+
+                    // If there's an existing session, join it
+                    if (currentSessionId > 0) {
+                        await connection.invoke("JoinSession", "@existingSession?.SessionCode");
+                    }
+                } catch (err) {
+                    console.error("Failed to connect:", err);
+                    updateConnectionStatus(false, "Connection failed");
+                }
+            }
+
+            // Update connection status indicator
+            function updateConnectionStatus(isConnected, message = null) {
+                const statusEl = document.getElementById('chatAvailability');
+                if (statusEl) {
+                    if (isConnected) {
+                        statusEl.innerHTML = `
+                            <div class="availability-status online">
+                                <span class="status-dot"></span>
+                                <span>AI Assistant Online 24/7</span>
+                            </div>`;
+                    } else {
+                        statusEl.innerHTML = `
+                            <div class="availability-status" style="background: #fef2f2; color: #dc2626;">
+                                <span class="status-dot" style="background: #dc2626;"></span>
+                                <span>${message || 'Connecting...'}</span>
+                            </div>`;
+                    }
+                }
+            }
+
+            // Custom form validation function
+            function validateChatForm() {
+                let isValid = true;
+                const form = document.getElementById('initChatForm');
+
+                // Clear previous errors
+                form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+                form.querySelectorAll('.invalid-feedback').forEach(el => {
+                    el.textContent = '';
+                    el.classList.remove('show');
+                });
+
+                // Validate required fields
+                const requiredFields = form.querySelectorAll('[data-required="true"]');
+                requiredFields.forEach(field => {
+                    const value = field.value.trim();
+                    const errorDiv = document.getElementById(field.id + '-error');
+
+                    if (!value) {
+                        field.classList.add('is-invalid');
+                        if (errorDiv) {
+                            errorDiv.textContent = field.dataset.errorMsg || 'This field is required';
+                            errorDiv.classList.add('show');
+                        }
+                        isValid = false;
+                    }
+
+                    // Email validation
+                    if (value && field.dataset.type === 'email') {
+                        const emailRegex = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+                        if (!emailRegex.test(value)) {
+                            field.classList.add('is-invalid');
+                            if (errorDiv) {
+                                errorDiv.textContent = field.dataset.emailError || 'Please enter a valid email';
+                                errorDiv.classList.add('show');
+                            }
+                            isValid = false;
+                        }
+                    }
+                });
+
+                return isValid;
+            }
+
+            // Clear error on input
+            document.querySelectorAll('#initChatForm [data-required="true"]').forEach(field => {
+                field.addEventListener('input', function() {
+                    this.classList.remove('is-invalid');
+                    const errorDiv = document.getElementById(this.id + '-error');
+                    if (errorDiv) {
+                        errorDiv.textContent = '';
+                        errorDiv.classList.remove('show');
+                    }
+                });
+
+                field.addEventListener('change', function() {
+                    this.classList.remove('is-invalid');
+                    const errorDiv = document.getElementById(this.id + '-error');
+                    if (errorDiv) {
+                        errorDiv.textContent = '';
+                        errorDiv.classList.remove('show');
+                    }
+                });
+            });
+
+            // Start chat form submission
+            document.getElementById('initChatForm')?.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                // Validate form first
+                if (!validateChatForm()) {
+                    // Focus first invalid field
+                    const firstInvalid = document.querySelector('#initChatForm .is-invalid');
+                    if (firstInvalid) {
+                        firstInvalid.focus();
+                    }
+                    return;
+                }
+
+                const name = document.getElementById('visitorName').value;
+                const email = document.getElementById('visitorEmail').value;
+                const department = document.getElementById('chatDepartment').value;
+                const query = document.getElementById('initialQuery').value;
+
+                // Check connection state
+                if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
+                    alertify.error('Connection not ready. Please wait...');
+                    // Try to reconnect
+                    try {
+                        await initConnection();
+                    } catch (err) {
+                        alertify.error('Failed to connect. Please refresh the page.');
+                        return;
+                    }
+                }
+
+                document.getElementById('startChatBtn').disabled = true;
+                document.getElementById('startChatBtn').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Connecting...';
+
+                try {
+                    await connection.invoke("StartChat", name, email, query, department);
+                } catch (err) {
+                    console.error("Error starting chat:", err);
+                    alertify.error('Failed to start chat: ' + (err.message || 'Unknown error'));
+                    document.getElementById('startChatBtn').disabled = false;
+                    document.getElementById('startChatBtn').innerHTML = '<i class="fas fa-robot me-2"></i>Start AI Chat';
+                }
+            });
+
+            // Message form submission
+            document.getElementById('messageForm')?.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const input = document.getElementById('messageInput');
+                const message = input.value.trim();
+
+                if (!message || !currentSessionId) return;
+
+                input.value = '';
+                hideQuickReplies();
+
+                try {
+                    await connection.invoke("SendMessage", currentSessionId, message, aiSessionId > 0 ? aiSessionId : null);
+                } catch (err) {
+                    console.error("Error sending message:", err);
+                    addSystemMessage('⚠️ মেসেজ পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+                }
+            });
+
+            // End chat button - show modal
+            document.getElementById('endChatBtn')?.addEventListener('click', function() {
+                const endChatModal = new bootstrap.Modal(document.getElementById('endChatModal'));
+                endChatModal.show();
+            });
+
+            // Confirm end chat from modal
+            document.getElementById('confirmEndChatBtn')?.addEventListener('click', async function() {
+                try {
+                    // First hide the modal and wait for it to be fully hidden
+                    const endChatModalEl = document.getElementById('endChatModal');
+                    const endChatModal = bootstrap.Modal.getInstance(endChatModalEl);
+
+                    // Wait for modal to be fully hidden before proceeding
+                    endChatModalEl.addEventListener('hidden.bs.modal', async function onHidden() {
+                        endChatModalEl.removeEventListener('hidden.bs.modal', onHidden);
+                        // Remove any residual backdrops
+                        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                        document.body.classList.remove('modal-open');
+                        document.body.style.removeProperty('overflow');
+                        document.body.style.removeProperty('padding-right');
+                        // Now invoke CloseChat which will trigger onChatClosed
+                        await connection.invoke("CloseChat", currentSessionId, aiSessionId > 0 ? aiSessionId : null);
+                    }, { once: true });
+
+                    endChatModal.hide();
+                } catch (err) {
+                    console.error("Error ending chat:", err);
+                }
+            });
+
+            // Request human agent
+            document.getElementById('requestHumanBtn')?.addEventListener('click', function() {
+                const modal = new bootstrap.Modal(document.getElementById('requestHumanModal'));
+                modal.show();
+            });
+
+            document.getElementById('confirmHandoffBtn')?.addEventListener('click', async function() {
+                const reason = document.getElementById('handoffReason').value;
+                try {
+                    await connection.invoke("RequestHumanAgent", currentSessionId, aiSessionId > 0 ? aiSessionId : null, reason);
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('requestHumanModal'));
+                    modal.hide();
+                } catch (err) {
+                    console.error("Error requesting handoff:", err);
+                }
+            });
+
+            // Typing indicator
+            let typingTimeout;
+            document.getElementById('messageInput')?.addEventListener('input', async function() {
+                clearTimeout(typingTimeout);
+
+                try {
+                    await connection.invoke("Typing", currentSessionId, true);
+
+                    typingTimeout = setTimeout(async () => {
+                        await connection.invoke("Typing", currentSessionId, false);
+                    }, 2000);
+                } catch (err) {
+                    console.error("Error sending typing status:", err);
+                }
+            });
+
+            // Rating functions are defined globally below the IIFE
+
+            // Topic buttons
+            document.querySelectorAll('.topic-btn').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const message = this.dataset.message;
+                    if (message && currentSessionId > 0) {
+                        try {
+                            await connection.invoke("SendMessage", currentSessionId, message, aiSessionId > 0 ? aiSessionId : null);
+                        } catch (err) {
+                            console.error("Error sending topic message:", err);
+                        }
+                    } else if (message) {
+                        // Start chat first if no session
+                        document.getElementById('initialQuery').value = message;
+                        document.getElementById('initChatForm').dispatchEvent(new Event('submit'));
+                    }
+                });
+            });
+
+            // Event handlers
+            function onChatStarted(sessionCode, sessionId, aiSessId) {
+                currentSessionId = sessionId;
+                aiSessionId = aiSessId || 0;
+                document.getElementById('startChatForm').classList.add('d-none');
+                document.getElementById('chatInterface').classList.remove('d-none');
+                document.getElementById('chatMessages').innerHTML = '';
+            }
+
+            function onSessionResumed(sessionCode, sessionId) {
+                currentSessionId = sessionId;
+                document.getElementById('startChatForm').classList.add('d-none');
+                document.getElementById('chatInterface').classList.remove('d-none');
+            }
+
+            function onSessionJoined(data) {
+                currentSessionId = data.sessionId;
+                document.getElementById('chatStatus').innerHTML = '<span class="status-dot-small online"></span> Connected';
+
+                const messagesContainer = document.getElementById('chatMessages');
+                messagesContainer.innerHTML = '';
+
+                data.messages.forEach(msg => addMessageToChat(msg));
+                scrollToBottom();
+            }
+
+            function onAgentJoined(data) {
+                aiSessionId = data.aiSessionId || aiSessionId;
+                document.getElementById('agentName').textContent = data.agentName;
+                const icon = data.isAI ? 'fas fa-robot' : 'fas fa-user-tie';
+                document.getElementById('agentAvatar').innerHTML = `<i class="${icon}"></i>`;
+                document.getElementById('chatStatus').innerHTML = '<span class="status-dot-small online"></span> Connected';
+            }
+
+            function onReceiveMessage(message) {
+                addMessageToChat(message);
+                scrollToBottom();
+
+                // Show quick replies if available
+                if (message.quickReplies && message.quickReplies.length > 0) {
+                    showQuickReplies(message.quickReplies);
+                }
+
+                // Play notification sound for agent messages
+                if (message.isAgentMessage && soundEnabled) {
+                    playNotificationSound();
+                }
+            }
+
+            function onChatClosed(sessionId) {
+                // Ensure any modals and backdrops are cleaned up
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+
+                document.getElementById('chatInterface').classList.add('d-none');
+                document.getElementById('chatRating').classList.remove('d-none');
+            }
+
+            function onUserTyping(data) {
+                const indicator = document.getElementById('typingIndicator');
+                if (data.isTyping && data.isAgent) {
+                    indicator.classList.remove('d-none');
+                } else {
+                    indicator.classList.add('d-none');
+                }
+            }
+
+            function onError(message) {
+                console.error('Chat error:', message);
+            }
+
+            function onRatingSubmitted(success) {
+                if (success) {
+                    alertify.success('ধন্যবাদ আপনার মতামতের জন্য!');
+                    resetChat();
+                } else {
+                    alertify.error('রেটিং সাবমিট করতে সমস্যা হয়েছে');
+                    // Reset submit button
+                    const submitBtn = document.getElementById('submitRatingBtn');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fas fa-check me-2"></i>Submit Rating';
+                    }
+                }
+            }
+
+            function onHandoffRequested(data) {
+                if (data.success) {
+                    // Show a system message about waiting
+                    addSystemMessage(data.message || 'আপনার request পাঠানো হয়েছে। অনুগ্রহ করে অপেক্ষা করুন...');
+                }
+            }
+
+            function onSuggestHumanAgent(data) {
+                // Show button to request human agent
+                addSystemMessage(data.reason || 'AI recommends connecting with a human agent for better assistance.');
+            }
+
+            function onFeedbackSubmitted(data) {
+                // Feedback is already handled in submitFeedback function
+                // This callback just confirms server-side success
+                if (!data.success) {
+                    console.error("Feedback submission failed for message:", data.messageId);
+                }
+            }
+
+            function onNewWaitingChat(data) {
+                // For support agents - notification about new waiting chat
+                console.log('New waiting chat:', data);
+            }
+
+            function onSessionClosed(sessionId) {
+                // Session was closed by agent or system
+                console.log('Session closed:', sessionId);
+                if (currentSessionId === sessionId) {
+                    // Ensure any modals and backdrops are cleaned up
+                    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.removeProperty('overflow');
+                    document.body.style.removeProperty('padding-right');
+
+                    // Show rating section
+                    document.getElementById('chatInterface')?.classList.add('d-none');
+                    document.getElementById('chatRating')?.classList.remove('d-none');
+                }
+            }
+
+            function addMessageToChat(message) {
+                const messagesContainer = document.getElementById('chatMessages');
+
+                if (message.isSystemMessage) {
+                    addSystemMessage(message.content);
+                    return;
+                }
+
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `message ${message.isAgentMessage ? 'agent' : 'customer'}`;
+
+                const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                // Parse markdown for AI responses (trusted content from our backend), escape for user messages
+                let contentHtml = message.isAgentMessage
+                    ? parseMarkdown(message.content)
+                    : escapeHtml(message.content);
+
+                // Handle product carousel
+                if (message.products && message.products.length > 0) {
+                    contentHtml += renderProductCarousel(message.products);
+                }
+
+                let feedbackHtml = '';
+                if (message.isAgentMessage && message.id) {
+                    // Check if feedback was already given (wasHelpful can be true, false, or null)
+                    if (message.wasHelpful === true) {
+                        // Show positive response message
+                        feedbackHtml = `
+                            <div class="message-feedback">
+                                <span class="feedback-response positive"><i class="fas fa-check-circle"></i> ধন্যবাদ! আপনার মতামত আমাদের উন্নত হতে সাহায্য করবে।</span>
+                            </div>
+                        `;
+                    } else if (message.wasHelpful === false) {
+                        // Show negative response message
+                        feedbackHtml = `
+                            <div class="message-feedback">
+                                <span class="feedback-response negative"><i class="fas fa-heart"></i> দুঃখিত! আমরা আরও ভালো করার চেষ্টা করব।</span>
+                            </div>
+                        `;
+                    } else {
+                        // Show feedback buttons
+                        feedbackHtml = `
+                            <div class="message-feedback">
+                                <button class="feedback-btn" data-message-id="${message.id}" data-feedback-type="helpful" onclick="submitFeedback(this, ${message.id}, true)">
+                                    <i class="fas fa-thumbs-up"></i> Helpful
+                                </button>
+                                <button class="feedback-btn" data-message-id="${message.id}" data-feedback-type="not-helpful" onclick="submitFeedback(this, ${message.id}, false)">
+                                    <i class="fas fa-thumbs-down"></i> Not Helpful
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
+
+                msgDiv.innerHTML = `
+                    <div class="message-bubble">${contentHtml}</div>
+                    <span class="message-time">${message.senderName} - ${time}</span>
+                    ${feedbackHtml}
+                `;
+
+                messagesContainer.appendChild(msgDiv);
+            }
+
+            function addSystemMessage(content) {
+                const messagesContainer = document.getElementById('chatMessages');
+                const systemDiv = document.createElement('div');
+                systemDiv.className = 'system-message';
+                systemDiv.innerHTML = `<p>${escapeHtml(content)}</p>`;
+                messagesContainer.appendChild(systemDiv);
+                scrollToBottom();
+            }
+
+            function getProductImageUrl(product) {
+                // Get image URL from various possible property names
+                let imgUrl = product.imageUrl || product.ImageUrl || product.image || product.Image || '';
+
+                // If empty or null, use default
+                if (!imgUrl || imgUrl.trim() === '') {
+                    return '/images/noimage.jpg';
+                }
+
+                // Ensure URL starts with / for relative paths
+                if (!imgUrl.startsWith('http') && !imgUrl.startsWith('/')) {
+                    imgUrl = '/' + imgUrl;
+                }
+
+                return imgUrl;
+            }
+
+            function renderProductCarousel(products) {
+                if (!Array.isArray(products)) {
+                    try { products = JSON.parse(products); } catch { return ''; }
+                }
+
+                let html = '<div class="product-carousel">';
+                products.forEach(product => {
+                    // Get product ID (handle both camelCase and PascalCase from JSON)
+                    const productId = product.id || product.Id;
+                    const url = productId ? `/Customer/Home/Details/${productId}` : '#';
+                    const imgUrl = getProductImageUrl(product);
+                    const productName = product.name || product.Name || 'Product';
+                    const productPrice = product.discountPrice || product.DiscountPrice || product.price || product.Price || 0;
+
+                    html += `
+                        <a href="${url}" class="product-card-mini" target="_blank">
+                            <img src="${imgUrl}" alt="${escapeHtml(productName)}" onerror="this.src='/images/noimage.jpg'">
+                            <div class="card-body">
+                                <div class="product-name">${escapeHtml(productName)}</div>
+                                <div class="product-price">৳${productPrice.toLocaleString()}</div>
+                            </div>
+                        </a>
+                    `;
+                });
+                html += '</div>';
+                return html;
+            }
+
+            function showQuickReplies(replies) {
+                if (!replies || !Array.isArray(replies) || replies.length === 0) return;
+
+                const container = document.getElementById('quickReplies');
+                container.innerHTML = '';
+
+                replies.forEach(reply => {
+                    const btn = document.createElement('button');
+                    btn.className = 'quick-reply-btn';
+                    const text = reply.Text || reply.text || reply.label || '';
+                    const icon = reply.Icon || reply.icon || '';
+                    btn.innerHTML = `${icon ? `<i class="${icon}"></i>` : ''}${text}`;
+                    btn.onclick = () => handleQuickReply(reply);
+                    container.appendChild(btn);
+                });
+
+                container.classList.remove('d-none');
+            }
+
+            function hideQuickReplies() {
+                document.getElementById('quickReplies').classList.add('d-none');
+            }
+
+            async function handleQuickReply(reply) {
+                hideQuickReplies();
+                const action = reply.Action || reply.action || 'send_message';
+                const payload = reply.Payload || reply.payload || reply.Text || reply.text || '';
+
+                if (action === 'send_message') {
+                    // Check if SignalR connection is established
+                    if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
+                        addSystemMessage('⚠️ চ্যাট সংযোগ ভেঙে গেছে। পেজ রিফ্রেশ করুন।');
+                        return;
+                    }
+                    try {
+                        await connection.invoke("SendMessage", currentSessionId, payload, aiSessionId > 0 ? aiSessionId : null);
+                    } catch (err) {
+                        console.error("Error sending quick reply:", err);
+                        addSystemMessage('⚠️ রিকুয়েস্ট পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+                    }
+                } else if (action === 'open_url') {
+                    window.open(payload, '_blank');
+                } else if (action === 'navigate') {
+                    // Navigate in the same tab
+                    window.location.href = payload;
+                } else if (action === 'request_human') {
+                    document.getElementById('requestHumanBtn').click();
+                }
+            }
+
+            function scrollToBottom() {
+                const container = document.getElementById('chatMessages');
+                container.scrollTop = container.scrollHeight;
+            }
+
+            function resetChat() {
+                currentSessionId = 0;
+                aiSessionId = 0;
+                selectedRating = 0;
+                document.getElementById('chatRating').classList.add('d-none');
+                document.getElementById('chatInterface').classList.add('d-none');
+                document.getElementById('startChatForm').classList.remove('d-none');
+                document.getElementById('chatMessages').innerHTML = '';
+                document.getElementById('startChatBtn').disabled = false;
+                document.getElementById('startChatBtn').innerHTML = '<i class="fas fa-robot me-2"></i>Start AI Chat';
+                hideQuickReplies();
+
+                // Reset star rating display using global function
+                if (typeof resetRatingStarsDisplay === 'function') {
+                    resetRatingStarsDisplay();
+                }
+
+                // Reset feedback textarea
+                const feedbackEl = document.getElementById('chatFeedback');
+                if (feedbackEl) feedbackEl.value = '';
+
+                // Reset submit button
+                const submitBtn = document.getElementById('submitRatingBtn');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-check me-2"></i>Submit Rating';
+                }
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            function parseMarkdown(text) {
+                if (!text) return '';
+                return text
+                    // Links: [text](url) - internal links navigate same tab, external open new tab
+                    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, linkText, url) {
+                        const isExternal = url.startsWith('http://') || url.startsWith('https://');
+                        if (isExternal) {
+                            return `<a href="${url}" class="chat-link" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+                        } else {
+                            return `<a href="${url}" class="chat-link" onclick="event.stopPropagation(); window.location.href='${url}'; return false;">${linkText}</a>`;
+                        }
+                    })
+                    // Bold: **text** or __text__
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+                    // Italic: *text* or _text_
+                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                    .replace(/_(.+?)_/g, '<em>$1</em>')
+                    // Strikethrough: ~~text~~
+                    .replace(/~~(.+?)~~/g, '<del>$1</del>')
+                    // Line breaks
+                    .replace(/\n/g, '<br>')
+                    // Bullet points: • or -
+                    .replace(/^[•\-]\s+/gm, '<span class="bullet-point">•</span> ');
+            }
+
+            function playNotificationSound() {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'sine';
+                    gainNode.gain.value = 0.1;
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.1);
+                } catch (e) { }
+            }
+
+            // Global function for feedback
+            window.submitFeedback = async function(btnElement, messageId, wasHelpful) {
+                try {
+                    const feedbackContainer = btnElement.closest('.message-feedback');
+                    const allBtns = feedbackContainer.querySelectorAll('.feedback-btn');
+                    allBtns.forEach(btn => btn.disabled = true);
+
+                    await connection.invoke("SubmitMessageFeedback", messageId, aiSessionId > 0 ? aiSessionId : null, wasHelpful, null);
+
+                    // Replace buttons with feedback response message
+                    const responseMessage = wasHelpful
+                        ? '<span class="feedback-response positive"><i class="fas fa-check-circle"></i> ধন্যবাদ! আপনার মতামত আমাদের উন্নত হতে সাহায্য করবে।</span>'
+                        : '<span class="feedback-response negative"><i class="fas fa-heart"></i> দুঃখিত! আমরা আরও ভালো করার চেষ্টা করব।</span>';
+                    feedbackContainer.innerHTML = responseMessage;
+                } catch (err) {
+                    console.error("Error submitting feedback:", err);
+                    const feedbackContainer = btnElement.closest('.message-feedback');
+                    if (feedbackContainer) {
+                        const allBtns = feedbackContainer.querySelectorAll('.feedback-btn');
+                        allBtns.forEach(btn => btn.disabled = false);
+                    }
+                }
+            };
+
+            // Load seller stats if user is a seller
+            @if (isSeller)
+            {
+                <text>loadSellerQuickStats();</text>
+            }
+
+            // Initialize when page loads
+            initConnection();
+
+            // Seller stats loading function
+            async function loadSellerQuickStats() {
+                try {
+                    const response = await fetch('/Customer/HelpCenter/GetSellerOrderSummary');
+                    const result = await response.json();
+
+                    const statsBody = document.getElementById('quickStatsBody');
+                    if (result.success && result.data) {
+                        const data = result.data;
+                        statsBody.innerHTML = `
+                            <div class="stat-item">
+                                <span class="stat-label">আজকের অর্ডার</span>
+                                <span class="stat-value text-primary">${data.todayOrders || 0}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">পেন্ডিং</span>
+                                <span class="stat-value text-warning">${data.pendingOrders || 0}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">প্রসেসিং</span>
+                                <span class="stat-value text-info">${data.processingOrders || 0}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">আজকের সেলস</span>
+                                <span class="stat-value text-success">৳${(data.todayRevenue || 0).toLocaleString()}</span>
+                            </div>
+                        `;
+                    } else {
+                        statsBody.innerHTML = `
+                            <div class="text-center text-muted py-2">
+                                <i class="fas fa-info-circle me-1"></i>ডাটা লোড হয়নি
+                            </div>
+                        `;
+                    }
+                } catch (err) {
+                    console.error('Error loading seller stats:', err);
+                    document.getElementById('quickStatsBody').innerHTML = `
+                        <div class="text-center text-muted py-2">
+                            <i class="fas fa-exclamation-circle me-1"></i>এরর
+                        </div>
+                    `;
+                }
+            }
+
+            // Refresh seller stats every 5 minutes
+            @if (isSeller)
+            {
+                <text>setInterval(loadSellerQuickStats, 5 * 60 * 1000);</text>
+            }
+        })();
+
+        // Global function for minimize button
+        function toggleMinimizeChat() {
+            const chatInterface = document.getElementById('chatInterface');
+            const minimizeBtn = document.getElementById('minimizeChat');
+
+            if (chatInterface.classList.contains('chat-minimized')) {
+                chatInterface.classList.remove('chat-minimized');
+                minimizeBtn.innerHTML = '<i class="fas fa-minus" id="minimizeIcon"></i>';
+                minimizeBtn.title = 'Minimize';
+            } else {
+                chatInterface.classList.add('chat-minimized');
+                minimizeBtn.innerHTML = '<i class="fas fa-plus" id="minimizeIcon"></i>';
+                minimizeBtn.title = 'Expand';
+            }
+        }
+
+        // jQuery Star Rating - helper functions
+        function getSelectedRating() {
+            return parseInt($('#selectedRating').val()) || 0;
+        }
+
+        function resetRatingStarsDisplay() {
+            $('#selectedRating').val('0');
+            $('#starRating .star').removeClass('selected hovered');
+        }
+
+        function updateStarDisplay(rating) {
+            $('#starRating .star').each(function() {
+                var starValue = parseInt($(this).data('value'));
+                if (starValue <= rating) {
+                    $(this).addClass('selected');
+                } else {
+                    $(this).removeClass('selected');
+                }
+            });
+        }
+
+        // Initialize star rating event handlers
+        $(function() {
+            // Click event - select rating
+            $('#starRating .star').on('click', function() {
+                var rating = parseInt($(this).data('value'));
+                $('#selectedRating').val(rating);
+                $('#starRating .star').removeClass('selected hovered');
+                updateStarDisplay(rating);
+                console.log('Star selected:', rating);
+            });
+
+            // Hover event - highlight stars
+            $('#starRating .star').on('mouseenter', function() {
+                var hoverValue = parseInt($(this).data('value'));
+                $('#starRating .star').each(function() {
+                    var starValue = parseInt($(this).data('value'));
+                    if (starValue <= hoverValue) {
+                        $(this).addClass('hovered');
+                    } else {
+                        $(this).removeClass('hovered');
+                    }
+                });
+            });
+
+            // Mouse leave - restore selected state
+            $('#starRating').on('mouseleave', function() {
+                $('#starRating .star').removeClass('hovered');
+                var currentRating = getSelectedRating();
+                updateStarDisplay(currentRating);
+            });
+        });
+
+        function submitChatRating() {
+            var rating = getSelectedRating();
+            if (rating === 0) {
+                alertify.warning('অনুগ্রহ করে একটি রেটিং সিলেক্ট করুন');
+                return;
+            }
+
+            var feedback = document.getElementById('chatFeedback').value;
+            var submitBtn = document.getElementById('submitRatingBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Submitting...';
+
+            console.log('Rating submitted:', rating);
+
+            // Show success message and reset
+            alertify.success('ধন্যবাদ আপনার মতামতের জন্য!');
+
+            // Reset after a short delay
+            setTimeout(function() {
+                // Reset the rating form
+                resetRatingStarsDisplay();
+                document.getElementById('chatFeedback').value = '';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check me-2"></i>Submit Rating';
+
+                // Hide rating section and show start form
+                document.getElementById('chatRating').classList.add('d-none');
+                document.getElementById('chatInterface').classList.add('d-none');
+                document.getElementById('startChatForm').classList.remove('d-none');
+            }, 1000);
+        }
+
+        function skipChatRating() {
+            // Reset and go back to start form
+            resetRatingStarsDisplay();
+            document.getElementById('chatFeedback').value = '';
+
+            document.getElementById('chatRating').classList.add('d-none');
+            document.getElementById('chatInterface').classList.add('d-none');
+            document.getElementById('startChatForm').classList.remove('d-none');
+        }
+    </script>
+}

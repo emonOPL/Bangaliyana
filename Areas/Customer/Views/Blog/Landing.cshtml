@@ -1,0 +1,230 @@
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Localizer["Blog"];
+    var latestPosts = ViewBag.LatestPosts as List<BlogPost>;
+    var featuredPosts = ViewBag.FeaturedPosts as List<BlogPost>;
+    var stylingGuides = ViewBag.StylingGuides as List<StylingGuide>;
+    var featuredGuides = ViewBag.FeaturedGuides as List<StylingGuide>;
+    var collections = ViewBag.Collections as List<SeasonalCollection>;
+    var featuredCollections = ViewBag.FeaturedCollections as List<SeasonalCollection>;
+}
+
+<div class="blog-landing-page py-5">
+    <div class="container">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-5 fw-bold"><i class="fas fa-newspaper text-primary me-2"></i>@Localizer["Blog"]</h1>
+            <p class="lead text-muted">@Localizer["ExploreFashionTipsAndCollections"]</p>
+        </div>
+
+        <!-- Navigation Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <a asp-action="Index" class="text-decoration-none">
+                    <div class="card h-100 border-0 shadow-sm section-card bg-gradient-primary">
+                        <div class="card-body text-center py-5">
+                            <div class="icon-circle bg-white text-primary mx-auto mb-3">
+                                <i class="fas fa-lightbulb fa-2x"></i>
+                            </div>
+                            <h4 class="text-white mb-2">@Localizer["FashionTips"]</h4>
+                            <p class="text-white-50 mb-0">@Localizer["LatestTrendsAndStylingAdvice"]</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a asp-area="Customer" asp-controller="StylingGuide" asp-action="Index" class="text-decoration-none">
+                    <div class="card h-100 border-0 shadow-sm section-card bg-gradient-success">
+                        <div class="card-body text-center py-5">
+                            <div class="icon-circle bg-white text-success mx-auto mb-3">
+                                <i class="fas fa-palette fa-2x"></i>
+                            </div>
+                            <h4 class="text-white mb-2">@Localizer["StylingGuides"]</h4>
+                            <p class="text-white-50 mb-0">@Localizer["ExpertTipsOnHowToStyle"]</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a asp-area="Customer" asp-controller="SeasonalCollection" asp-action="Index" class="text-decoration-none">
+                    <div class="card h-100 border-0 shadow-sm section-card bg-gradient-info">
+                        <div class="card-body text-center py-5">
+                            <div class="icon-circle bg-white text-info mx-auto mb-3">
+                                <i class="fas fa-snowflake fa-2x"></i>
+                            </div>
+                            <h4 class="text-white mb-2">@Localizer["SeasonalCollections"]</h4>
+                            <p class="text-white-50 mb-0">@Localizer["CuratedCollectionsForEverySeason"]</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Fashion Tips Section -->
+        <section class="mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3><i class="fas fa-lightbulb text-primary me-2"></i>@Localizer["FashionTips"]</h3>
+                <a asp-action="Index" class="btn btn-outline-primary btn-sm">@Localizer["ViewAll"] <i class="fas fa-arrow-right ms-1"></i></a>
+            </div>
+            @if (latestPosts?.Any() == true)
+            {
+                <div class="row g-4">
+                    @foreach (var post in latestPosts.Take(3))
+                    {
+                        <div class="col-md-4">
+                            <article class="card h-100 border-0 shadow-sm blog-card">
+                                @if (!string.IsNullOrEmpty(post.FeaturedImageUrl))
+                                {
+                                    <a asp-action="Details" asp-route-slug="@post.Slug">
+                                        <img src="~/@post.FeaturedImageUrl" class="card-img-top" alt="@post.Title" style="height: 180px; object-fit: cover;">
+                                    </a>
+                                }
+                                <div class="card-body">
+                                    @if (post.Category != null)
+                                    {
+                                        <span class="badge bg-primary mb-2">@post.Category.Name</span>
+                                    }
+                                    <h5 class="card-title">
+                                        <a asp-action="Details" asp-route-slug="@post.Slug" class="text-decoration-none text-dark">@post.Title</a>
+                                    </h5>
+                                    @if (!string.IsNullOrEmpty(post.Excerpt))
+                                    {
+                                        <p class="card-text text-muted small">@(post.Excerpt.Length > 80 ? post.Excerpt.Substring(0, 80) + "..." : post.Excerpt)</p>
+                                    }
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <small class="text-muted"><i class="far fa-calendar me-1"></i>@post.PublishedAt?.ToString("dd MMM yyyy")</small>
+                                        <small class="text-muted"><i class="far fa-eye me-1"></i>@post.ViewCount</small>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4 bg-light rounded">
+                    <i class="fas fa-newspaper fa-3x text-muted mb-3"></i>
+                    <p class="text-muted mb-0">@Localizer["NoFashionTipsAvailableYet"]</p>
+                </div>
+            }
+        </section>
+
+        <!-- Styling Guides Section -->
+        <section class="mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3><i class="fas fa-palette text-success me-2"></i>@Localizer["StylingGuides"]</h3>
+                <a asp-area="Customer" asp-controller="StylingGuide" asp-action="Index" class="btn btn-outline-success btn-sm">@Localizer["ViewAll"] <i class="fas fa-arrow-right ms-1"></i></a>
+            </div>
+            @if (stylingGuides?.Any() == true)
+            {
+                <div class="row g-4">
+                    @foreach (var guide in stylingGuides.Take(3))
+                    {
+                        <div class="col-md-4">
+                            <a asp-area="Customer" asp-controller="StylingGuide" asp-action="Details" asp-route-slug="@guide.Slug" class="text-decoration-none">
+                                <div class="card h-100 border-0 shadow-sm guide-card">
+                                    @if (!string.IsNullOrEmpty(guide.CoverImageUrl))
+                                    {
+                                        <img src="~/@guide.CoverImageUrl" class="card-img-top" alt="@guide.Title" style="height: 180px; object-fit: cover;">
+                                    }
+                                    <div class="card-body">
+                                        <span class="badge bg-success mb-2">@guide.GuideType</span>
+                                        <h5 class="card-title text-dark">@guide.Title</h5>
+                                        @if (!string.IsNullOrEmpty(guide.Subtitle))
+                                        {
+                                            <p class="card-text text-muted small">@(guide.Subtitle.Length > 80 ? guide.Subtitle.Substring(0, 80) + "..." : guide.Subtitle)</p>
+                                        }
+                                        <div class="d-flex justify-content-between align-items-center mt-3">
+                                            @if (!string.IsNullOrEmpty(guide.Occasion))
+                                            {
+                                                <small class="text-muted"><i class="fas fa-tag me-1"></i>@guide.Occasion</small>
+                                            }
+                                            <small class="text-muted"><i class="far fa-eye me-1"></i>@guide.ViewCount</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4 bg-light rounded">
+                    <i class="fas fa-palette fa-3x text-muted mb-3"></i>
+                    <p class="text-muted mb-0">@Localizer["NoStylingGuidesAvailableYet"]</p>
+                </div>
+            }
+        </section>
+
+        <!-- Seasonal Collections Section -->
+        <section class="mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3><i class="fas fa-snowflake text-info me-2"></i>@Localizer["SeasonalCollections"]</h3>
+                <a asp-area="Customer" asp-controller="SeasonalCollection" asp-action="Index" class="btn btn-outline-info btn-sm">@Localizer["ViewAll"] <i class="fas fa-arrow-right ms-1"></i></a>
+            </div>
+            @if (collections?.Any() == true)
+            {
+                <div class="row g-4">
+                    @foreach (var collection in collections.Take(3))
+                    {
+                        <div class="col-md-4">
+                            <a asp-area="Customer" asp-controller="SeasonalCollection" asp-action="Details" asp-route-slug="@collection.Slug" class="text-decoration-none">
+                                <div class="card h-100 border-0 shadow-sm collection-card overflow-hidden">
+                                    @if (!string.IsNullOrEmpty(collection.BannerImageUrl ?? collection.ThumbnailImageUrl))
+                                    {
+                                        <img src="~/@(collection.ThumbnailImageUrl ?? collection.BannerImageUrl)" class="card-img-top" alt="@collection.Name" style="height: 180px; object-fit: cover;">
+                                    }
+                                    <div class="card-body" style="background: linear-gradient(135deg, @(collection.PrimaryColor ?? "#f8f9fa") 0%, @(collection.SecondaryColor ?? "#ffffff") 100%);">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge" style="background-color: @(collection.PrimaryColor ?? "#6366f1"); color: @(collection.TextColor ?? "white");">@collection.SeasonType</span>
+                                            <small class="text-muted">@collection.Year</small>
+                                        </div>
+                                        <h5 class="card-title text-dark">@collection.Name</h5>
+                                        @if (!string.IsNullOrEmpty(collection.Tagline))
+                                        {
+                                            <p class="card-text text-muted small">@(collection.Tagline.Length > 80 ? collection.Tagline.Substring(0, 80) + "..." : collection.Tagline)</p>
+                                        }
+                                        @if (collection.IsCurrentlyActive)
+                                        {
+                                            <span class="badge bg-success"><i class="fas fa-check me-1"></i>@Localizer["ActiveNow"]</span>
+                                        }
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4 bg-light rounded">
+                    <i class="fas fa-snowflake fa-3x text-muted mb-3"></i>
+                    <p class="text-muted mb-0">@Localizer["NoSeasonalCollectionsAvailableYet"]</p>
+                </div>
+            }
+        </section>
+    </div>
+</div>
+
+<style>
+    .bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .bg-gradient-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .bg-gradient-info { background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%); }
+
+    .icon-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .section-card { transition: all 0.3s ease; }
+    .section-card:hover { transform: translateY(-10px); box-shadow: 0 1rem 2rem rgba(0,0,0,.15)!important; }
+
+    .blog-card, .guide-card, .collection-card { transition: all 0.3s ease; }
+    .blog-card:hover, .guide-card:hover, .collection-card:hover { transform: translateY(-5px); }
+</style>

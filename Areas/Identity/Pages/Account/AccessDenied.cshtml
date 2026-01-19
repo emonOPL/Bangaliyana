@@ -1,0 +1,10 @@
+﻿@page
+@model AccessDeniedModel
+@{
+    ViewData["Title"] = Localizer["AccessDenied"];
+}
+
+<header>
+    <h1 class="text-danger">@ViewData["Title"]</h1>
+    <p class="text-danger">@Localizer["YouDoNotHaveAccessToThisResource"]</p>
+</header>

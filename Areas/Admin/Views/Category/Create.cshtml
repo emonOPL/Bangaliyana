@@ -1,0 +1,309 @@
+@model Bangaliyana.Models.Category
+
+@{
+    ViewData["Title"] = Model.ParentId.HasValue ? Localizer["AddSubcategory"] : Localizer["AddCategory"];
+    var parentCategories = ViewBag.ParentCategories as List<dynamic>;
+}
+
+<style>
+    .form-card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .form-header {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+        padding: 20px 25px;
+    }
+
+    .form-header h4 {
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .form-body {
+        padding: 25px;
+    }
+
+    .form-section {
+        margin-bottom: 25px;
+    }
+
+    .form-section-title {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .image-preview-container {
+        width: 150px;
+        height: 150px;
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .image-preview-container:hover {
+        border-color: #17a2b8;
+        background: #f8f9fa;
+    }
+
+    .image-preview-container img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: cover;
+    }
+
+    .image-preview-container .placeholder {
+        text-align: center;
+        color: #adb5bd;
+    }
+
+    .parent-path {
+        background: #f8f9fa;
+        padding: 10px 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+
+    .parent-path i {
+        color: #17a2b8;
+    }
+
+    [data-theme="dark"] .form-card {
+        background: #2a2a3d;
+    }
+
+    [data-theme="dark"] .form-section-title {
+        color: #e0e0e0;
+        border-color: #444;
+    }
+
+    [data-theme="dark"] .image-preview-container {
+        border-color: #444;
+    }
+
+    [data-theme="dark"] .parent-path {
+        background: #1e1e2e;
+    }
+</style>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Categories"]</a></li>
+                    <li class="breadcrumb-item active">@ViewData["Title"]</li>
+                </ol>
+            </nav>
+
+            <div class="form-card">
+                <div class="form-header">
+                    <h4><i class="fas fa-folder-plus me-2"></i>@ViewData["Title"]</h4>
+                </div>
+
+                <div class="form-body">
+                    @if (ViewBag.onError != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>@ViewBag.onError
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <form asp-action="Create" method="post" enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+
+                        <!-- Parent Category Info -->
+                        @if (Model.ParentId.HasValue)
+                        {
+                            var parentName = parentCategories?.FirstOrDefault(p => p.Id == Model.ParentId)?.Name ?? Localizer["Unknown"];
+                            <div class="parent-path">
+                                <i class="fas fa-sitemap me-2"></i>@Localizer["AddingSubcategoryUnder"]:
+                                <strong>@parentName</strong>
+                            </div>
+                        }
+
+                        <!-- Basic Information -->
+                        <div class="form-section">
+                            <h5 class="form-section-title"><i class="fas fa-info-circle me-2"></i>@Localizer["BasicInformation"]</h5>
+
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label asp-for="Name" class="form-label fw-semibold">@Localizer["CategoryName"] <span class="text-danger">*</span></label>
+                                    <input asp-for="Name" class="form-control" placeholder="@Localizer["EnterCategoryName"]" />
+                                    <span asp-validation-for="Name" class="text-danger"></span>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="DisplayOrder" class="form-label fw-semibold">@Localizer["DisplayOrder"]</label>
+                                    <input asp-for="DisplayOrder" type="number" class="form-control" value="0" />
+                                    <small class="text-muted">@Localizer["LowerNumbersAppearFirst"]</small>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label asp-for="ParentId" class="form-label fw-semibold">@Localizer["ParentCategory"]</label>
+                                    <select asp-for="ParentId" class="form-select">
+                                        <option value="">-- @Localizer["RootCategoryNoParent"] --</option>
+                                        @if (parentCategories != null)
+                                        {
+                                            foreach (var parent in parentCategories)
+                                            {
+                                                var indent = new string('-', (int)parent.Level * 2);
+                                                var prefix = parent.Level > 0 ? indent + " " : "";
+                                                <option value="@parent.Id">@prefix@parent.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                    <small class="text-muted">@Localizer["SelectParentToCreateSubcategory"]</small>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="Slug" class="form-label fw-semibold">@Localizer["URLSlug"]</label>
+                                    <input asp-for="Slug" class="form-control" placeholder="@Localizer["AutoGenerated"]" />
+                                    <small class="text-muted">@Localizer["LeaveEmptyToAutoGenerate"]</small>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Description" class="form-label fw-semibold">@Localizer["Description"]</label>
+                                <textarea asp-for="Description" class="form-control" rows="3" placeholder="@Localizer["EnterCategoryDescription"]"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Visual Elements -->
+                        <div class="form-section">
+                            <h5 class="form-section-title"><i class="fas fa-image me-2"></i>@Localizer["VisualElements"]</h5>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold">@Localizer["CategoryImage"]</label>
+                                    <div class="image-preview-container" onclick="document.getElementById('imageFile').click()">
+                                        <div class="placeholder" id="imagePlaceholder">
+                                            <i class="fas fa-cloud-upload-alt fa-2x mb-2"></i>
+                                            <div>@Localizer["ClickToUpload"]</div>
+                                        </div>
+                                        <img id="imagePreview" style="display: none;" />
+                                    </div>
+                                    <input type="file" id="imageFile" name="imageFile" class="d-none" accept="image/*" />
+                                    <small class="text-muted d-block mt-2">@Localizer["Recommended"]: 200x200px</small>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="IconClass" class="form-label fw-semibold">@Localizer["IconClass"] (Font Awesome)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i id="iconPreview" class="fas fa-folder"></i></span>
+                                        <input asp-for="IconClass" class="form-control" placeholder="fas fa-folder" />
+                                    </div>
+                                    <small class="text-muted">@Localizer["IconClassExample"]</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Settings -->
+                        <div class="form-section">
+                            <h5 class="form-section-title"><i class="fas fa-cog me-2"></i>@Localizer["Settings"]</h5>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="IsActive" class="form-check-input" checked />
+                                        <label asp-for="IsActive" class="form-check-label">@Localizer["Active"]</label>
+                                    </div>
+                                    <small class="text-muted">@Localizer["InactiveCategoriesNotShown"]</small>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="IsFeatured" class="form-check-input" />
+                                        <label asp-for="IsFeatured" class="form-check-label">@Localizer["Featured"]</label>
+                                    </div>
+                                    <small class="text-muted">@Localizer["FeaturedCategoriesAppearOnHomepage"]</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hidden fields -->
+                        <input type="hidden" asp-for="Level" />
+
+                        <!-- Actions -->
+                        <div class="d-flex justify-content-between pt-3 border-top">
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> @Localizer["Cancel"]
+                            </a>
+                            <button type="submit" class="btn btn-info">
+                                <i class="fas fa-save me-1"></i> @Localizer["CreateCategory"]
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        $(document).ready(function () {
+            // Image preview
+            $('#imageFile').on('change', function () {
+                var file = this.files[0];
+                if (file) {
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        $('#imagePreview').attr('src', e.target.result).show();
+                        $('#imagePlaceholder').hide();
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Icon preview
+            $('#IconClass').on('input', function () {
+                var iconClass = $(this).val() || 'fas fa-folder';
+                $('#iconPreview').attr('class', iconClass);
+            });
+
+            // Auto-generate slug from name
+            $('#Name').on('blur', function () {
+                var slug = $('#Slug').val();
+                if (!slug) {
+                    var name = $(this).val();
+                    slug = name.toLowerCase()
+                        .replace(/[^a-z0-9\s-]/g, '')
+                        .replace(/\s+/g, '-')
+                        .replace(/-+/g, '-')
+                        .replace(/^-|-$/g, '');
+                    $('#Slug').val(slug);
+                }
+            });
+
+            // Update level when parent changes
+            $('#ParentId').on('change', function () {
+                var selectedOption = $(this).find('option:selected');
+                var level = 0;
+                if (selectedOption.val()) {
+                    var text = selectedOption.text();
+                    var dashes = (text.match(/^-+/) || [''])[0].length;
+                    level = (dashes / 2) + 1;
+                }
+                $('#Level').val(level);
+            });
+        });
+    </script>
+}

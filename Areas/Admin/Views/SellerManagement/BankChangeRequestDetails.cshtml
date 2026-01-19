@@ -1,0 +1,280 @@
+@model Bangaliyana.Models.SellerBankAccountChangeRequest
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+
+@{
+    ViewData["Title"] = Localizer["BankChangeRequestDetails"].Value;
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Sellers"]</a></li>
+            <li class="breadcrumb-item"><a asp-action="BankChangeRequests">@Localizer["BankChangeRequests"]</a></li>
+            <li class="breadcrumb-item active">@Localizer["Request"] #@Model.Id</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Request Status -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-university text-primary me-2"></i>@Localizer["BankAccountChangeRequest"]</h5>
+                    @{
+                        var statusClass = Model.Status switch
+                        {
+                            BankChangeRequestStatus.Pending => "bg-warning text-dark",
+                            BankChangeRequestStatus.Approved => "bg-success",
+                            BankChangeRequestStatus.Rejected => "bg-danger",
+                            _ => "bg-secondary"
+                        };
+                    }
+                    <span class="badge @statusClass fs-6">@Model.Status.GetDisplayName()</span>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.ChangeReason))
+                    {
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading"><i class="fas fa-info-circle me-2"></i>@Localizer["ReasonForChange"]</h6>
+                            <p class="mb-0">@Model.ChangeReason</p>
+                        </div>
+                    }
+
+                    <div class="row">
+                        <!-- Existing Account -->
+                        <div class="col-md-6">
+                            <div class="card h-100 border-secondary">
+                                <div class="card-header bg-secondary text-white">
+                                    <h6 class="mb-0"><i class="fas fa-arrow-left me-2"></i>@Localizer["CurrentAccount"]</h6>
+                                </div>
+                                <div class="card-body">
+                                    @if (Model.ExistingBankAccount != null)
+                                    {
+                                        <dl class="mb-0">
+                                            <dt>@Localizer["BankName"]</dt>
+                                            <dd>@Model.ExistingBankAccount.BankName</dd>
+                                            <dt>@Localizer["Branch"]</dt>
+                                            <dd>@(Model.ExistingBankAccount.BranchName ?? Localizer["NA"].Value)</dd>
+                                            <dt>@Localizer["AccountHolder"]</dt>
+                                            <dd>@Model.ExistingBankAccount.AccountHolderName</dd>
+                                            <dt>@Localizer["AccountNumber"]</dt>
+                                            <dd><code>@Model.ExistingBankAccount.AccountNumber</code></dd>
+                                            @if (!string.IsNullOrEmpty(Model.ExistingBankAccount.RoutingNumber))
+                                            {
+                                                <dt>@Localizer["RoutingNumber"]</dt>
+                                                <dd><code>@Model.ExistingBankAccount.RoutingNumber</code></dd>
+                                            }
+                                        </dl>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted text-center mb-0">
+                                            <i class="fas fa-plus-circle fa-2x mb-2 d-block"></i>
+                                            @Localizer["NoExistingAccount"]<br />
+                                            <small>@Localizer["NewAccountRequest"]</small>
+                                        </p>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- New Account -->
+                        <div class="col-md-6">
+                            <div class="card h-100 border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0"><i class="fas fa-arrow-right me-2"></i>@Localizer["NewAccount"]</h6>
+                                </div>
+                                <div class="card-body">
+                                    <dl class="mb-0">
+                                        <dt>@Localizer["BankName"]</dt>
+                                        <dd class="@(Model.ExistingBankAccount?.BankName != Model.NewBankName ? "text-primary fw-bold" : "")">
+                                            @Model.NewBankName
+                                            @if (Model.ExistingBankAccount?.BankName != Model.NewBankName)
+                                            {
+                                                <i class="fas fa-exchange-alt text-warning ms-1" title="@Localizer["Changed"]"></i>
+                                            }
+                                        </dd>
+                                        <dt>@Localizer["Branch"]</dt>
+                                        <dd class="@(Model.ExistingBankAccount?.BranchName != Model.NewBranchName ? "text-primary fw-bold" : "")">
+                                            @(Model.NewBranchName ?? Localizer["NA"].Value)
+                                        </dd>
+                                        <dt>@Localizer["AccountHolder"]</dt>
+                                        <dd class="@(Model.ExistingBankAccount?.AccountHolderName != Model.NewAccountHolderName ? "text-primary fw-bold" : "")">
+                                            @Model.NewAccountHolderName
+                                        </dd>
+                                        <dt>@Localizer["AccountNumber"]</dt>
+                                        <dd class="@(Model.ExistingBankAccount?.AccountNumber != Model.NewAccountNumber ? "text-primary fw-bold" : "")">
+                                            <code>@Model.NewAccountNumber</code>
+                                        </dd>
+                                        @if (!string.IsNullOrEmpty(Model.NewRoutingNumber))
+                                        {
+                                            <dt>@Localizer["RoutingNumber"]</dt>
+                                            <dd><code>@Model.NewRoutingNumber</code></dd>
+                                        }
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Checkbook Photo -->
+                    @if (!string.IsNullOrEmpty(Model.NewCheckbookPhotoUrl))
+                    {
+                        <div class="mt-4">
+                            <h6><i class="fas fa-image text-primary me-2"></i>@Localizer["NewCheckbookPhoto"]</h6>
+                            <a href="@Model.NewCheckbookPhotoUrl" target="_blank">
+                                <img src="@Model.NewCheckbookPhotoUrl" alt="@Localizer["CheckbookPhoto"]"
+                                     class="img-thumbnail" style="max-width: 400px; max-height: 300px;">
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Actions (for pending) -->
+            @if (Model.Status == BankChangeRequestStatus.Pending)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-gavel text-primary me-2"></i>@Localizer["TakeAction"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <form asp-action="ApproveBankChange" asp-route-id="@Model.Id" method="post">
+                                    <div class="mb-3">
+                                        <label class="form-label">@Localizer["AdminNotesOptional"]</label>
+                                        <textarea name="adminNotes" class="form-control" rows="2"
+                                                  placeholder="@Localizer["AnyNotesForApproval"]"></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="fas fa-check me-1"></i>@Localizer["ApproveChange"]
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="col-md-6">
+                                <form asp-action="RejectBankChange" asp-route-id="@Model.Id" method="post">
+                                    <div class="mb-3">
+                                        <label class="form-label">@Localizer["RejectionReason"] <span class="text-danger">*</span></label>
+                                        <textarea name="adminNotes" class="form-control" rows="2" required
+                                                  placeholder="@Localizer["ReasonForRejection"]"></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-danger w-100">
+                                        <i class="fas fa-times me-1"></i>@Localizer["RejectChange"]
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Review Result (for processed) -->
+            @if (Model.Status != BankChangeRequestStatus.Pending)
+            {
+                <div class="card @(Model.Status == BankChangeRequestStatus.Approved ? "border-success" : "border-danger")">
+                    <div class="card-header @(Model.Status == BankChangeRequestStatus.Approved ? "bg-success" : "bg-danger") text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-@(Model.Status == BankChangeRequestStatus.Approved ? "check" : "times") me-2"></i>
+                            @(Model.Status == BankChangeRequestStatus.Approved ? Localizer["Approved"].Value : Localizer["Rejected"].Value)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(Model.AdminNotes))
+                        {
+                            <p class="mb-2"><strong>@Localizer["AdminNotes"]:</strong></p>
+                            <p class="mb-0">@Model.AdminNotes</p>
+                        }
+                        @if (Model.ReviewedAt.HasValue)
+                        {
+                            <p class="text-muted small mt-2 mb-0">
+                                @Localizer["Reviewed"]: @Model.ReviewedAt.Value.ToBangladeshString("MMMM dd, yyyy 'at' hh:mm tt")
+                                @if (Model.ReviewedBy != null)
+                                {
+                                    <text> @Localizer["by"] @(Model.ReviewedBy.FullName ?? Model.ReviewedBy.Email)</text>
+                                }
+                            </p>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Seller Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-store text-primary me-2"></i>@Localizer["Seller"]</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.Seller != null)
+                    {
+                        <h6 class="fw-bold">@Model.Seller.ShopName</h6>
+                        @if (Model.Seller.User != null)
+                        {
+                            <p class="text-muted mb-2">@(Model.Seller.User.FullName ?? Model.Seller.User.Email)</p>
+                        }
+                        <a asp-action="Details" asp-route-id="@Model.SellerId" class="btn btn-outline-primary btn-sm w-100">
+                            <i class="fas fa-eye me-1"></i>@Localizer["ViewSellerProfile"]
+                        </a>
+                    }
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history text-primary me-2"></i>@Localizer["Timeline"]</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <small class="text-muted">@Localizer["Requested"]</small><br />
+                            @Model.RequestedAt.ToBangladeshString("MMM dd, yyyy 'at' hh:mm tt")
+                        </li>
+                        @if (Model.ReviewedAt.HasValue)
+                        {
+                            <li>
+                                <small class="text-muted">@Localizer["Reviewed"]</small><br />
+                                @Model.ReviewedAt.Value.ToBangladeshString("MMM dd, yyyy 'at' hh:mm tt")
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        dl dt {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 0.25rem;
+        }
+        dl dd {
+            margin-bottom: 0.75rem;
+        }
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-header {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .form-control {
+            background-color: var(--bs-gray-700);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] dl dt {
+            color: var(--bs-gray-400);
+        }
+    </style>
+}

@@ -1,0 +1,404 @@
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@model Order
+@{
+    ViewData["Title"] = $"Process Refund - Order #{Model.OrderNumber}";
+    var totalRefunded = (decimal)ViewBag.TotalRefunded;
+    var maxRefund = (decimal)ViewBag.MaxRefundAmount - totalRefunded;
+    var statusClass = Model.RefundStatus switch
+    {
+        RefundStatus.Pending => "bg-warning text-dark",
+        RefundStatus.Reviewing => "bg-info",
+        RefundStatus.InProgress => "bg-primary",
+        RefundStatus.Approved => "bg-success",
+        RefundStatus.Rejected => "bg-danger",
+        RefundStatus.Completed => "bg-success",
+        _ => "bg-secondary"
+    };
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Transactions</a></li>
+            <li class="breadcrumb-item"><a asp-action="RefundRequests">Refund Requests</a></li>
+            <li class="breadcrumb-item active">Process Refund</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Order & Refund Info Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-shopping-cart text-primary me-2"></i>Order #@Model.OrderNumber</h5>
+                    <span class="badge @statusClass">@Model.RefundStatus.GetDisplayName()</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Order Details</h6>
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td class="text-muted">Order Status</td>
+                                    <td><span class="badge bg-secondary">@Model.Status</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Payment Status</td>
+                                    <td><span class="badge bg-secondary">@Model.PaymentStatus</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Order Total</td>
+                                    <td class="fw-bold text-success">৳@Model.TotalAmount.ToString("N0")</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Payment Method</td>
+                                    <td>@Model.PaymentMethod</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Customer Details</h6>
+                            @if (Model.User != null)
+                            {
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td class="text-muted">Name</td>
+                                        <td>@Model.User.FirstName @Model.User.LastName</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Email</td>
+                                        <td>@Model.User.Email</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Phone</td>
+                                        <td>@(Model.User.PhoneNumber ?? "-")</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Wallet Balance</td>
+                                        <td>৳@Model.User.WalletBalance.ToString("N0")</td>
+                                    </tr>
+                                </table>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Customer's Preferred Refund Method -->
+                    @if (Model.PreferredRefundMethod.HasValue || !string.IsNullOrEmpty(Model.RefundAccountNumber))
+                    {
+                        <hr>
+                        <h6 class="text-muted mb-3">Customer's Refund Preference</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td class="text-muted">Preferred Method</td>
+                                        <td><span class="badge bg-info">@(Model.PreferredRefundMethod?.ToString() ?? "Not specified")</span></td>
+                                    </tr>
+                                    @if (!string.IsNullOrEmpty(Model.RefundAccountNumber))
+                                    {
+                                        <tr>
+                                            <td class="text-muted">Account Number</td>
+                                            <td class="font-monospace">@Model.RefundAccountNumber</td>
+                                        </tr>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.RefundAccountHolderName))
+                                    {
+                                        <tr>
+                                            <td class="text-muted">Account Holder</td>
+                                            <td>@Model.RefundAccountHolderName</td>
+                                        </tr>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.RefundBankName))
+                                    {
+                                        <tr>
+                                            <td class="text-muted">Bank Name</td>
+                                            <td>@Model.RefundBankName</td>
+                                        </tr>
+                                    }
+                                </table>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Order Items -->
+                    @if (Model.OrderItems?.Any() == true)
+                    {
+                        <hr>
+                        <h6 class="text-muted mb-3">Order Items</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Product</th>
+                                        <th class="text-center">Qty</th>
+                                        <th class="text-end">Price</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.OrderItems)
+                                    {
+                                        <tr>
+                                            <td>@(item.Product?.Name ?? "Product")</td>
+                                            <td class="text-center">@item.Quantity</td>
+                                            <td class="text-end">৳@item.UnitPrice.ToString("N0")</td>
+                                            <td class="text-end">৳@item.TotalPrice.ToString("N0")</td>
+                                        </tr>
+                                    }
+                                    <tr class="table-light">
+                                        <td colspan="3" class="text-end fw-bold">Order Total</td>
+                                        <td class="text-end fw-bold">৳@Model.TotalAmount.ToString("N0")</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Process Refund Form -->
+            @if (Model.RefundStatus != RefundStatus.Completed && Model.RefundStatus != RefundStatus.Rejected)
+            {
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-undo text-danger me-2"></i>Process Refund</h5>
+                    </div>
+                    <div class="card-body">
+                        <form asp-action="ProcessRefund" method="post">
+                            <input type="hidden" name="id" value="@Model.Id" />
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Refund Amount <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">৳</span>
+                                        <input type="number" name="refundAmount" class="form-control" required
+                                               min="1" max="@maxRefund" step="1"
+                                               value="@(Model.ApprovedRefundAmount ?? maxRefund)">
+                                    </div>
+                                    <div class="form-text">Maximum: ৳@maxRefund.ToString("N0")</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Refund Method <span class="text-danger">*</span></label>
+                                    <select name="refundMethod" class="form-select" required id="refundMethodSelect">
+                                        @foreach (var method in (List<RefundMethod>)ViewBag.RefundMethods)
+                                        {
+                                            <option value="@method" selected="@(Model.PreferredRefundMethod == method)">@method</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Account Details -->
+                            <div id="accountDetailsSection" class="row g-3 mt-2">
+                                <div class="col-md-4">
+                                    <label class="form-label">Account/Mobile Number</label>
+                                    <input type="text" name="refundAccountNumber" class="form-control"
+                                           value="@Model.RefundAccountNumber" placeholder="Account or mobile number">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Account Holder Name</label>
+                                    <input type="text" name="refundAccountHolderName" class="form-control"
+                                           value="@Model.RefundAccountHolderName" placeholder="Account holder name">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Bank Name</label>
+                                    <input type="text" name="refundBankName" class="form-control"
+                                           value="@Model.RefundBankName" placeholder="Bank name (if applicable)">
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Transaction ID (for completed refund)</label>
+                                    <input type="text" name="transactionId" class="form-control"
+                                           placeholder="Transaction reference number">
+                                </div>
+                            </div>
+
+                            <div class="mt-3">
+                                <label class="form-label">Admin Notes</label>
+                                <textarea name="adminNotes" class="form-control" rows="3"
+                                          placeholder="Any notes about this refund...">@Model.RefundAdminNotes</textarea>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    @if (Model.RefundStatus == RefundStatus.Pending || Model.RefundStatus == RefundStatus.Reviewing)
+                                    {
+                                        <button type="submit" name="action" value="reject" class="btn btn-outline-danger"
+                                                onclick="return confirm('Are you sure you want to reject this refund request?');">
+                                            <i class="fas fa-times me-1"></i>Reject Refund
+                                        </button>
+                                    }
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <a asp-action="RefundRequests" class="btn btn-outline-secondary">Cancel</a>
+                                    @if (Model.RefundStatus == RefundStatus.Pending || Model.RefundStatus == RefundStatus.Reviewing)
+                                    {
+                                        <button type="submit" name="action" value="approve" class="btn btn-success">
+                                            <i class="fas fa-check me-1"></i>Approve
+                                        </button>
+                                    }
+                                    <button type="submit" name="action" value="complete" class="btn btn-primary"
+                                            onclick="return confirm('Are you sure you want to complete this refund? This will transfer the amount to the customer.');">
+                                        <i class="fas fa-paper-plane me-1"></i>Complete Refund
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Already Completed/Rejected -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            @if (Model.RefundStatus == RefundStatus.Completed)
+                            {
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                <span>Refund Completed</span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-times-circle text-danger me-2"></i>
+                                <span>Refund Rejected</span>
+                            }
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.RefundStatus == RefundStatus.Completed)
+                        {
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table table-sm table-borderless">
+                                        <tr>
+                                            <td class="text-muted">Amount Refunded</td>
+                                            <td class="fw-bold text-success">৳@(Model.RefundPaidAmount?.ToString("N0") ?? "-")</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Refund Method</td>
+                                            <td>@(Model.RefundPaymentMethod?.ToString() ?? "-")</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Transaction ID</td>
+                                            <td class="font-monospace">@(Model.RefundTransactionId ?? "-")</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Payment Date</td>
+                                            <td>@(Model.RefundPaymentDate?.ToString("dd MMM yyyy, hh:mm tt") ?? "-")</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(Model.RefundAdminNotes))
+                        {
+                            <div class="mt-3">
+                                <label class="text-muted small">Admin Notes</label>
+                                <p class="mb-0">@Model.RefundAdminNotes</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Refund Summary -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="fas fa-calculator text-info me-2"></i>Refund Summary</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted">Order Total</td>
+                            <td class="text-end fw-bold">৳@Model.TotalAmount.ToString("N0")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Previously Refunded</td>
+                            <td class="text-end text-danger">-৳@totalRefunded.ToString("N0")</td>
+                        </tr>
+                        <tr class="border-top">
+                            <td class="text-muted fw-bold">Max Refundable</td>
+                            <td class="text-end fw-bold text-success">৳@maxRefund.ToString("N0")</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Previous Refunds -->
+            @if (((List<Transaction>)ViewBag.PreviousRefunds).Any())
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0"><i class="fas fa-history text-muted me-2"></i>Previous Refunds</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            @foreach (var refund in (List<Transaction>)ViewBag.PreviousRefunds)
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <span class="text-danger fw-bold">-৳@refund.Amount.ToString("N0")</span>
+                                            <br>
+                                            <small class="text-muted">@refund.CreatedAt.ToString("dd MMM yyyy")</small>
+                                        </div>
+                                        <span class="badge @(refund.Status == TransactionStatus.Completed ? "bg-success" : "bg-secondary")">
+                                            @refund.Status
+                                        </span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Quick Actions -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="fas fa-bolt text-warning me-2"></i>Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+                            <i class="fas fa-shopping-cart me-2"></i>View Full Order
+                        </a>
+                        <a asp-action="RefundRequests" class="btn btn-outline-secondary">
+                            <i class="fas fa-list me-2"></i>Back to Refund Requests
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const refundMethodSelect = document.getElementById('refundMethodSelect');
+            const accountDetailsSection = document.getElementById('accountDetailsSection');
+
+            function toggleAccountDetails() {
+                const method = refundMethodSelect.value;
+                const hideDetails = method === 'WalletCredit' || method === 'OriginalMethod';
+                accountDetailsSection.style.display = hideDetails ? 'none' : 'flex';
+            }
+
+            if (refundMethodSelect) {
+                refundMethodSelect.addEventListener('change', toggleAccountDetails);
+                toggleAccountDetails();
+            }
+        });
+    </script>
+}

@@ -1,0 +1,321 @@
+@model Bangaliyana.Areas.Admin.Controllers.SellerPaymentsViewModel
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+
+@{
+    ViewData["Title"] = Localizer["SellerPayments"];
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">@Localizer["SellerPayments"]</h1>
+            <p class="text-muted mb-0">
+                @Localizer["ManagePaymentsFor"]: <strong>@Model.SellerName</strong>
+            </p>
+        </div>
+        <a asp-action="Details" asp-route-id="@Model.UserId" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> @Localizer["BackToDetails"]
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Payment Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-1">@Localizer["TotalSales"]</h6>
+                            <h3 class="mb-0">৳@((int)Math.Round(Model.TotalSales))</h3>
+                        </div>
+                        <i class="fas fa-chart-line fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-1">@Localizer["PendingPayment"]</h6>
+                            <h3 class="mb-0">৳@((int)Math.Round(Model.PendingPayment))</h3>
+                        </div>
+                        <i class="fas fa-clock fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-1">@Localizer["PaidAmount"]</h6>
+                            <h3 class="mb-0">৳@((int)Math.Round(Model.PaidAmount))</h3>
+                        </div>
+                        <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Payments Table -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0 text-dark">
+                <i class="fas fa-hourglass-half me-2"></i>@Localizer["PendingPayments"]
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            @{
+                var pendingOrders = Model.Orders.Where(o => o.Status == OrderStatus.Delivered && !o.IsPaymentReceived).ToList();
+            }
+            @if (pendingOrders.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>@Localizer["OrderNumber"]</th>
+                                <th>@Localizer["Date"]</th>
+                                <th>@Localizer["Customer"]</th>
+                                <th>@Localizer["Amount"]</th>
+                                <th>@Localizer["Delivered"]</th>
+                                <th>@Localizer["Action"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in pendingOrders)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">
+                                            #@order.OrderNumber
+                                        </a>
+                                    </td>
+                                    <td>@order.OrderDate.ToBangladeshShortDateString()</td>
+                                    <td>@order.CustomerName</td>
+                                    <td><strong>৳@((int)Math.Round(order.TotalAmount))</strong></td>
+                                    <td>@order.DeliveredAt?.ToBangladeshShortDateString()</td>
+                                    <td>
+                                        <button type="button" class="btn btn-success btn-sm"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#paymentModal"
+                                                data-order-id="@order.Id"
+                                                data-order-number="@order.OrderNumber"
+                                                data-order-amount="@order.TotalAmount">
+                                            <i class="fas fa-money-bill me-1"></i> @Localizer["ProcessPayment"]
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <p class="text-muted">@Localizer["NoPendingPayments"]</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- All Orders Table -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>@Localizer["AllOrders"]
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Orders.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>@Localizer["OrderNumber"]</th>
+                                <th>@Localizer["Date"]</th>
+                                <th>@Localizer["Customer"]</th>
+                                <th>@Localizer["Amount"]</th>
+                                <th>@Localizer["OrderStatus"]</th>
+                                <th>@Localizer["Payment"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model.Orders.Take(50))
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">
+                                            #@order.OrderNumber
+                                        </a>
+                                    </td>
+                                    <td>@order.OrderDate.ToBangladeshShortDateString()</td>
+                                    <td>@order.CustomerName</td>
+                                    <td>৳@((int)Math.Round(order.TotalAmount))</td>
+                                    <td>
+                                        @{
+                                            var statusClass = order.Status switch
+                                            {
+                                                OrderStatus.Delivered => "bg-success",
+                                                OrderStatus.Returned => "bg-danger",
+                                                OrderStatus.Cancelled => "bg-secondary",
+                                                OrderStatus.Pending => "bg-warning",
+                                                _ => "bg-info"
+                                            };
+                                        }
+                                        <span class="badge @statusClass">@order.Status.GetDisplayName()</span>
+                                    </td>
+                                    <td>
+                                        @if (order.IsPaymentReceived)
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>Paid
+                                            </span>
+                                        }
+                                        else if (order.Status == OrderStatus.Delivered)
+                                        {
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-clock me-1"></i>Pending
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No orders found for this seller.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Process Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="paymentModalLabel">
+                    <i class="fas fa-money-bill me-2"></i>Process Payment
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="ProcessSellerPayment" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="userId" value="@Model.UserId" />
+                <input type="hidden" name="orderId" id="modalOrderId" />
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-receipt text-success fa-4x mb-3"></i>
+                        <h5>Process payment for Order #<span id="modalOrderNumber"></span></h5>
+                        <p class="text-muted mb-0">
+                            Amount: <strong id="modalOrderAmount"></strong>
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="transactionId" class="form-label">Transaction ID</label>
+                        <input type="text" class="form-control" id="transactionId" name="transactionId" required
+                               placeholder="Enter transaction/reference ID">
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2"
+                                  placeholder="Payment method, bank details, etc."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check me-1"></i>Confirm Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-header.bg-light {
+            background-color: var(--bs-gray-800) !important;
+            border-color: var(--bs-gray-700);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table-light {
+            background-color: var(--bs-gray-800);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .modal-content {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .modal-body {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-control {
+            background-color: var(--bs-gray-700);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var paymentModal = document.getElementById('paymentModal');
+            paymentModal.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                var orderId = button.getAttribute('data-order-id');
+                var orderNumber = button.getAttribute('data-order-number');
+                var orderAmount = button.getAttribute('data-order-amount');
+
+                document.getElementById('modalOrderId').value = orderId;
+                document.getElementById('modalOrderNumber').textContent = orderNumber;
+                document.getElementById('modalOrderAmount').textContent = '৳' + Math.round(parseFloat(orderAmount));
+            });
+        });
+    </script>
+}

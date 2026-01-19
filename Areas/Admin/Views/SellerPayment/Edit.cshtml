@@ -1,0 +1,289 @@
+@model Bangaliyana.Models.SellerPayment
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = $"Edit Payment #{Model.PaymentNumber}";
+    var paymentMethods = ViewBag.PaymentMethods as IEnumerable<Bangaliyana.Models.SellerPaymentMethod> ?? Enumerable.Empty<Bangaliyana.Models.SellerPaymentMethod>();
+}
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Index")">Seller Payments</a></li>
+                    <li class="breadcrumb-item"><a href="@Url.Action("Details", new { id = Model.Id })">@Model.PaymentNumber</a></li>
+                    <li class="breadcrumb-item active">Edit</li>
+                </ol>
+            </nav>
+            <h4 class="mb-0"><i class="fas fa-edit text-primary me-2"></i>Edit Payment</h4>
+        </div>
+        <a href="@Url.Action("Details", new { id = Model.Id })" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Details
+        </a>
+    </div>
+
+    <!-- Alerts -->
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Edit Form -->
+        <div class="col-lg-8">
+            <form method="post" asp-action="Edit">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+
+                <!-- Payment Info Card -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Payment Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Payment Number</label>
+                                <input type="text" class="form-control" value="@Model.PaymentNumber" disabled />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <span class="badge @(Model.Status == Bangaliyana.Models.SellerPaymentStatus.Pending ? "bg-warning text-dark" : "bg-info") fs-6 d-block py-2">
+                                    @Model.Status.GetDisplayName()
+                                </span>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Amount (BDT) <span class="text-danger">*</span></label>
+                                <input type="number" name="amount" class="form-control" value="@((int)Math.Round(Model.Amount))" min="1" step="1" required />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Payment Method <span class="text-danger">*</span></label>
+                                <select name="paymentMethod" id="paymentMethod" class="form-select" required>
+                                    @foreach (var method in paymentMethods)
+                                    {
+                                        <option value="@method" selected="@(method == Model.PaymentMethod)">@method.GetDisplayName()</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Admin Notes</label>
+                                <textarea name="adminNotes" class="form-control" rows="2" placeholder="Internal notes...">@Model.AdminNotes</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bank Transfer Details -->
+                <div class="card mb-4" id="bankDetailsCard">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-university me-2"></i>Bank Transfer Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Bank Name</label>
+                                <input type="text" name="bankName" id="bankName" class="form-control" value="@Model.BankName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Branch Name</label>
+                                <input type="text" name="branchName" id="branchName" class="form-control" value="@Model.BranchName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Account Holder Name</label>
+                                <input type="text" name="accountHolderName" id="accountHolderName" class="form-control" value="@Model.AccountHolderName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Account Number</label>
+                                <input type="text" name="accountNumber" id="accountNumber" class="form-control" value="@Model.AccountNumber" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Routing Number</label>
+                                <input type="text" name="routingNumber" id="routingNumber" class="form-control" value="@Model.RoutingNumber" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Banking Details -->
+                <div class="card mb-4" id="mobileDetailsCard" style="display: none;">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-mobile-alt me-2"></i>Mobile Banking Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Provider</label>
+                                <select name="mobileBankingProvider" id="mobileBankingProvider" class="form-select">
+                                    <option value="">Select Provider</option>
+                                    @foreach (Bangaliyana.Models.MobileBankingProvider provider in Enum.GetValues(typeof(Bangaliyana.Models.MobileBankingProvider)))
+                                    {
+                                        if (provider != Bangaliyana.Models.MobileBankingProvider.None)
+                                        {
+                                            <option value="@provider" selected="@(provider == Model.MobileBankingProvider)">@provider.GetDisplayName()</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Mobile Number</label>
+                                <input type="text" name="mobileNumber" id="mobileNumber" class="form-control" value="@Model.MobileNumber" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Account Name</label>
+                                <input type="text" name="mobileAccountName" id="mobileAccountName" class="form-control" value="@Model.MobileAccountName" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Save Changes
+                    </button>
+                    <a href="@Url.Action("Details", new { id = Model.Id })" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sidebar - Seller Info -->
+        <div class="col-lg-4">
+            <!-- Seller Info Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-store me-2"></i>Seller Information</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.Seller != null)
+                    {
+                        <div class="text-center mb-3">
+                            @if (!string.IsNullOrEmpty(Model.Seller.ShopLogoUrl))
+                            {
+                                <img src="@Model.Seller.ShopLogoUrl" alt="@Model.Seller.ShopName" class="rounded-circle mb-2" style="width: 80px; height: 80px; object-fit: cover;">
+                            }
+                            else
+                            {
+                                <div class="bg-primary bg-opacity-10 rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                    <i class="fas fa-store fa-2x text-primary"></i>
+                                </div>
+                            }
+                            <h5 class="mb-0">@Model.Seller.ShopName</h5>
+                            <small class="text-muted">@Model.Seller.User?.Email</small>
+                        </div>
+                        <hr />
+                        <div class="row g-2 text-center">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Current Balance</small>
+                                <strong class="text-success">BDT @((int)Math.Round(Model.Seller.AccountBalance))</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Total Sales</small>
+                                <strong>BDT @((int)Math.Round(Model.Seller.TotalSales))</strong>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Available Bank Accounts -->
+            @if (Model.Seller?.BankAccounts?.Any() == true)
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Seller's Bank Accounts</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            @foreach (var account in Model.Seller.BankAccounts)
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <strong>@account.BankName</strong>
+                                            <br><small class="text-muted">@account.AccountNumber</small>
+                                            <br><small>@account.AccountHolderName</small>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary use-account-btn"
+                                                data-bank="@account.BankName"
+                                                data-branch="@account.BranchName"
+                                                data-holder="@account.AccountHolderName"
+                                                data-number="@account.AccountNumber"
+                                                data-routing="@account.RoutingNumber">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Period Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-calendar me-2"></i>Payment Period</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>Start:</strong> @Model.PeriodStart.ToBangladeshShortDateString()</p>
+                    <p class="mb-1"><strong>End:</strong> @Model.PeriodEnd.ToBangladeshShortDateString()</p>
+                    <p class="mb-0"><strong>Created:</strong> @Model.CreatedAt.ToBangladeshString()</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+    [data-theme="dark"] .list-group-item {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const paymentMethodSelect = document.getElementById('paymentMethod');
+            const bankDetailsCard = document.getElementById('bankDetailsCard');
+            const mobileDetailsCard = document.getElementById('mobileDetailsCard');
+
+            function togglePaymentMethod() {
+                const method = paymentMethodSelect.value;
+                if (method === 'BankTransfer') {
+                    bankDetailsCard.style.display = 'block';
+                    mobileDetailsCard.style.display = 'none';
+                } else {
+                    bankDetailsCard.style.display = 'none';
+                    mobileDetailsCard.style.display = 'block';
+                }
+            }
+
+            paymentMethodSelect.addEventListener('change', togglePaymentMethod);
+            togglePaymentMethod();
+
+            // Use account button functionality
+            document.querySelectorAll('.use-account-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.getElementById('paymentMethod').value = 'BankTransfer';
+                    togglePaymentMethod();
+                    document.getElementById('bankName').value = this.dataset.bank || '';
+                    document.getElementById('branchName').value = this.dataset.branch || '';
+                    document.getElementById('accountHolderName').value = this.dataset.holder || '';
+                    document.getElementById('accountNumber').value = this.dataset.number || '';
+                    document.getElementById('routingNumber').value = this.dataset.routing || '';
+                });
+            });
+        });
+    </script>
+}

@@ -1,0 +1,147 @@
+@model Bangaliyana.Models.FlashSale
+@{
+    ViewData["Title"] = "Create Flash Sale";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Flash Sales</a></li>
+            <li class="breadcrumb-item active">Create Flash Sale</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0"><i class="fas fa-bolt me-2"></i>Create New Flash Sale</h4>
+        </div>
+        <div class="card-body">
+            @if (ViewBag.onError != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <i class="fas fa-exclamation-circle me-2"></i>@ViewBag.onError
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+
+                <div class="row">
+                    <div class="col-lg-8">
+                        <!-- Basic Information -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-info-circle me-2"></i>Basic Information</h5>
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label asp-for="Name" class="form-label fw-semibold">Flash Sale Name <span class="text-danger">*</span></label>
+                                    <input asp-for="Name" class="form-control" placeholder="Summer Flash Sale" />
+                                    <span asp-validation-for="Name" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <label asp-for="Description" class="form-label fw-semibold">Description</label>
+                                    <textarea asp-for="Description" class="form-control" rows="3" placeholder="Describe your flash sale..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Duration -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-calendar-alt me-2"></i>Duration</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="StartDate" class="form-label fw-semibold">Start Date <span class="text-danger">*</span></label>
+                                    <input asp-for="StartDate" type="datetime-local" class="form-control" />
+                                    <span asp-validation-for="StartDate" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="EndDate" class="form-label fw-semibold">End Date <span class="text-danger">*</span></label>
+                                    <input asp-for="EndDate" type="datetime-local" class="form-control" />
+                                    <span asp-validation-for="EndDate" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Visuals -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-image me-2"></i>Banner Images</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold">Desktop Banner</label>
+                                    <input type="file" name="bannerImage" class="form-control" accept="image/*" />
+                                    <small class="text-muted">Recommended: 1200x400px</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold">Mobile Banner</label>
+                                    <input type="file" name="mobileBannerImage" class="form-control" accept="image/*" />
+                                    <small class="text-muted">Recommended: 600x300px</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Colors -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-palette me-2"></i>Theme Colors</h5>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="PrimaryColor" class="form-label fw-semibold">Primary Color</label>
+                                    <input asp-for="PrimaryColor" type="color" class="form-control form-control-color w-100" />
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="SecondaryColor" class="form-label fw-semibold">Secondary Color</label>
+                                    <input asp-for="SecondaryColor" type="color" class="form-control form-control-color w-100" />
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="TextColor" class="form-label fw-semibold">Text Color</label>
+                                    <input asp-for="TextColor" type="color" class="form-control form-control-color w-100" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <!-- Settings -->
+                        <div class="card bg-light">
+                            <div class="card-header">
+                                <i class="fas fa-cog me-2"></i>Settings
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="IsActive" class="form-check-input" />
+                                        <label asp-for="IsActive" class="form-check-label fw-semibold">Active</label>
+                                    </div>
+                                    <small class="text-muted">Enable this flash sale</small>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="ShowCountdown" class="form-check-input" />
+                                        <label asp-for="ShowCountdown" class="form-check-label fw-semibold">Show Countdown</label>
+                                    </div>
+                                    <small class="text-muted">Display countdown timer on frontend</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label asp-for="DisplayOrder" class="form-label fw-semibold">Display Order</label>
+                                    <input asp-for="DisplayOrder" type="number" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between pt-3 border-top mt-4">
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-save me-1"></i>Create & Add Products
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

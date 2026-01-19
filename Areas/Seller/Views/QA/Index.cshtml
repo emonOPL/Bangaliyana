@@ -1,0 +1,236 @@
+@model List<Bangaliyana.Models.ProductQuestion>
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = Localizer["ProductQA"].Value;
+    var allCount = (int)ViewBag.AllCount;
+    var pendingCount = (int)ViewBag.PendingCount;
+    var answeredCount = (int)ViewBag.AnsweredCount;
+    var currentStatus = ViewBag.CurrentStatus as string ?? "all";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-question-circle me-2"></i>@Localizer["ProductQA"]</h2>
+            <p class="text-muted mb-0">@Localizer["ManageProductQuestions"]</p>
+        </div>
+    </div>
+
+    <!-- Status Tabs -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link @(currentStatus == "all" ? "active" : "")" asp-action="Index">
+                @Localizer["All"] <span class="badge bg-secondary ms-1">@allCount</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(currentStatus == "pending" ? "active" : "")" asp-action="Index" asp-route-status="pending">
+                <i class="fas fa-clock me-1"></i>@Localizer["Pending"] <span class="badge bg-warning text-dark ms-1">@pendingCount</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(currentStatus == "answered" ? "active" : "")" asp-action="Index" asp-route-status="answered">
+                <i class="fas fa-check me-1"></i>@Localizer["Answered"] <span class="badge bg-success ms-1">@answeredCount</span>
+            </a>
+        </li>
+    </ul>
+
+    @if (!Model.Any())
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-inbox text-muted fs-1 mb-3"></i>
+                <h5 class="text-muted">@Localizer["NoQuestionsFound"]</h5>
+                <p class="text-muted mb-0">@Localizer["QuestionsWillAppearHere"]</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 30%;">@Localizer["Product"]</th>
+                            <th style="width: 30%;">@Localizer["Question"]</th>
+                            <th style="width: 15%;">@Localizer["Customer"]</th>
+                            <th style="width: 10%;">@Localizer["Status"]</th>
+                            <th style="width: 15%;" class="text-end">@Localizer["Actions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var question in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        @if (question.Product != null)
+                                        {
+                                            var imgUrl = !string.IsNullOrEmpty(question.Product.ImageUrl)
+                                                ? (question.Product.ImageUrl.StartsWith("/") ? question.Product.ImageUrl : "/" + question.Product.ImageUrl)
+                                                : "/images/products/noimage.jpg";
+                                            <img src="@imgUrl"
+                                                 alt="@question.Product.Name"
+                                                 class="rounded me-2"
+                                                 style="width: 50px; height: 50px; object-fit: cover;"
+                                                 onerror="this.src='/images/products/noimage.jpg'">
+                                            <div>
+                                                <a href="@Url.Action("Details", "Home", new { area = "Customer", id = question.ProductId })"
+                                                   class="fw-semibold text-decoration-none text-truncate d-block"
+                                                   style="max-width: 200px;" target="_blank">
+                                                    @question.Product.Name
+                                                </a>
+                                                <small class="text-muted">@Localizer["SKU"]: @(question.Product.SKU ?? $"#{question.ProductId}")</small>
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 250px;" title="@question.Question">
+                                        @question.Question
+                                    </div>
+                                    @if (question.IsAnswered && !string.IsNullOrEmpty(question.Answer))
+                                    {
+                                        <small class="text-success d-block text-truncate" style="max-width: 250px;">
+                                            <i class="fas fa-reply me-1"></i>@question.Answer
+                                        </small>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="fw-semibold">@(question.User?.FirstName ?? Localizer["Anonymous"].Value)</span>
+                                    <br />
+                                    <small class="text-muted">@question.CreatedAt.ToBangladeshShortDateString()</small>
+                                </td>
+                                <td>
+                                    @if (question.IsAnswered)
+                                    {
+                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>@Localizer["Answered"]</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>@Localizer["Pending"]</span>
+                                    }
+                                    <br />
+                                    @if (question.IsApproved)
+                                    {
+                                        <span class="badge bg-info mt-1"><i class="fas fa-eye me-1"></i>@Localizer["Visible"]</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary mt-1"><i class="fas fa-eye-slash me-1"></i>@Localizer["Hidden"]</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group">
+                                        @if (!question.IsAnswered)
+                                        {
+                                            <a asp-action="Answer" asp-route-id="@question.Id" class="btn btn-sm btn-success" title="@Localizer["WriteAnswer"]">
+                                                <i class="fas fa-comment-dots"></i>
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@question.Id" class="btn btn-sm btn-outline-primary" title="@Localizer["EditAnswer"]">
+                                                <i class="fas fa-pen"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm @(question.IsApproved ? "btn-outline-warning" : "btn-outline-success")"
+                                                    onclick="toggleApproval(@question.Id, this)"
+                                                    title="@(question.IsApproved ? Localizer["HideFromProductPage"].Value : Localizer["ShowOnProductPage"].Value)">
+                                                <i class="fas @(question.IsApproved ? "fa-eye-slash" : "fa-eye")"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    onclick="confirmDeleteAnswer(@question.Id)" title="@Localizer["DeleteAnswer"]">
+                                                <i class="fas fa-eraser"></i>
+                                            </button>
+                                        }
+                                        <a href="@Url.Action("Details", "Home", new { area = "Customer", id = question.ProductId })"
+                                           class="btn btn-sm btn-outline-secondary" target="_blank" title="@Localizer["ViewProduct"]">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Delete Answer Confirmation Modal -->
+<div class="modal fade" id="deleteAnswerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-danger">
+                        <i class="fas fa-trash-alt" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">@Localizer["DeleteAnswerQuestion"]</h4>
+                <p class="text-muted mb-1">@Localizer["ConfirmDeleteAnswer"]</p>
+                <p class="text-muted small mb-0">@Localizer["QuestionWillRemainPending"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <form id="deleteAnswerForm" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="fas fa-trash-alt me-1"></i> @Localizer["DeleteAnswer"]
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function confirmDeleteAnswer(id) {
+            document.getElementById('deleteAnswerForm').action = '@Url.Action("DeleteAnswer", "QA", new { area = "Seller" })/' + id;
+            new bootstrap.Modal(document.getElementById('deleteAnswerModal')).show();
+        }
+
+        function toggleApproval(id, btn) {
+            fetch('@Url.Action("ToggleApproval", "QA", new { area = "Seller" })/' + id, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const icon = btn.querySelector('i');
+                    if (data.isApproved) {
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                        btn.title = '@Localizer["HideFromProductPage"]';
+                    } else {
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                        btn.title = '@Localizer["ShowOnProductPage"]';
+                    }
+                    location.reload();
+                } else {
+                    alert(data.error || '@Localizer["FailedToUpdate"]');
+                }
+            });
+        }
+
+        // Show success/error messages
+        @if (TempData["success"] != null)
+        {
+            <text>alertify.success('@TempData["success"]');</text>
+        }
+        @if (TempData["error"] != null)
+        {
+            <text>alertify.error('@TempData["error"]');</text>
+        }
+    </script>
+}

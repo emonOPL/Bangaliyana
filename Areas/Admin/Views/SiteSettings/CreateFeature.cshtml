@@ -1,0 +1,73 @@
+@model Bangaliyana.Models.Feature
+@{ ViewData["Title"] = "Add Feature"; }
+
+<div class="container px-4">
+    <h1 class="mt-4"><i class="fas fa-plus me-2"></i>Add Feature</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a asp-action="Index">Site Settings</a></li>
+        <li class="breadcrumb-item"><a asp-action="Features">Features</a></li>
+        <li class="breadcrumb-item active">Create</li>
+    </ol>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="CreateFeature" method="post" enctype="multipart/form-data">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Title" class="form-label"></label>
+                        <input asp-for="Title" class="form-control" />
+                        <span asp-validation-for="Title" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Section" class="form-label"></label>
+                        <select asp-for="Section" asp-items="Html.GetEnumSelectList<Bangaliyana.Models.FeatureSection>()" class="form-select"></select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label"></label>
+                    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="IconClass" class="form-label"></label>
+                        <input asp-for="IconClass" class="form-control" value="fas fa-star" />
+                        <small class="text-muted">Font Awesome class</small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="IconColor" class="form-label"></label>
+                        <input asp-for="IconColor" class="form-control form-control-color" type="color" value="#6366f1" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Image (optional)</label>
+                        <input type="file" name="imageFile" class="form-control" accept="image/*" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="LinkUrl" class="form-label"></label>
+                        <input asp-for="LinkUrl" class="form-control" placeholder="https://..." />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="LinkText" class="form-label"></label>
+                        <input asp-for="LinkText" class="form-control" placeholder="Learn More" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="DisplayOrder" class="form-label"></label>
+                        <input asp-for="DisplayOrder" class="form-control" type="number" value="0" />
+                    </div>
+                </div>
+                <div class="form-check mb-3">
+                    <input asp-for="IsActive" class="form-check-input" type="checkbox" checked />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                </div>
+                <hr />
+                <div class="d-flex justify-content-between">
+                    <a asp-action="Features" class="btn btn-secondary"><i class="fas fa-arrow-left me-1"></i> Back</a>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

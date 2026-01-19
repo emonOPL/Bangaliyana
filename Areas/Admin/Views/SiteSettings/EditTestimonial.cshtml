@@ -1,0 +1,72 @@
+@model Bangaliyana.Models.Testimonial
+@{ ViewData["Title"] = "Edit Testimonial"; }
+
+<div class="container px-4">
+    <h1 class="mt-4"><i class="fas fa-edit me-2"></i>Edit Testimonial</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a asp-action="Index">Site Settings</a></li>
+        <li class="breadcrumb-item"><a asp-action="Testimonials">Testimonials</a></li>
+        <li class="breadcrumb-item active">Edit</li>
+    </ol>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="EditTestimonial" method="post" enctype="multipart/form-data">
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="CreatedAt" />
+                <input type="hidden" asp-for="PhotoUrl" />
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="CustomerName" class="form-label"></label>
+                        <input asp-for="CustomerName" class="form-control" />
+                        <span asp-validation-for="CustomerName" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="CustomerTitle" class="form-label"></label>
+                        <input asp-for="CustomerTitle" class="form-control" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="CustomerLocation" class="form-label"></label>
+                        <input asp-for="CustomerLocation" class="form-control" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Content" class="form-label"></label>
+                    <textarea asp-for="Content" class="form-control" rows="4"></textarea>
+                    <span asp-validation-for="Content" class="text-danger"></span>
+                </div>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label asp-for="Rating" class="form-label"></label>
+                        <select asp-for="Rating" class="form-select">
+                            @for(int i=5;i>=1;i--){ <option value="@i">@i Star@(i>1?"s":"")</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Photo</label>
+                        @if (!string.IsNullOrEmpty(Model.PhotoUrl)) { <div class="mb-2"><img src="~/@Model.PhotoUrl" class="rounded-circle" style="width:50px;height:50px;object-fit:cover;" /></div> }
+                        <input type="file" name="photoFile" class="form-control" accept="image/*" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label asp-for="DisplayOrder" class="form-label"></label>
+                        <input asp-for="DisplayOrder" class="form-control" type="number" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Options</label>
+                        <div class="d-flex gap-3 mt-2">
+                            <div class="form-check"><input asp-for="IsActive" class="form-check-input" type="checkbox" /><label asp-for="IsActive" class="form-check-label"></label></div>
+                            <div class="form-check"><input asp-for="IsFeatured" class="form-check-input" type="checkbox" /><label asp-for="IsFeatured" class="form-check-label"></label></div>
+                        </div>
+                    </div>
+                </div>
+                <hr />
+                <div class="d-flex justify-content-between">
+                    <a asp-action="Testimonials" class="btn btn-secondary"><i class="fas fa-arrow-left me-1"></i> Back</a>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

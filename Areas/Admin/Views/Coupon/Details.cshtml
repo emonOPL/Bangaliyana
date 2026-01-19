@@ -1,0 +1,475 @@
+@model Bangaliyana.Models.Coupon
+@{
+    ViewData["Title"] = "Coupon Details";
+    var now = DateTime.UtcNow;
+    var isExpired = Model.EndDate.HasValue && Model.EndDate < now;
+    var isScheduled = Model.StartDate.HasValue && Model.StartDate > now;
+    var isLimitReached = Model.UsageLimit.HasValue && Model.TimesUsed >= Model.UsageLimit;
+    var isActive = Model.IsActive && !isExpired && !isScheduled && !isLimitReached;
+
+    var statusClass = isActive ? "bg-success" : (isExpired ? "bg-danger" : (isScheduled ? "bg-info" : (!Model.IsActive ? "bg-secondary" : "bg-warning")));
+    var statusText = isActive ? "Active" : (isExpired ? "Expired" : (isScheduled ? "Scheduled" : (!Model.IsActive ? "Inactive" : "Limit Reached")));
+}
+
+<style>
+    .coupon-card {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 16px;
+        color: white;
+        padding: 30px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .coupon-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    }
+
+    .coupon-code {
+        font-family: 'Courier New', monospace;
+        font-size: 2.5rem;
+        font-weight: bold;
+        letter-spacing: 4px;
+        background: rgba(255,255,255,0.2);
+        padding: 10px 25px;
+        border-radius: 8px;
+        display: inline-block;
+    }
+
+    .discount-value {
+        font-size: 4rem;
+        font-weight: bold;
+        line-height: 1;
+    }
+
+    .info-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .info-item {
+        padding: 12px 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .info-item:last-child {
+        border-bottom: none;
+    }
+
+    .usage-progress {
+        height: 10px;
+        border-radius: 5px;
+    }
+
+    [data-theme="dark"] .info-card {
+        background: #2a2a3d;
+    }
+
+    [data-theme="dark"] .info-item {
+        border-color: #444;
+    }
+
+    [data-theme="dark"] .table {
+        color: var(--bs-light);
+    }
+</style>
+
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Coupons</a></li>
+            <li class="breadcrumb-item active">@Model.Code</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Left Column - Coupon Info -->
+        <div class="col-lg-8">
+            <!-- Coupon Card -->
+            <div class="coupon-card mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+                        <div class="coupon-code">@Model.Code</div>
+                        @if (!string.IsNullOrEmpty(Model.Description))
+                        {
+                            <p class="mt-3 mb-0 opacity-75">@Model.Description</p>
+                        }
+                    </div>
+                    <div class="col-md-6 text-center text-md-end">
+                        <div class="discount-value">
+                            @if (Model.DiscountType == Bangaliyana.Models.DiscountType.Percentage)
+                            {
+                                @($"{Model.DiscountValue}%")
+                            }
+                            else
+                            {
+                                @($"৳{Model.DiscountValue:N0}")
+                            }
+                        </div>
+                        <div class="opacity-75">
+                            @(Model.DiscountType == Bangaliyana.Models.DiscountType.Percentage ? "Percentage Off" : "Fixed Discount")
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Details Card -->
+            <div class="card info-card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-info-circle me-2"></i>Coupon Details
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-item d-flex justify-content-between">
+                                <span class="text-muted">Discount Type</span>
+                                <span class="fw-semibold">
+                                    @if (Model.DiscountType == Bangaliyana.Models.DiscountType.Percentage)
+                                    {
+                                        <span class="badge bg-primary">Percentage</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">Fixed Amount</span>
+                                    }
+                                </span>
+                            </div>
+                            <div class="info-item d-flex justify-content-between">
+                                <span class="text-muted">Discount Value</span>
+                                <span class="fw-semibold">
+                                    @if (Model.DiscountType == Bangaliyana.Models.DiscountType.Percentage)
+                                    {
+                                        @($"{Model.DiscountValue}%")
+                                    }
+                                    else
+                                    {
+                                        @($"৳{Model.DiscountValue:N0}")
+                                    }
+                                </span>
+                            </div>
+                            @if (Model.MaximumDiscountAmount.HasValue)
+                            {
+                                <div class="info-item d-flex justify-content-between">
+                                    <span class="text-muted">Max Discount</span>
+                                    <span class="fw-semibold">৳@Model.MaximumDiscountAmount.Value.ToString("N0")</span>
+                                </div>
+                            }
+                            @if (Model.MinimumOrderAmount.HasValue)
+                            {
+                                <div class="info-item d-flex justify-content-between">
+                                    <span class="text-muted">Min Order Amount</span>
+                                    <span class="fw-semibold">৳@Model.MinimumOrderAmount.Value.ToString("N0")</span>
+                                </div>
+                            }
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item d-flex justify-content-between">
+                                <span class="text-muted">Start Date</span>
+                                <span class="fw-semibold">
+                                    @(Model.StartDate.HasValue ? Model.StartDate.Value.ToString("MMM dd, yyyy hh:mm tt") : "Immediate")
+                                </span>
+                            </div>
+                            <div class="info-item d-flex justify-content-between">
+                                <span class="text-muted">End Date</span>
+                                <span class="fw-semibold">
+                                    @(Model.EndDate.HasValue ? Model.EndDate.Value.ToString("MMM dd, yyyy hh:mm tt") : "No Expiry")
+                                </span>
+                            </div>
+                            <div class="info-item d-flex justify-content-between">
+                                <span class="text-muted">Created</span>
+                                <span class="fw-semibold">@Model.CreatedAt.ToString("MMM dd, yyyy")</span>
+                            </div>
+                            <div class="info-item d-flex justify-content-between">
+                                <span class="text-muted">Last Updated</span>
+                                <span class="fw-semibold">@Model.UpdatedAt.ToString("MMM dd, yyyy")</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Restrictions Card -->
+            <div class="card info-card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-filter me-2"></i>Restrictions
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-item d-flex justify-content-between">
+                                <span class="text-muted">First Order Only</span>
+                                <span>
+                                    @if (Model.IsFirstOrderOnly)
+                                    {
+                                        <span class="badge bg-warning text-dark"><i class="fas fa-check me-1"></i>Yes</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">No</span>
+                                    }
+                                </span>
+                            </div>
+                            <div class="info-item d-flex justify-content-between">
+                                <span class="text-muted">Category</span>
+                                <span class="fw-semibold">
+                                    @if (Model.CategoryId.HasValue)
+                                    {
+                                        <span class="badge bg-info">@(Model.Category?.Name ?? "Specific Category")</span>
+                                    }
+                                    else
+                                    {
+                                        <text>All Categories</text>
+                                    }
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item d-flex justify-content-between">
+                                <span class="text-muted">Seller</span>
+                                <span class="fw-semibold">
+                                    @if (Model.SellerId.HasValue)
+                                    {
+                                        <span class="badge bg-purple" style="background-color: #9333ea;">@(Model.Seller?.ShopName ?? "Specific Seller")</span>
+                                    }
+                                    else
+                                    {
+                                        <text>All Sellers</text>
+                                    }
+                                </span>
+                            </div>
+                            <div class="info-item d-flex justify-content-between">
+                                <span class="text-muted">Assigned User</span>
+                                <span class="fw-semibold">
+                                    @if (!string.IsNullOrEmpty(Model.AssignedToUserId))
+                                    {
+                                        <span class="badge bg-dark">@(Model.AssignedToUser?.Email ?? "Specific User")</span>
+                                    }
+                                    else
+                                    {
+                                        <text>All Users</text>
+                                    }
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage History -->
+            @if (Model.Usages != null && Model.Usages.Any())
+            {
+                <div class="card info-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-history me-2"></i>Usage History</span>
+                        <span class="badge bg-primary">@Model.Usages.Count uses</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Order</th>
+                                        <th class="text-end">Discount</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var usage in Model.Usages.OrderByDescending(u => u.UsedAt).Take(20))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span class="fw-medium">@(usage.User?.FullName ?? "Unknown")</span>
+                                                <br /><small class="text-muted">@(usage.User?.Email ?? "")</small>
+                                            </td>
+                                            <td>
+                                                @if (usage.Order != null)
+                                                {
+                                                    <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@usage.OrderId" class="text-decoration-none">
+                                                        #@usage.Order.OrderNumber
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">N/A</span>
+                                                }
+                                            </td>
+                                            <td class="text-end fw-semibold text-success">৳@usage.DiscountAmount.ToString("N0")</td>
+                                            <td>
+                                                <small>@usage.UsedAt.ToString("MMM dd, yyyy")<br />@usage.UsedAt.ToString("hh:mm tt")</small>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        @if (Model.Usages.Count > 20)
+                        {
+                            <div class="text-center py-3 border-top">
+                                <span class="text-muted">Showing 20 of @Model.Usages.Count uses</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card info-card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Usage Yet</h5>
+                        <p class="text-muted mb-0">This coupon hasn't been used by any customer</p>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Right Column - Status & Actions -->
+        <div class="col-lg-4">
+            <div class="sticky-top" style="top: 20px;">
+                <!-- Status Card -->
+                <div class="card info-card mb-3">
+                    <div class="card-header">
+                        <i class="fas fa-toggle-on me-2"></i>Status
+                    </div>
+                    <div class="card-body text-center">
+                        <span class="badge @statusClass fs-5 px-4 py-2 mb-3">@statusText</span>
+                        @if (isExpired)
+                        {
+                            <p class="text-danger small mb-0"><i class="fas fa-exclamation-circle me-1"></i>This coupon has expired</p>
+                        }
+                        else if (isScheduled)
+                        {
+                            <p class="text-info small mb-0"><i class="fas fa-clock me-1"></i>Starts on @Model.StartDate?.ToString("MMM dd, yyyy")</p>
+                        }
+                        else if (isLimitReached)
+                        {
+                            <p class="text-warning small mb-0"><i class="fas fa-exclamation-triangle me-1"></i>Usage limit reached</p>
+                        }
+                        else if (!Model.IsActive)
+                        {
+                            <p class="text-secondary small mb-0"><i class="fas fa-power-off me-1"></i>Coupon is deactivated</p>
+                        }
+                    </div>
+                </div>
+
+                <!-- Usage Stats Card -->
+                <div class="card info-card mb-3">
+                    <div class="card-header">
+                        <i class="fas fa-chart-pie me-2"></i>Usage Statistics
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-3">
+                            <span class="display-4 fw-bold text-primary">@Model.TimesUsed</span>
+                            <span class="text-muted">
+                                / @(Model.UsageLimit.HasValue ? Model.UsageLimit.ToString() : "∞")
+                            </span>
+                            <div class="text-muted small">Times Used</div>
+                        </div>
+
+                        @if (Model.UsageLimit.HasValue)
+                        {
+                            var percentage = (Model.TimesUsed * 100.0 / Model.UsageLimit.Value);
+                            var barClass = percentage >= 90 ? "bg-danger" : (percentage >= 70 ? "bg-warning" : "bg-success");
+                            <div class="progress usage-progress mb-2">
+                                <div class="progress-bar @barClass" style="width: @percentage%"></div>
+                            </div>
+                            <div class="text-center text-muted small">
+                                @(Model.UsageLimit.Value - Model.TimesUsed) uses remaining
+                            </div>
+                        }
+
+                        @if (Model.UsagePerUserLimit.HasValue)
+                        {
+                            <hr />
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Per User Limit</span>
+                                <span class="fw-semibold">@Model.UsagePerUserLimit</span>
+                            </div>
+                        }
+
+                        @if (Model.Usages != null && Model.Usages.Any())
+                        {
+                            <hr />
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Total Discount Given</span>
+                                <span class="fw-semibold text-success">৳@Model.Usages.Sum(u => u.DiscountAmount).ToString("N0")</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Actions Card -->
+                <div class="card info-card">
+                    <div class="card-header">
+                        <i class="fas fa-cog me-2"></i>Actions
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                                <i class="fas fa-edit me-1"></i> Edit Coupon
+                            </a>
+                            <form asp-action="ToggleActive" asp-route-id="@Model.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn @(Model.IsActive ? "btn-outline-secondary" : "btn-outline-success") w-100">
+                                    <i class="fas @(Model.IsActive ? "fa-toggle-off" : "fa-toggle-on") me-1"></i>
+                                    @(Model.IsActive ? "Deactivate" : "Activate")
+                                </button>
+                            </form>
+                            @if (Model.TimesUsed == 0)
+                            {
+                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                    <i class="fas fa-trash me-1"></i> Delete Coupon
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-outline-danger" disabled title="Cannot delete coupon that has been used">
+                                    <i class="fas fa-trash me-1"></i> Delete Coupon
+                                </button>
+                                <small class="text-muted text-center">Cannot delete used coupons</small>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-trash-alt text-danger" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">Delete Coupon?</h4>
+                <p class="text-muted mb-1">Are you sure you want to delete coupon "<span class="fw-semibold">@Model.Code</span>"?</p>
+                <p class="text-muted small mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 py-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="m-0 d-inline-flex">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

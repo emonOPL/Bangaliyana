@@ -1,0 +1,85 @@
+@using Bangaliyana.Models
+@model Bangaliyana.Models.Seller
+@{
+    ViewData["Title"] = "Inventory Alert Settings";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Inventory</a></li>
+            <li class="breadcrumb-item active">Alert Settings</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-bell text-primary me-2"></i>Low Stock Alert Settings</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-4">
+                Configure when and how you want to receive notifications about low stock products.
+            </p>
+
+            <form asp-action="Settings" method="post">
+                <!-- Low Stock Threshold -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Low Stock Threshold</label>
+                    <div class="input-group" style="max-width: 200px;">
+                        <input type="number" name="lowStockThreshold" class="form-control"
+                               value="@Model.LowStockThreshold" min="1" max="100" required>
+                        <span class="input-group-text">units</span>
+                    </div>
+                    <div class="form-text">
+                        Products with stock at or below this number will be marked as "Low Stock".
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <h6 class="fw-semibold mb-3">Notification Channels</h6>
+
+                <!-- Email Alerts -->
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" name="enableLowStockEmailAlerts"
+                           id="emailAlerts" value="true" @(Model.EnableLowStockEmailAlerts ? "checked" : "")>
+                    <label class="form-check-label" for="emailAlerts">
+                        <i class="fas fa-envelope text-muted me-2"></i>
+                        Email Notifications
+                    </label>
+                    <div class="form-text ms-4">
+                        Receive a daily email summary of low stock and out-of-stock products.
+                    </div>
+                </div>
+
+                <!-- In-App Alerts -->
+                <div class="form-check form-switch mb-4">
+                    <input class="form-check-input" type="checkbox" name="enableLowStockInAppAlerts"
+                           id="inAppAlerts" value="true" @(Model.EnableLowStockInAppAlerts ? "checked" : "")>
+                    <label class="form-check-label" for="inAppAlerts">
+                        <i class="fas fa-bell text-muted me-2"></i>
+                        In-App Notifications
+                    </label>
+                    <div class="form-text ms-4">
+                        Receive in-app notifications about inventory alerts.
+                    </div>
+                </div>
+
+                <div class="alert alert-info small">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Low stock alerts are sent daily at 9:00 AM Bangladesh time. Out-of-stock products
+                    are always included in the alert regardless of the threshold setting.
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

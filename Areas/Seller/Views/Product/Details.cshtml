@@ -1,0 +1,542 @@
+@model Bangaliyana.Models.Products
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+
+@{
+    ViewData["Title"] = "Product Details";
+    var averageRating = Model.Reviews?.Any() == true ? Model.Reviews.Average(r => r.Rating) : 0;
+    var totalReviews = Model.Reviews?.Count ?? 0;
+    var orderCount = (int)(ViewBag.OrderCount ?? 0);
+    var reviewCount = (int)(ViewBag.ReviewCount ?? 0);
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-box text-primary me-2"></i>Product Details</h1>
+            <p class="text-muted mb-0">View complete information about your product</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Products
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Left Column - Product Images -->
+        <div class="col-lg-5 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <img src="~/@(Model.ImageUrl ?? "images/products/noimage.jpg")" alt="@Model.Name"
+                         class="img-fluid rounded-top w-100 main-product-image"
+                         style="max-height: 400px; object-fit: contain; background: #f8f9fa;" />
+                </div>
+                @if (Model.Images != null && Model.Images.Any())
+                {
+                    <div class="card-footer bg-light">
+                        <div class="d-flex flex-wrap gap-2 justify-content-center">
+                            @foreach (var img in Model.Images.OrderBy(i => i.DisplayOrder))
+                            {
+                                <img src="~/@img.ImageUrl" alt="Gallery" class="rounded border gallery-thumb"
+                                     style="width: 70px; height: 70px; object-fit: cover; cursor: pointer;"
+                                     onclick="document.querySelector('.main-product-image').src = '/@img.ImageUrl'" />
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Statistics Card -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Product Statistics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fw-bold text-primary fs-3">@Model.ViewCount</div>
+                            <small class="text-muted">Views</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold text-success fs-3">@Model.SoldCount</div>
+                            <small class="text-muted">Sold</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold text-warning fs-3">@reviewCount</div>
+                            <small class="text-muted">Reviews</small>
+                        </div>
+                    </div>
+                    @if (reviewCount > 0)
+                    {
+                        <hr />
+                        <div class="text-center">
+                            <div class="d-flex align-items-center justify-content-center">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    if (i <= averageRating)
+                                    {
+                                        <i class="fas fa-star text-warning"></i>
+                                    }
+                                    else if (i - 0.5 <= averageRating)
+                                    {
+                                        <i class="fas fa-star-half-alt text-warning"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="far fa-star text-warning"></i>
+                                    }
+                                }
+                                <span class="ms-2 fw-bold">@averageRating.ToString("F1")</span>
+                            </div>
+                            <small class="text-muted">Average Rating</small>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Order Stats Card -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Order Statistics</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="fw-bold text-success fs-2">@orderCount</div>
+                    <small class="text-muted">Total Orders</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Product Details -->
+        <div class="col-lg-7">
+            <!-- Header Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h3 class="mb-2">@Model.Name</h3>
+                            @if (!string.IsNullOrEmpty(Model.Brand))
+                            {
+                                <span class="badge bg-secondary me-2">@Model.Brand</span>
+                            }
+                            <span class="badge @(Model.Status == ProductStatus.Active ? "bg-success" : Model.Status == ProductStatus.Draft ? "bg-secondary" : "bg-warning text-dark")">
+                                @Model.Status.GetDisplayName()
+                            </span>
+                            @if (Model.IsFeatured)
+                            {
+                                <span class="badge bg-info ms-2"><i class="fas fa-star me-1"></i>Featured</span>
+                            }
+                            @if (!Model.IsAvailable)
+                            {
+                                <span class="badge bg-danger ms-2">Hidden</span>
+                            }
+                        </div>
+                        <div class="text-end">
+                            @if (Model.HasDiscount)
+                            {
+                                <div class="text-muted text-decoration-line-through fs-5">৳@Model.Price.ToString("N0")</div>
+                                <div class="text-success fw-bold fs-3">৳@Model.DiscountPrice?.ToString("N0")</div>
+                                <span class="badge bg-danger">-@Model.DiscountPercentage% OFF</span>
+                            }
+                            else
+                            {
+                                <div class="text-success fw-bold fs-3">৳@Model.Price.ToString("N0")</div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Quick Info -->
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <small class="text-muted">Stock</small>
+                            <div class="fw-semibold @(Model.Stock > 0 ? (Model.Stock <= 5 ? "text-warning" : "text-success") : "text-danger")">
+                                @(Model.Stock > 0 ? $"{Model.Stock} units" : "Out of Stock")
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <small class="text-muted">SKU</small>
+                            <div class="fw-semibold">@(Model.SKU ?? "N/A")</div>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <small class="text-muted">Availability</small>
+                            <div class="fw-semibold @(Model.IsAvailable ? "text-success" : "text-danger")">
+                                @(Model.IsAvailable ? "Visible" : "Hidden")
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Description Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-align-left text-info me-2"></i>Description</h6>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.ShortDescription))
+                    {
+                        <p class="fw-semibold text-muted">@Model.ShortDescription</p>
+                        <hr />
+                    }
+                    <p class="mb-0" style="white-space: pre-line;">@Model.Description</p>
+
+                    @if (!string.IsNullOrEmpty(Model.DescriptionBengali))
+                    {
+                        <hr />
+                        <h6 class="text-muted"><i class="fas fa-language me-2"></i>Bengali Description</h6>
+                        <p class="mb-0" style="white-space: pre-line;">@Model.DescriptionBengali</p>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.DescriptionEnglish))
+                    {
+                        <hr />
+                        <h6 class="text-muted"><i class="fas fa-language me-2"></i>English Description</h6>
+                        <p class="mb-0" style="white-space: pre-line;">@Model.DescriptionEnglish</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Highlights Card -->
+            @if (!string.IsNullOrEmpty(Model.Highlights))
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-check-circle text-success me-2"></i>Product Highlights</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            @foreach (var highlight in Model.Highlights.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <li>@highlight.Trim()</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+
+            <!-- Category & Classification Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-folder-open text-primary me-2"></i>Category & Classification</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Category</small>
+                            <span class="fw-semibold">@(Model.Category?.Name ?? "N/A")</span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Tags</small>
+                            <span class="fw-semibold">@(string.IsNullOrEmpty(Model.Tags) ? "N/A" : Model.Tags)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Details Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-clipboard-list text-warning me-2"></i>Product Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">Brand</small>
+                            <span class="fw-semibold">@(Model.Brand ?? "N/A")</span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">Manufacturer</small>
+                            <span class="fw-semibold">@(Model.Manufacturer ?? "N/A")</span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">Country of Origin</small>
+                            <span class="fw-semibold">@(Model.CountryOfOrigin ?? "N/A")</span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">Fabric/Material</small>
+                            <span class="fw-semibold">@(Model.Fabric ?? "N/A")</span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">Weight</small>
+                            <span class="fw-semibold">@(Model.Weight.HasValue ? $"{Model.Weight}g" : "N/A")</span>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.CareInstructions))
+                    {
+                        <hr />
+                        <h6 class="text-muted"><i class="fas fa-hand-holding-heart me-2"></i>Care Instructions</h6>
+                        <p class="mb-0">@Model.CareInstructions</p>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.WarrantyInfo))
+                    {
+                        <hr />
+                        <h6 class="text-muted"><i class="fas fa-shield-alt me-2"></i>Warranty Information</h6>
+                        <p class="mb-0">@Model.WarrantyInfo</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Product Variants Card -->
+            @if (Model.Variants != null && Model.Variants.Any())
+            {
+                <div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #6f42c1 !important;">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-palette me-2" style="color: #6f42c1;"></i>Product Variants</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Size</th>
+                                        <th>Color</th>
+                                        <th>SKU</th>
+                                        <th class="text-center">Stock</th>
+                                        <th class="text-end">Additional Price</th>
+                                        <th class="text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var variant in Model.Variants.OrderBy(v => v.DisplayOrder))
+                                    {
+                                        <tr>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(variant.Size))
+                                                {
+                                                    <span class="badge bg-secondary">@variant.Size</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(variant.Color))
+                                                {
+                                                    <div class="d-flex align-items-center">
+                                                        @if (!string.IsNullOrEmpty(variant.ColorCode))
+                                                        {
+                                                            <span style="background-color: @variant.ColorCode; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #ddd; display: inline-block; margin-right: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></span>
+                                                        }
+                                                        <span>@variant.Color</span>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td><code class="small">@(variant.SKU ?? "-")</code></td>
+                                            <td class="text-center">
+                                                <span class="badge @(variant.Stock > 0 ? "bg-success" : "bg-danger")">@variant.Stock</span>
+                                            </td>
+                                            <td class="text-end">
+                                                @if (variant.AdditionalPrice > 0)
+                                                {
+                                                    <span class="text-success fw-semibold">+৳@variant.AdditionalPrice.ToString("N0")</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                @if (variant.IsAvailable)
+                                                {
+                                                    <span class="badge bg-success"><i class="fas fa-check"></i> Active</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary"><i class="fas fa-times"></i> Inactive</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3 text-muted small">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Total @Model.Variants.Count variant(s) available
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Shipping & Returns Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-truck text-info me-2"></i>Shipping & Returns</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">Estimated Delivery</small>
+                            <span class="fw-semibold">@(!string.IsNullOrEmpty(Model.EstimatedDeliveryDays) ? $"{Model.EstimatedDeliveryDays} days" : "3-5 days")</span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">Returnable</small>
+                            <span class="fw-semibold @(Model.IsReturnable ? "text-success" : "text-danger")">
+                                @(Model.IsReturnable ? $"Yes ({Model.ReturnDays} days)" : "No")
+                            </span>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <small class="text-muted d-block">Cash on Delivery</small>
+                            <span class="fw-semibold @(Model.IsCODAvailable ? "text-success" : "text-danger")">
+                                @(Model.IsCODAvailable ? "Available" : "Not Available")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Media Card -->
+            @if (!string.IsNullOrEmpty(Model.VideoUrl) || Model.Has360View)
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-video text-danger me-2"></i>Media</h6>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(Model.VideoUrl))
+                        {
+                            <div class="mb-3">
+                                <small class="text-muted d-block">Video URL</small>
+                                <a href="@Model.VideoUrl" target="_blank" class="text-info">@Model.VideoUrl</a>
+                            </div>
+                        }
+                        @if (Model.Has360View && !string.IsNullOrEmpty(Model.View360Url))
+                        {
+                            <div>
+                                <small class="text-muted d-block">360° View URL</small>
+                                <a href="@Model.View360Url" target="_blank" class="text-info">@Model.View360Url</a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Timestamps Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-clock text-secondary me-2"></i>Timestamps</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">Created At</small>
+                            <span class="fw-semibold">@Model.CreatedAt.ToBangladeshString("dd MMM yyyy, hh:mm tt")</span>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">Last Updated</small>
+                            <span class="fw-semibold">@Model.UpdatedAt.ToBangladeshString("dd MMM yyyy, hh:mm tt")</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex justify-content-between align-items-center">
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to List
+                </a>
+                <div>
+                    <a asp-area="Customer" asp-controller="Home" asp-action="Details" asp-route-id="@Model.Id"
+                       class="btn btn-outline-info me-2" target="_blank">
+                        <i class="fas fa-external-link-alt me-2"></i>View in Store
+                    </a>
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary me-2">
+                        <i class="fas fa-edit me-2"></i>Edit Product
+                    </a>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="fas fa-trash me-2"></i>Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-danger">
+                        <i class="fas fa-trash-alt" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">Delete Product?</h4>
+                <p class="text-muted mb-1">Are you sure you want to delete "<strong>@Model.Name</strong>"?</p>
+                <p class="text-muted small mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="fas fa-check me-1"></i> Yes, Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .gallery-thumb:hover {
+        border-color: var(--primary-color) !important;
+        transform: scale(1.05);
+        transition: all 0.2s ease;
+    }
+
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .card-header.bg-light {
+        background-color: #374151 !important;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .card-footer.bg-light {
+        background-color: #374151 !important;
+    }
+
+    [data-theme="dark"] .text-muted {
+        color: #9ca3af !important;
+    }
+
+    [data-theme="dark"] .modal-content {
+        background-color: #1f2937;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .confirm-modal-content {
+        background-color: #1f2937;
+    }
+
+    [data-theme="dark"] .main-product-image {
+        background-color: #374151 !important;
+    }
+</style>

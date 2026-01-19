@@ -1,0 +1,201 @@
+@model Bangaliyana.Models.ManualSellerPayout
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+
+@{
+    ViewData["Title"] = Localizer["PayoutDetails"].Value;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1"><i class="fas fa-receipt text-primary me-2"></i>@Localizer["PayoutDetails"]</h4>
+            <p class="text-muted mb-0">@Localizer["Payout"] #@Model.PayoutNumber</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="EditPayout" asp-route-id="@Model.Id" class="btn btn-warning">
+                <i class="fas fa-edit me-2"></i>@Localizer["Edit"]
+            </a>
+            <a asp-action="SellerPaymentDetails" asp-route-id="@Model.SellerId" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>@Localizer["Back"]
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Payout Info -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2 text-info"></i>@Localizer["PaymentInformation"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">@Localizer["PayoutNumber"]</label>
+                            <p class="fw-bold mb-0">@Model.PayoutNumber</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">@Localizer["Status"]</label>
+                            <p class="mb-0"><span class="badge @Model.StatusBadgeClass">@Model.Status</span></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">@Localizer["Amount"]</label>
+                            <p class="fw-bold text-success fs-5 mb-0">৳@Model.Amount.ToString("N0")</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">@Localizer["PaymentMethod"]</label>
+                            <p class="mb-0">
+                                <span class="badge @(Model.IsBankTransfer ? "bg-primary" : Model.IsMobileBanking ? "bg-success" : "bg-warning")">
+                                    @Model.PaymentMethodDisplay
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">@Localizer["PaymentDate"]</label>
+                            <p class="mb-0">@(Model.PaymentDate?.ToString("dd MMM yyyy") ?? "-")</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">@Localizer["ProcessedBy"]</label>
+                            <p class="mb-0">@(Model.ProcessedByName ?? "-")</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Details -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="fas fa-credit-card me-2 text-primary"></i>@Localizer["PaymentDetails"]</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.IsBankTransfer)
+                    {
+                        <h6 class="text-muted mb-3">@Localizer["BankTransfer"]</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card bg-light mb-3">
+                                    <div class="card-body">
+                                        <h6 class="text-primary"><i class="fas fa-arrow-up me-2"></i>@Localizer["SenderCompany"]</h6>
+                                        <p class="mb-1"><strong>@Localizer["Bank"]:</strong> @(Model.SenderBankName ?? "-")</p>
+                                        <p class="mb-0"><strong>@Localizer["Account"]:</strong> @(Model.SenderAccountNumber ?? "-")</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-light mb-3">
+                                    <div class="card-body">
+                                        <h6 class="text-success"><i class="fas fa-arrow-down me-2"></i>@Localizer["ReceiverSeller"]</h6>
+                                        <p class="mb-1"><strong>@Localizer["Bank"]:</strong> @(Model.BankName ?? "-")</p>
+                                        <p class="mb-1"><strong>@Localizer["Account"]:</strong> @(Model.BankAccountNumber ?? "-")</p>
+                                        <p class="mb-0"><strong>@Localizer["Holder"]:</strong> @(Model.BankAccountHolderName ?? "-")</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="mb-0"><strong>@Localizer["TransactionReference"]:</strong> @(Model.BankTransactionReference ?? "-")</p>
+                    }
+                    else if (Model.IsMobileBanking)
+                    {
+                        <h6 class="text-muted mb-3">@Model.MobileBankingProviderDisplay</h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted small">@Localizer["SenderNumber"]</label>
+                                <p class="mb-0">@(Model.SenderMobileNumber ?? "-")</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="text-muted small">@Localizer["ReceiverNumber"]</label>
+                                <p class="mb-0">@(Model.ReceiverMobileNumber ?? "-")</p>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="text-muted small">@Localizer["TransactionID"]</label>
+                                <p class="mb-0 font-monospace">@(Model.MobileTransactionId ?? "-")</p>
+                            </div>
+                        </div>
+                    }
+                    else if (Model.IsCash)
+                    {
+                        <h6 class="text-muted mb-3">@Localizer["CashPayment"]</h6>
+                        <p class="mb-0"><strong>@Localizer["ReferenceNotes"]:</strong> @(Model.Notes ?? "-")</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Notes -->
+            @if (!string.IsNullOrEmpty(Model.AdminNotes))
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-sticky-note me-2 text-warning"></i>@Localizer["AdminNotes"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">@Model.AdminNotes</p>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Seller Info -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="fas fa-store me-2 text-primary"></i>@Localizer["SellerInformation"]</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="fw-bold">@Model.Seller?.ShopName</h6>
+                    <p class="text-muted mb-1">@Model.Seller?.User?.Email</p>
+                    <p class="text-muted mb-0">@Model.Seller?.User?.PhoneNumber</p>
+                </div>
+            </div>
+
+            <!-- Financial Summary -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="fas fa-calculator me-2 text-success"></i>@Localizer["FinancialSummary"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">@Localizer["TotalSales"]</span>
+                        <span class="fw-bold">৳@Model.TotalSales.ToString("N0")</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">@Localizer["CommissionWithRate", Model.CommissionRate]</span>
+                        <span class="text-danger">-৳@Model.CommissionAmount.ToString("N0")</span>
+                    </div>
+                    <hr />
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-bold">@Localizer["AmountPaid"]</span>
+                        <span class="fw-bold text-success fs-5">৳@Model.Amount.ToString("N0")</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timestamps -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2 text-secondary"></i>@Localizer["Timeline"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <small class="text-muted">@Localizer["Created"]</small>
+                        <p class="mb-0 small">@Model.CreatedAt.ToString("dd MMM yyyy HH:mm")</p>
+                    </div>
+                    @if (Model.CompletedAt.HasValue)
+                    {
+                        <div class="mb-2">
+                            <small class="text-muted">@Localizer["Completed"]</small>
+                            <p class="mb-0 small">@Model.CompletedAt.Value.ToString("dd MMM yyyy HH:mm")</p>
+                        </div>
+                    }
+                    @if (Model.UpdatedAt.HasValue)
+                    {
+                        <div>
+                            <small class="text-muted">@Localizer["LastUpdated"]</small>
+                            <p class="mb-0 small">@Model.UpdatedAt.Value.ToString("dd MMM yyyy HH:mm")</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

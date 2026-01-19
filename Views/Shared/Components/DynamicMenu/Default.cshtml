@@ -1,0 +1,63 @@
+@using Bangaliyana.Models
+@using Bangaliyana.Services
+@model List<MenuItemViewModel>
+
+@{
+    var location = (MenuLocation)ViewBag.MenuLocation;
+}
+
+@if (Model?.Any() == true)
+{
+    switch (location)
+    {
+        case MenuLocation.Navbar:
+            @await Html.PartialAsync("~/Views/Shared/Components/DynamicMenu/_NavbarMenu.cshtml", Model)
+            break;
+
+        case MenuLocation.AdminSidebar:
+            @await Html.PartialAsync("~/Views/Shared/Components/DynamicMenu/_AdminSidebarMenu.cshtml", Model)
+            break;
+
+        case MenuLocation.UserDropdown:
+            @await Html.PartialAsync("~/Views/Shared/Components/DynamicMenu/_UserDropdownMenu.cshtml", Model)
+            break;
+
+        case MenuLocation.Footer:
+            @await Html.PartialAsync("~/Views/Shared/Components/DynamicMenu/_FooterMenu.cshtml", Model)
+            break;
+
+        default:
+            <!-- Default menu rendering -->
+            <ul class="nav">
+                @foreach (var item in Model)
+                {
+                    <li class="nav-item">
+                        @if (!string.IsNullOrEmpty(item.Url))
+                        {
+                            <a class="nav-link" href="@item.Url">
+                                @if (!string.IsNullOrEmpty(item.Icon))
+                                {
+                                    <i class="@item.Icon me-1"></i>
+                                }
+                                @item.Name
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="nav-link"
+                               asp-area="@item.Area"
+                               asp-controller="@item.Controller"
+                               asp-action="@item.Action">
+                                @if (!string.IsNullOrEmpty(item.Icon))
+                                {
+                                    <i class="@item.Icon me-1"></i>
+                                }
+                                @item.Name
+                            </a>
+                        }
+                    </li>
+                }
+            </ul>
+            break;
+    }
+}

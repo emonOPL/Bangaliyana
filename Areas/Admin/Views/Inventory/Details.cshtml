@@ -1,0 +1,201 @@
+@using Bangaliyana.Models
+@model Products
+@{
+    ViewData["Title"] = $"Stock Details - {Model.Name}";
+    var stockHistory = ViewBag.StockHistory as List<StockHistory> ?? new List<StockHistory>();
+    var restockSubscribers = ViewBag.RestockSubscribers as int? ?? 0;
+    var firstImage = Model.Images?.FirstOrDefault()?.ImageUrl ?? Model.ImageUrl ?? "images/products/noimage.jpg";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Inventory</a></li>
+            <li class="breadcrumb-item active">@Model.Name</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <!-- Product Info -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <img src="~/@firstImage" alt="@Model.Name" class="img-fluid rounded mb-3" style="max-height: 200px; object-fit: contain;">
+                    <h5 class="fw-bold">@Model.Name</h5>
+                    <p class="text-muted small mb-2">SKU: @(Model.SKU ?? "N/A")</p>
+                    <p class="text-muted small mb-0">Category: @(Model.Category?.Name ?? "Uncategorized")</p>
+                </div>
+            </div>
+
+            <!-- Stock Summary -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="fas fa-cubes me-2 text-info"></i>Stock Summary</h6>
+                </div>
+                <div class="card-body">
+                    @{
+                        var stockClass = Model.Stock <= 0 ? "text-danger" : (Model.Stock <= 5 ? "text-warning" : "text-success");
+                        var statusBadge = Model.Stock <= 0 ? "bg-danger" : (Model.Stock <= 5 ? "bg-warning" : "bg-success");
+                        var statusText = Model.Stock <= 0 ? "Out of Stock" : (Model.Stock <= 5 ? "Low Stock" : "In Stock");
+                    }
+                    <div class="text-center mb-3">
+                        <h1 class="display-4 fw-bold @stockClass">@Model.Stock</h1>
+                        <span class="badge @statusBadge fs-6">@statusText</span>
+                    </div>
+
+                    <hr>
+
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <p class="mb-0 text-muted small">Price</p>
+                            <p class="fw-bold mb-0">@Model.Price.ToString("N0")</p>
+                        </div>
+                        <div class="col-6">
+                            <p class="mb-0 text-muted small">Stock Value</p>
+                            <p class="fw-bold mb-0">@((Model.Stock * Model.EffectivePrice).ToString("N0"))</p>
+                        </div>
+                    </div>
+
+                    @if (restockSubscribers > 0)
+                    {
+                        <div class="alert alert-info mt-3 mb-0 small">
+                            <i class="fas fa-bell me-2"></i>
+                            <strong>@restockSubscribers</strong> customer(s) waiting for restock notification
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Variants Stock (if any) -->
+            @if (Model.Variants?.Any() == true)
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0"><i class="fas fa-th-large me-2 text-secondary"></i>Variant Stock</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Variant</th>
+                                    <th class="text-center">Stock</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var variant in Model.Variants.OrderBy(v => v.Size).ThenBy(v => v.Color))
+                                {
+                                    var variantStockClass = variant.Stock <= 0 ? "text-danger" : (variant.Stock <= 5 ? "text-warning" : "text-success");
+                                    <tr>
+                                        <td>@variant.Size / @variant.Color</td>
+                                        <td class="text-center fw-bold @variantStockClass">@variant.Stock</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            <!-- Actions -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <a asp-action="Adjust" asp-route-id="@Model.Id" class="btn btn-primary w-100 mb-2">
+                        <i class="fas fa-edit me-1"></i>Adjust Stock
+                    </a>
+                    <a asp-action="History" asp-route-productId="@Model.Id" class="btn btn-outline-secondary w-100 mb-2">
+                        <i class="fas fa-history me-1"></i>Full History
+                    </a>
+                    <a asp-action="Index" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Inventory
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <!-- Recent Stock History -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="fas fa-history me-2 text-info"></i>Recent Stock Changes</h6>
+                    <a asp-action="History" asp-route-productId="@Model.Id" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    @if (stockHistory.Any())
+                    {
+                        <div class="timeline-container p-3">
+                            @foreach (var history in stockHistory.Take(15))
+                            {
+                                var changeIcon = history.QuantityChanged > 0 ? "fa-arrow-up text-success" : "fa-arrow-down text-danger";
+                                var changeColor = history.QuantityChanged > 0 ? "success" : "danger";
+                                <div class="timeline-item d-flex mb-3">
+                                    <div class="timeline-icon me-3">
+                                        <div class="rounded-circle bg-@changeColor bg-opacity-10 p-2" style="width: 36px; height: 36px;">
+                                            <i class="fas @changeIcon"></i>
+                                        </div>
+                                    </div>
+                                    <div class="timeline-content flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <span class="badge bg-secondary me-2">@history.Reason.ToString().Replace("_", " ")</span>
+                                                @if (history.ProductVariant != null)
+                                                {
+                                                    <small class="text-muted">(@history.ProductVariant.Size / @history.ProductVariant.Color)</small>
+                                                }
+                                            </div>
+                                            <small class="text-muted">@history.ChangedAt.ToBangladeshString("MMM dd, HH:mm")</small>
+                                        </div>
+                                        <p class="mb-1 mt-1">
+                                            <span class="text-muted">@history.OldStock</span>
+                                            <i class="fas fa-arrow-right mx-2 text-muted"></i>
+                                            <span class="fw-bold">@history.NewStock</span>
+                                            <span class="ms-2 @(history.QuantityChanged > 0 ? "text-success" : "text-danger")">
+                                                (@(history.QuantityChanged > 0 ? "+" : "")@history.QuantityChanged)
+                                            </span>
+                                        </p>
+                                        @if (!string.IsNullOrEmpty(history.Notes))
+                                        {
+                                            <small class="text-muted">@history.Notes</small>
+                                        }
+                                        @if (history.Order != null)
+                                        {
+                                            <small class="text-muted d-block">Order: #@history.Order.OrderNumber</small>
+                                        }
+                                        @if (history.ChangedBy != null)
+                                        {
+                                            <small class="text-muted">By: @history.ChangedBy.FullName</small>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">No stock changes recorded</h6>
+                            <p class="text-muted small mb-0">Stock history will appear here after changes are made</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline-item:not(:last-child) {
+        position: relative;
+    }
+    .timeline-item:not(:last-child)::before {
+        content: '';
+        position: absolute;
+        left: 17px;
+        top: 40px;
+        height: calc(100% - 10px);
+        width: 2px;
+        background: #e9ecef;
+    }
+</style>

@@ -1,0 +1,893 @@
+@model X.PagedList.IPagedList<Bangaliyana.Models.Products>
+@using X.PagedList.Mvc.Core
+@{
+    var category = ViewBag.Category as Bangaliyana.Models.Category;
+    ViewData["Title"] = category?.Name ?? "Category";
+    var currencySymbol = ViewBag.CurrencySymbol as string ?? "৳";
+    var availableSizes = ViewBag.AvailableSizes as List<string> ?? new List<string>();
+    var availableColors = ViewBag.AvailableColors as dynamic ?? new List<dynamic>();
+    var availableBrands = ViewBag.AvailableBrands as List<string> ?? new List<string>();
+    var priceMin = (decimal)(ViewBag.PriceMin ?? 0);
+    var priceMax = (decimal)(ViewBag.PriceMax ?? 10000);
+    var currentView = ViewBag.CurrentView as string ?? "grid";
+}
+
+<div class="container py-4">
+    <!-- Hierarchical Breadcrumb -->
+    @{
+        var categoryPath = ViewBag.CategoryPath as List<Bangaliyana.Models.Category> ?? new List<Bangaliyana.Models.Category>();
+        var subcategories = ViewBag.Subcategories as List<Bangaliyana.Models.Category> ?? new List<Bangaliyana.Models.Category>();
+    }
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index" class="text-decoration-none text-success">@Localizer["Home"]</a></li>
+            <li class="breadcrumb-item"><a asp-action="Categories" class="text-decoration-none text-success">@Localizer["Categories"]</a></li>
+            @foreach (var pathCat in categoryPath)
+            {
+                if (pathCat.Id == category?.Id)
+                {
+                    <li class="breadcrumb-item active" aria-current="page">@pathCat.Name</li>
+                }
+                else
+                {
+                    <li class="breadcrumb-item">
+                        <a asp-action="Category" asp-route-id="@pathCat.Id" class="text-decoration-none text-success">@pathCat.Name</a>
+                    </li>
+                }
+            }
+        </ol>
+    </nav>
+
+    <!-- Category Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-light category-header-card">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-column flex-md-row align-items-center">
+                        @if (!string.IsNullOrEmpty(category?.ImageUrl))
+                        {
+                            <div class="me-md-4 mb-3 mb-md-0">
+                                <img src="~/@category.ImageUrl" alt="@category.Name" class="rounded" style="max-height: 120px; object-fit: contain;" />
+                            </div>
+                        }
+                        else if (!string.IsNullOrEmpty(category?.IconClass))
+                        {
+                            <div class="me-md-4 mb-3 mb-md-0">
+                                <i class="@category.IconClass text-success" style="font-size: 4rem;"></i>
+                            </div>
+                        }
+                        <div class="text-center text-md-start">
+                            <h1 class="fw-bold mb-2">@category?.Name</h1>
+                            @if (!string.IsNullOrEmpty(category?.Description))
+                            {
+                                <p class="text-muted mb-0">@category.Description</p>
+                            }
+                            <p class="text-muted small mt-2 mb-0">
+                                <i class="fas fa-box me-1"></i>@Localizer["ProductsFoundCount", Model.TotalItemCount]
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-lg-3 mb-4">
+            <!-- Subcategories Section -->
+            @if (subcategories.Any())
+            {
+                <div class="card border-0 shadow-sm mb-4 subcategory-card">
+                    <div class="card-header bg-success text-white">
+                        <span><i class="fas fa-sitemap me-2"></i>@Localizer["Subcategories"]</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush">
+                            @foreach (var subcat in subcategories)
+                            {
+                                <li class="list-group-item subcategory-item">
+                                    <a asp-action="Category" asp-route-id="@subcat.Id" class="d-flex align-items-center text-decoration-none">
+                                        <i class="@(subcat.IconClass ?? "fas fa-folder") text-success me-2" style="width: 20px;"></i>
+                                        <span class="flex-grow-1">@subcat.Name</span>
+                                        @if (subcat.Children?.Any(c => c.IsActive) == true)
+                                        {
+                                            <span class="badge bg-success-subtle text-success ms-2">
+                                                @subcat.Children.Count(c => c.IsActive) <i class="fas fa-sitemap ms-1"></i>
+                                            </span>
+                                        }
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+
+            <!-- Filters -->
+            <div class="card border-0 shadow-sm filter-sidebar-card">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-filter me-2"></i>@Localizer["Filters"]</span>
+                    <a asp-action="Category" asp-route-id="@ViewBag.CategoryId" class="btn btn-sm btn-outline-light">
+                        <i class="fas fa-times me-1"></i>@Localizer["Clear"]
+                    </a>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Category" asp-route-id="@ViewBag.CategoryId" method="get" id="filterForm">
+                        <input type="hidden" name="view" id="viewInput" value="@currentView" />
+
+                        <!-- Price Range -->
+                        <div class="filter-section mb-4">
+                            <h6 class="filter-title mb-3">
+                                <i class="fas fa-tags me-2 text-success"></i>@Localizer["PriceRange"]
+                            </h6>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="price-input-group flex-fill">
+                                    <span class="currency-symbol">@currencySymbol</span>
+                                    <input type="number" class="form-control price-input" name="minPrice" id="minPriceInput"
+                                           value="@ViewBag.MinPrice" placeholder="Min" min="0" />
+                                </div>
+                                <span class="text-muted">—</span>
+                                <div class="price-input-group flex-fill">
+                                    <span class="currency-symbol">@currencySymbol</span>
+                                    <input type="number" class="form-control price-input" name="maxPrice" id="maxPriceInput"
+                                           value="@ViewBag.MaxPrice" placeholder="Max" min="0" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Size Filter (only show if sizes available in DB) -->
+                        @if (availableSizes.Any())
+                        {
+                            <div class="filter-section mb-4">
+                                <h6 class="filter-title mb-3">
+                                    <i class="fas fa-ruler me-2 text-success"></i>@Localizer["Size"]
+                                </h6>
+                                <div class="size-options">
+                                    @foreach (var sizeOption in availableSizes)
+                                    {
+                                        var isSelected = ViewBag.SelectedSize == sizeOption;
+                                        <label class="size-option @(isSelected ? "active" : "")">
+                                            <input type="radio" name="size" value="@sizeOption" @(isSelected ? "checked" : "") class="d-none" />
+                                            <span>@sizeOption</span>
+                                        </label>
+                                    }
+                                    @if (!string.IsNullOrEmpty(ViewBag.SelectedSize as string))
+                                    {
+                                        <label class="size-option clear-size">
+                                            <input type="radio" name="size" value="" class="d-none" />
+                                            <span><i class="fas fa-times"></i></span>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Color Filter (only show if colors available in DB) -->
+                        @{
+                            var hasDbColors = ((IEnumerable<dynamic>)availableColors).Any();
+                        }
+                        @if (hasDbColors)
+                        {
+                            <div class="filter-section mb-4">
+                                <h6 class="filter-title mb-3">
+                                    <i class="fas fa-palette me-2 text-success"></i>@Localizer["Color"]
+                                </h6>
+                                <div class="color-options">
+                                    @foreach (var colorOption in (IEnumerable<dynamic>)availableColors)
+                                    {
+                                        var isSelected = ViewBag.SelectedColor == colorOption.Color;
+                                        var colorCode = colorOption.ColorCode ?? GetColorCode(colorOption.Color);
+                                        <label class="color-option @(isSelected ? "active" : "")" title="@colorOption.Color">
+                                            <input type="radio" name="color" value="@colorOption.Color" @(isSelected ? "checked" : "") class="d-none" />
+                                            <span class="color-swatch" style="background-color: @colorCode;"></span>
+                                            <span class="color-name">@colorOption.Color</span>
+                                        </label>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrEmpty(ViewBag.SelectedColor as string))
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2 clear-color-btn">
+                                        <i class="fas fa-times me-1"></i>@Localizer["ClearColor"]
+                                    </button>
+                                }
+                            </div>
+                        }
+
+                        <!-- Brand Filter (only show if brands available in DB) -->
+                        @if (availableBrands.Any())
+                        {
+                            <div class="filter-section mb-4">
+                                <h6 class="filter-title mb-3">
+                                    <i class="fas fa-building me-2 text-success"></i>@Localizer["Brand"]
+                                </h6>
+                                <div class="brand-options">
+                                    @foreach (var brandOption in availableBrands)
+                                    {
+                                        var isSelected = ViewBag.SelectedBrand == brandOption;
+                                        <label class="brand-option @(isSelected ? "active" : "")">
+                                            <input type="radio" name="brand" value="@brandOption" @(isSelected ? "checked" : "") class="d-none" />
+                                            <span>@brandOption</span>
+                                        </label>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrEmpty(ViewBag.SelectedBrand as string))
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2 clear-brand-btn">
+                                        <i class="fas fa-times me-1"></i>@Localizer["ClearBrand"]
+                                    </button>
+                                }
+                            </div>
+                        }
+
+                        <!-- Rating Filter -->
+                        <div class="filter-section mb-4">
+                            <h6 class="filter-title mb-3">
+                                <i class="fas fa-star me-2 text-success"></i>@Localizer["Rating"]
+                            </h6>
+                            <div class="rating-options">
+                                @for (int star = 5; star >= 1; star--)
+                                {
+                                    var isSelected = ViewBag.SelectedRating == star;
+                                    <label class="rating-option @(isSelected ? "active" : "")">
+                                        <input type="radio" name="rating" value="@star" @(isSelected ? "checked" : "") class="d-none" />
+                                        <span class="rating-stars">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                if (i <= star)
+                                                {
+                                                    <i class="fas fa-star text-warning"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="far fa-star text-muted"></i>
+                                                }
+                                            }
+                                        </span>
+                                        <span class="rating-text">@Localizer["AndUp"]</span>
+                                    </label>
+                                }
+                            </div>
+                            @if (ViewBag.SelectedRating != null)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-2 clear-rating-btn">
+                                    <i class="fas fa-times me-1"></i>@Localizer["ClearRating"]
+                                </button>
+                            }
+                        </div>
+
+                        <!-- Apply Button -->
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-check me-2"></i>@Localizer["ApplyFilters"]
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Products Area -->
+        <div class="col-lg-9">
+            <!-- Sort and View Toggle Bar -->
+            <div class="card border-0 shadow-sm mb-4 sort-view-bar">
+                <div class="card-body py-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-6 mb-2 mb-md-0">
+                            <div class="d-flex align-items-center">
+                                <label class="me-2 text-muted small">@Localizer["SortBy"]:</label>
+                                <select name="sort" class="form-select form-select-sm" id="sortSelect" style="width: auto;">
+                                    <option value="" selected="@(string.IsNullOrEmpty(ViewBag.CurrentSort as string))">@Localizer["Default"]</option>
+                                    <option value="price_asc" selected="@(ViewBag.CurrentSort == "price_asc")">@Localizer["PriceLowToHigh"]</option>
+                                    <option value="price_desc" selected="@(ViewBag.CurrentSort == "price_desc")">@Localizer["PriceHighToLow"]</option>
+                                    <option value="name_asc" selected="@(ViewBag.CurrentSort == "name_asc")">@Localizer["NameAToZ"]</option>
+                                    <option value="name_desc" selected="@(ViewBag.CurrentSort == "name_desc")">@Localizer["NameZToA"]</option>
+                                    <option value="newest" selected="@(ViewBag.CurrentSort == "newest")">@Localizer["NewestFirst"]</option>
+                                    <option value="bestselling" selected="@(ViewBag.CurrentSort == "bestselling")">@Localizer["BestSelling"]</option>
+                                    <option value="trending" selected="@(ViewBag.CurrentSort == "trending")">@Localizer["Trending"]</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center justify-content-md-end">
+                                <span class="text-muted small me-3">@Model.TotalItemCount @Localizer["Products"]</span>
+                                <div class="btn-group view-toggle" role="group">
+                                    <button type="button" class="btn btn-sm @(currentView == "grid" ? "btn-success" : "btn-outline-success") view-btn" data-view="grid" title="@Localizer["GridView"]">
+                                        <i class="fas fa-th"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm @(currentView == "list" ? "btn-success" : "btn-outline-success") view-btn" data-view="list" title="@Localizer["ListView"]">
+                                        <i class="fas fa-list"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Grid/List -->
+            @if (Model.Any())
+            {
+                <div class="row g-3 g-md-4 products-container @(currentView == "list" ? "list-view" : "grid-view")" id="productsContainer">
+                    @foreach (var product in Model)
+                    {
+                        if (currentView == "list")
+                        {
+                            <!-- List View Card -->
+                            <div class="col-12">
+                                @await Html.PartialAsync("_ProductCardList", product)
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Grid View Card -->
+                            <div class="col-6 col-md-4">
+                                @await Html.PartialAsync("_ProductCard", product)
+                            </div>
+                        }
+                    }
+                </div>
+
+                <!-- Pagination -->
+                @if (Model.PageCount > 1)
+                {
+                    <nav aria-label="Product pagination" class="mt-4">
+                        <div class="d-flex justify-content-center">
+                            @Html.PagedListPager(Model, page => Url.Action("Category", new {
+                                id = ViewBag.CategoryId,
+                                page,
+                                sort = ViewBag.CurrentSort,
+                                minPrice = ViewBag.MinPrice,
+                                maxPrice = ViewBag.MaxPrice,
+                                size = ViewBag.SelectedSize,
+                                color = ViewBag.SelectedColor,
+                                brand = ViewBag.SelectedBrand,
+                                rating = ViewBag.SelectedRating,
+                                view = currentView
+                            }), new PagedListRenderOptions
+                            {
+                                DisplayLinkToFirstPage = PagedListDisplayMode.IfNeeded,
+                                DisplayLinkToLastPage = PagedListDisplayMode.IfNeeded,
+                                DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                                DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                                DisplayLinkToIndividualPages = true,
+                                MaximumPageNumbersToDisplay = 5,
+                                ContainerDivClasses = new[] { "pagination-container" },
+                                UlElementClasses = new[] { "pagination", "pagination-sm", "mb-0" },
+                                LiElementClasses = new[] { "page-item" },
+                                PageClasses = new[] { "page-link" },
+                                ActiveLiElementClass = "active"
+                            })
+                        </div>
+                    </nav>
+                    <div class="text-center mt-2">
+                        <small class="text-muted">
+                            @Localizer["ShowingProducts"] @((Model.PageNumber - 1) * Model.PageSize + 1) - @(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalItemCount)) @Localizer["Of"] @Model.TotalItemCount @Localizer["ProductsLower"]
+                        </small>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-box-open fa-4x text-muted mb-4"></i>
+                    <h3 class="text-muted mb-3">@Localizer["NoProductsFound"]</h3>
+                    @if (ViewBag.MinPrice != null || ViewBag.MaxPrice != null || ViewBag.SelectedSize != null ||
+                         ViewBag.SelectedColor != null || ViewBag.SelectedBrand != null || ViewBag.SelectedRating != null)
+                    {
+                        <p class="text-muted mb-4">@Localizer["NoProductsMatchFilter"]</p>
+                        <a asp-action="Category" asp-route-id="@ViewBag.CategoryId" class="btn btn-outline-success me-2">
+                            <i class="fas fa-times me-2"></i>@Localizer["ClearFilters"]
+                        </a>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-4">@Localizer["CategoryNoProductsYet"]</p>
+                    }
+                    <a asp-action="Categories" class="btn btn-success">
+                        <i class="fas fa-th-large me-2"></i>@Localizer["BrowseCategories"]
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@functions {
+    string GetColorCode(string colorName)
+    {
+        var colorMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Red", "#dc3545" },
+            { "Blue", "#0d6efd" },
+            { "Green", "#198754" },
+            { "Yellow", "#ffc107" },
+            { "Orange", "#fd7e14" },
+            { "Purple", "#6f42c1" },
+            { "Pink", "#d63384" },
+            { "Black", "#212529" },
+            { "White", "#f8f9fa" },
+            { "Gray", "#6c757d" },
+            { "Grey", "#6c757d" },
+            { "Brown", "#795548" },
+            { "Navy", "#001f3f" },
+            { "Maroon", "#85144b" },
+            { "Teal", "#39cccc" },
+            { "Olive", "#3d9970" },
+            { "Beige", "#f5f5dc" },
+            { "Cream", "#fffdd0" },
+            { "Gold", "#ffd700" },
+            { "Silver", "#c0c0c0" }
+        };
+        return colorMap.TryGetValue(colorName, out var code) ? code : "#6c757d";
+    }
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var filterForm = document.getElementById('filterForm');
+            var sortSelect = document.getElementById('sortSelect');
+            var viewInput = document.getElementById('viewInput');
+            var priceMinSlider = document.getElementById('priceMin');
+            var priceMaxSlider = document.getElementById('priceMax');
+            var minPriceInput = document.getElementById('minPriceInput');
+            var maxPriceInput = document.getElementById('maxPriceInput');
+
+            // Sort select change
+            if (sortSelect) {
+                sortSelect.addEventListener('change', function() {
+                    var sortInput = filterForm.querySelector('input[name="sort"]');
+                    if (!sortInput) {
+                        sortInput = document.createElement('input');
+                        sortInput.type = 'hidden';
+                        sortInput.name = 'sort';
+                        filterForm.appendChild(sortInput);
+                    }
+                    sortInput.value = this.value;
+                    filterForm.submit();
+                });
+            }
+
+            // View toggle
+            document.querySelectorAll('.view-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var view = this.getAttribute('data-view');
+                    viewInput.value = view;
+                    filterForm.submit();
+                });
+            });
+
+            // Size, Color, Brand, Rating auto-submit
+            document.querySelectorAll('.size-option input, .color-option input, .brand-option input, .rating-option input').forEach(function(input) {
+                input.addEventListener('change', function() {
+                    filterForm.submit();
+                });
+            });
+
+            // Clear buttons
+            var clearColorBtn = document.querySelector('.clear-color-btn');
+            if (clearColorBtn) {
+                clearColorBtn.addEventListener('click', function() {
+                    var colorInputs = document.querySelectorAll('input[name="color"]');
+                    colorInputs.forEach(function(input) { input.checked = false; });
+                    var hiddenColor = document.createElement('input');
+                    hiddenColor.type = 'hidden';
+                    hiddenColor.name = 'color';
+                    hiddenColor.value = '';
+                    filterForm.appendChild(hiddenColor);
+                    filterForm.submit();
+                });
+            }
+
+            var clearBrandBtn = document.querySelector('.clear-brand-btn');
+            if (clearBrandBtn) {
+                clearBrandBtn.addEventListener('click', function() {
+                    var brandInputs = document.querySelectorAll('input[name="brand"]');
+                    brandInputs.forEach(function(input) { input.checked = false; });
+                    var hiddenBrand = document.createElement('input');
+                    hiddenBrand.type = 'hidden';
+                    hiddenBrand.name = 'brand';
+                    hiddenBrand.value = '';
+                    filterForm.appendChild(hiddenBrand);
+                    filterForm.submit();
+                });
+            }
+
+            var clearRatingBtn = document.querySelector('.clear-rating-btn');
+            if (clearRatingBtn) {
+                clearRatingBtn.addEventListener('click', function() {
+                    var ratingInputs = document.querySelectorAll('input[name="rating"]');
+                    ratingInputs.forEach(function(input) { input.checked = false; });
+                    var hiddenRating = document.createElement('input');
+                    hiddenRating.type = 'hidden';
+                    hiddenRating.name = 'rating';
+                    hiddenRating.value = '';
+                    filterForm.appendChild(hiddenRating);
+                    filterForm.submit();
+                });
+            }
+
+        });
+    </script>
+}
+
+<style>
+    /* Filter Sidebar */
+    .filter-sidebar-card {
+        position: sticky;
+        top: 100px;
+        background-color: var(--bg-color, #fff);
+    }
+
+    .filter-section {
+        border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.1));
+        padding-bottom: 1rem;
+    }
+
+    .filter-section:last-of-type {
+        border-bottom: none;
+    }
+
+    .filter-title {
+        font-weight: 600;
+        color: var(--text-color, #212529);
+        font-size: 0.95rem;
+    }
+
+    /* Price Input */
+    .price-input-group {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background-color: var(--input-bg, #fff);
+        border: 1px solid var(--border-color, #ced4da);
+        border-radius: 4px;
+        padding: 0 8px;
+    }
+
+    .currency-symbol {
+        font-size: 0.9rem;
+        color: var(--text-muted, #6c757d);
+        font-weight: 500;
+    }
+
+    .price-input {
+        width: 100%;
+        border: none !important;
+        background: transparent !important;
+        padding: 6px 4px !important;
+        font-size: 0.9rem;
+        color: var(--text-color, #212529);
+    }
+
+    .price-input:focus {
+        outline: none;
+        box-shadow: none !important;
+    }
+
+    .price-input-group:focus-within {
+        border-color: #198754;
+        box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.15);
+    }
+
+    /* Size Options */
+    .size-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .size-option {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        height: 36px;
+        padding: 0 12px;
+        border: 1px solid var(--border-color, #dee2e6);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background-color: var(--bg-color, #fff);
+        color: var(--text-color, #212529);
+    }
+
+    .size-option:hover {
+        border-color: #198754;
+    }
+
+    .size-option.active {
+        background-color: #198754;
+        border-color: #198754;
+        color: #fff;
+    }
+
+    .size-option.clear-size {
+        background-color: #f8d7da;
+        border-color: #f5c2c7;
+        color: #842029;
+    }
+
+    /* Color Options */
+    .color-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .color-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+    .color-option:hover {
+        background-color: rgba(25, 135, 84, 0.1);
+    }
+
+    .color-option.active {
+        background-color: rgba(25, 135, 84, 0.2);
+    }
+
+    .color-swatch {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 2px solid var(--border-color, #dee2e6);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .color-option.active .color-swatch {
+        border-color: #198754;
+        box-shadow: 0 0 0 2px #198754;
+    }
+
+    .color-name {
+        font-size: 0.7rem;
+        margin-top: 4px;
+        color: var(--text-muted, #6c757d);
+    }
+
+    /* Brand Options */
+    .brand-options {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .brand-option {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        border: 1px solid var(--border-color, #dee2e6);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background-color: var(--bg-color, #fff);
+        color: var(--text-color, #212529);
+    }
+
+    .brand-option:hover {
+        border-color: #198754;
+    }
+
+    .brand-option.active {
+        background-color: #198754;
+        border-color: #198754;
+        color: #fff;
+    }
+
+    /* Rating Options */
+    .rating-options {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .rating-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border: 1px solid var(--border-color, #dee2e6);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background-color: var(--bg-color, #fff);
+    }
+
+    .rating-option:hover {
+        border-color: #198754;
+        background-color: rgba(25, 135, 84, 0.05);
+    }
+
+    .rating-option.active {
+        border-color: #198754;
+        background-color: rgba(25, 135, 84, 0.1);
+    }
+
+    .rating-stars {
+        display: flex;
+        gap: 2px;
+    }
+
+    .rating-text {
+        font-size: 0.85rem;
+        color: var(--text-muted, #6c757d);
+    }
+
+    /* Sort and View Bar */
+    .sort-view-bar {
+        background-color: var(--bg-color, #fff);
+    }
+
+    .view-toggle .btn {
+        padding: 0.375rem 0.75rem;
+    }
+
+    /* List View Styles */
+    .products-container.list-view .col-12 {
+        margin-bottom: 1rem;
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] .filter-sidebar-card {
+        background-color: #1e1e2d;
+        border-color: rgba(255,255,255,0.1);
+    }
+
+    [data-theme="dark"] .filter-sidebar-card .card-header {
+        border-color: rgba(255,255,255,0.1);
+    }
+
+    [data-theme="dark"] .filter-title {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .size-option,
+    [data-theme="dark"] .brand-option,
+    [data-theme="dark"] .rating-option {
+        background-color: #2a2a3d;
+        border-color: rgba(255,255,255,0.15);
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .size-option.active,
+    [data-theme="dark"] .brand-option.active {
+        background-color: #00f5ff !important;
+        border-color: #00f5ff !important;
+        color: #000 !important;
+        font-weight: 600;
+        box-shadow: 0 0 8px rgba(0, 245, 255, 0.6) !important;
+    }
+
+    [data-theme="dark"] .rating-option.active {
+        background-color: #00f5ff !important;
+        border-color: #00f5ff !important;
+        color: #000 !important;
+        box-shadow: 0 0 8px rgba(0, 245, 255, 0.6) !important;
+    }
+
+    [data-theme="dark"] .size-option:hover,
+    [data-theme="dark"] .brand-option:hover,
+    [data-theme="dark"] .rating-option:hover {
+        border-color: #00f5ff;
+        background-color: rgba(0, 245, 255, 0.25);
+    }
+
+    [data-theme="dark"] .color-option.active {
+        background-color: rgba(0, 245, 255, 0.4) !important;
+        border-radius: 8px;
+        box-shadow: 0 0 6px rgba(0, 245, 255, 0.5) !important;
+    }
+
+    [data-theme="dark"] .price-input-group {
+        background-color: #2a2a3d;
+        border-color: rgba(255,255,255,0.15);
+    }
+
+    [data-theme="dark"] .price-input {
+        color: #e0e0e0 !important;
+    }
+
+    [data-theme="dark"] .price-input-group:focus-within {
+        border-color: #198754;
+    }
+
+    [data-theme="dark"] .sort-view-bar {
+        background-color: #1e1e2d;
+    }
+
+    [data-theme="dark"] #sortSelect {
+        background-color: #2a2a3d !important;
+        color: #fff !important;
+        border-color: rgba(255,255,255,0.15) !important;
+    }
+
+    [data-theme="dark"] .category-header-card {
+        background-color: #1e1e2d;
+        border-color: rgba(255,255,255,0.1);
+    }
+
+    [data-theme="dark"] .category-header-card h1 {
+        color: #e0e0e0;
+    }
+
+    /* Pagination dark mode */
+    [data-theme="dark"] .page-link {
+        background-color: #2a2a3d;
+        color: #e0e0e0;
+        border-color: rgba(255,255,255,0.15);
+    }
+
+    [data-theme="dark"] .page-item.active .page-link {
+        background-color: var(--bs-success);
+        border-color: var(--bs-success);
+    }
+
+    [data-theme="dark"] .page-link:hover {
+        background-color: #3a3a4d;
+        color: #fff;
+    }
+
+    /* Subcategory Section */
+    .subcategory-card {
+        background-color: var(--bg-color, #fff);
+    }
+
+    .subcategory-item {
+        transition: all 0.2s;
+        background-color: var(--bg-color, #fff);
+        border-color: var(--border-color, rgba(0,0,0,0.1)) !important;
+    }
+
+    .subcategory-item:hover {
+        background-color: rgba(25, 135, 84, 0.05);
+    }
+
+    .subcategory-item a {
+        color: var(--text-color, #212529);
+    }
+
+    .subcategory-item:hover a {
+        color: #198754;
+    }
+
+    [data-theme="dark"] .subcategory-card {
+        background-color: #1e1e2d;
+        border-color: rgba(255,255,255,0.1) !important;
+    }
+
+    [data-theme="dark"] .subcategory-card .card-header {
+        border-color: rgba(255,255,255,0.1);
+    }
+
+    [data-theme="dark"] .subcategory-item {
+        background-color: #1e1e2d;
+        border-color: rgba(255,255,255,0.1) !important;
+    }
+
+    [data-theme="dark"] .subcategory-item a {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .subcategory-item:hover {
+        background-color: rgba(0, 245, 255, 0.1);
+    }
+
+    [data-theme="dark"] .subcategory-item:hover a {
+        color: #00f5ff;
+    }
+
+    /* Responsive */
+    @@media (max-width: 991.98px) {
+        .filter-sidebar-card,
+        .subcategory-card {
+            position: static;
+            margin-bottom: 1rem;
+        }
+    }
+</style>

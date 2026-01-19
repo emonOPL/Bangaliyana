@@ -1,0 +1,151 @@
+@using Bangaliyana.Models
+@model Products
+@{
+    ViewData["Title"] = $"Adjust Stock - {Model.Name}";
+    var firstImage = Model.Images?.FirstOrDefault()?.ImageUrl ?? Model.ImageUrl ?? "images/products/noimage.jpg";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Inventory</a></li>
+            <li class="breadcrumb-item"><a asp-action="Details" asp-route-id="@Model.Id">@Model.Name</a></li>
+            <li class="breadcrumb-item active">Adjust Stock</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-edit text-primary me-2"></i>Adjust Stock</h5>
+        </div>
+        <div class="card-body">
+            <!-- Product Info -->
+            <div class="d-flex align-items-center mb-4 p-3 bg-light rounded">
+                <img src="~/@firstImage" alt="@Model.Name" class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;">
+                <div>
+                    <h6 class="mb-1">@Model.Name</h6>
+                    <small class="text-muted">SKU: @(Model.SKU ?? "N/A")</small>
+                    <div class="mt-1">
+                        @{
+                            var stockClass = Model.Stock <= 0 ? "text-danger" : (Model.Stock <= 5 ? "text-warning" : "text-success");
+                        }
+                        <span class="@stockClass fw-bold">Current Stock: @Model.Stock</span>
+                    </div>
+                </div>
+            </div>
+
+            <form asp-action="Adjust" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+
+                <!-- Variant Selection (if applicable) -->
+                @if (Model.Variants?.Any() == true)
+                {
+                    <div class="mb-3">
+                        <label class="form-label">Select Variant (optional)</label>
+                        <select name="variantId" class="form-select" id="variantSelect">
+                            <option value="">Main Product Stock (@Model.Stock)</option>
+                            @foreach (var variant in Model.Variants.OrderBy(v => v.Size).ThenBy(v => v.Color))
+                            {
+                                <option value="@variant.Id" data-stock="@variant.Stock">
+                                    @variant.Size / @variant.Color - Current: @variant.Stock
+                                </option>
+                            }
+                        </select>
+                    </div>
+                }
+
+                <!-- New Stock -->
+                <div class="mb-3">
+                    <label class="form-label">New Stock Quantity <span class="text-danger">*</span></label>
+                    <input type="number" name="newStock" class="form-control" min="0" value="@Model.Stock" required id="newStockInput">
+                    <div class="form-text">Enter the new total stock quantity</div>
+                </div>
+
+                <!-- Reason -->
+                <div class="mb-3">
+                    <label class="form-label">Reason <span class="text-danger">*</span></label>
+                    <select name="reason" class="form-select" required>
+                        <option value="">Select a reason...</option>
+                        <option value="Restock">Restock - New inventory received</option>
+                        <option value="Inventory Correction">Inventory Correction - Fixing count error</option>
+                        <option value="Return Received">Return Received - Customer return</option>
+                        <option value="Damaged/Lost">Damaged/Lost - Product damaged or lost</option>
+                        <option value="Manual Adjustment">Manual Adjustment - Other reason</option>
+                    </select>
+                </div>
+
+                <!-- Notes -->
+                <div class="mb-4">
+                    <label class="form-label">Notes (optional)</label>
+                    <textarea name="notes" class="form-control" rows="3" placeholder="Add any additional notes about this adjustment..."></textarea>
+                </div>
+
+                <!-- Stock Change Preview -->
+                <div class="alert alert-info" id="stockChangePreview">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <span id="previewText">Stock will change from <strong>@Model.Stock</strong> to <strong>@Model.Stock</strong></span>
+                </div>
+
+                <!-- Actions -->
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-check me-1"></i>Update Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const variantSelect = document.getElementById('variantSelect');
+            const newStockInput = document.getElementById('newStockInput');
+            const previewText = document.getElementById('previewText');
+            const stockChangePreview = document.getElementById('stockChangePreview');
+
+            let currentStock = @Model.Stock;
+
+            function updatePreview() {
+                const newStock = parseInt(newStockInput.value) || 0;
+                const diff = newStock - currentStock;
+                const diffText = diff > 0 ? `(+${diff})` : diff < 0 ? `(${diff})` : '(no change)';
+                const diffClass = diff > 0 ? 'text-success' : diff < 0 ? 'text-danger' : 'text-muted';
+
+                previewText.innerHTML = `Stock will change from <strong>${currentStock}</strong> to <strong>${newStock}</strong> <span class="${diffClass}">${diffText}</span>`;
+
+                if (diff === 0) {
+                    stockChangePreview.classList.remove('alert-success', 'alert-danger');
+                    stockChangePreview.classList.add('alert-info');
+                } else if (diff > 0) {
+                    stockChangePreview.classList.remove('alert-info', 'alert-danger');
+                    stockChangePreview.classList.add('alert-success');
+                } else {
+                    stockChangePreview.classList.remove('alert-info', 'alert-success');
+                    stockChangePreview.classList.add('alert-danger');
+                }
+            }
+
+            if (variantSelect) {
+                variantSelect.addEventListener('change', function() {
+                    if (this.value) {
+                        const option = this.options[this.selectedIndex];
+                        currentStock = parseInt(option.dataset.stock) || 0;
+                        newStockInput.value = currentStock;
+                    } else {
+                        currentStock = @Model.Stock;
+                        newStockInput.value = currentStock;
+                    }
+                    updatePreview();
+                });
+            }
+
+            newStockInput.addEventListener('input', updatePreview);
+            updatePreview();
+        });
+    </script>
+}

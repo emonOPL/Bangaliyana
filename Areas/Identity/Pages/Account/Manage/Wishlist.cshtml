@@ -1,0 +1,512 @@
+@page
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@model WishlistModel
+@{
+    ViewData["Title"] = Localizer["MyWishlist"].Value;
+    ViewData["ActivePage"] = ManageNavPages.Wishlist;
+}
+
+<div class="wishlist-page">
+    <partial name="_StatusMessage" for="StatusMessage" />
+
+    <!-- Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h4 class="mb-1">
+                    <i class="fas fa-heart text-danger me-2"></i>@Localizer["MyWishlist"]
+                </h4>
+                <p class="text-muted mb-0">@Model.WishlistItems.Count @Localizer["ItemsSavedForLater"]</p>
+            </div>
+            @if (Model.WishlistItems.Any())
+            {
+                <form method="post" asp-page-handler="ClearAll" id="clearAllForm" class="d-inline">
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="clearAllBtn">
+                        <i class="fas fa-trash-alt me-1"></i>@Localizer["ClearAll"]
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+
+    @if (!Model.WishlistItems.Any())
+    {
+        <!-- Empty State -->
+        <div class="empty-state text-center py-5">
+            <div class="empty-icon mb-4">
+                <i class="fas fa-heart-broken"></i>
+            </div>
+            <h5>@Localizer["WishlistEmpty"]</h5>
+            <p class="text-muted mb-4">@Localizer["WishlistEmptyDescription"]</p>
+            <a href="/" class="btn btn-primary">
+                <i class="fas fa-shopping-bag me-2"></i>@Localizer["StartShopping"]
+            </a>
+        </div>
+    }
+    else
+    {
+        <!-- Wishlist Grid -->
+        <div class="row g-4">
+            @foreach (var item in Model.WishlistItems)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="wishlist-card">
+                        <div class="wishlist-image">
+                            <a href="@Url.Action("Details", "Home", new { area = "Customer", id = item.ProductId })">
+                                <img src="~/@(item.ProductImage ?? "images/products/noimage.jpg")" alt="@item.ProductName" />
+                            </a>
+                            @if (item.HasDiscount)
+                            {
+                                <span class="discount-badge">
+                                    @(Math.Round((1 - (item.DiscountPrice ?? item.Price) / item.Price) * 100))% OFF
+                                </span>
+                            }
+                            @if (!item.IsAvailable)
+                            {
+                                <div class="out-of-stock-overlay">
+                                    <span>@Localizer["OutOfStock"]</span>
+                                </div>
+                            }
+                            <form method="post" asp-page-handler="Remove" class="remove-btn-form">
+                                <input type="hidden" name="id" value="@item.Id" />
+                                <button type="submit" class="remove-btn" title="@Localizer["RemoveFromWishlist"]">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </form>
+                        </div>
+                        <div class="wishlist-body">
+                            @if (!string.IsNullOrEmpty(item.CategoryName))
+                            {
+                                <span class="category-badge">@item.CategoryName</span>
+                            }
+                            <h6 class="product-name">
+                                <a href="@Url.Action("Details", "Home", new { area = "Customer", id = item.ProductId })">@item.ProductName</a>
+                            </h6>
+                            <div class="price-row">
+                                @if (item.HasDiscount && item.DiscountPrice.HasValue)
+                                {
+                                    <span class="current-price">৳@item.DiscountPrice.Value.ToString("N0")</span>
+                                    <span class="original-price">৳@item.Price.ToString("N0")</span>
+                                }
+                                else
+                                {
+                                    <span class="current-price">৳@item.Price.ToString("N0")</span>
+                                }
+                            </div>
+                            @if (item.PriceWhenAdded > 0)
+                            {
+                                @if (item.HasPriceDropped)
+                                {
+                                    <div class="price-change-badge price-dropped">
+                                        <i class="fas fa-arrow-down me-1"></i>
+                                        @Localizer["PriceDropped"] @item.PriceDropPercentage%
+                                        <span class="ms-1">(@Localizer["Was"] ৳@item.PriceWhenAdded.ToString("N0"))</span>
+                                    </div>
+                                }
+                                else if (item.HasPriceIncreased)
+                                {
+                                    <div class="price-change-badge price-increased">
+                                        <i class="fas fa-arrow-up me-1"></i>
+                                        @Localizer["PriceIncreased"]
+                                        <span class="ms-1">(@Localizer["Was"] ৳@item.PriceWhenAdded.ToString("N0"))</span>
+                                    </div>
+                                }
+                            }
+                            <div class="stock-info">
+                                @if (item.IsAvailable)
+                                {
+                                    <span class="text-success"><i class="fas fa-check-circle me-1"></i>@Localizer["InStock"] (@item.Stock @Localizer["Available"])</span>
+                                }
+                                else
+                                {
+                                    <span class="text-danger"><i class="fas fa-times-circle me-1"></i>@Localizer["OutOfStock"]</span>
+                                }
+                            </div>
+                            <div class="added-date">
+                                <small class="text-muted">
+                                    <i class="far fa-clock me-1"></i>@Localizer["Added"] @item.AddedAt.ToBangladeshShortDateString()
+                                </small>
+                            </div>
+                            <div class="action-buttons mt-3">
+                                @if (item.IsAvailable)
+                                {
+                                    <button type="button" class="btn btn-primary btn-sm flex-grow-1 add-to-cart-btn" data-product-id="@item.ProductId">
+                                        <i class="fas fa-shopping-cart me-1"></i>@Localizer["AddToCart"]
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-secondary btn-sm flex-grow-1" disabled>
+                                        <i class="fas fa-bell me-1"></i>@Localizer["NotifyMe"]
+                                    </button>
+                                }
+                                <form method="post" asp-page-handler="TogglePriceNotification" class="d-inline">
+                                    <input type="hidden" name="id" value="@item.Id" />
+                                    <button type="submit" class="btn btn-sm @(item.NotifyOnPriceDrop ? "btn-success" : "btn-outline-secondary") price-notify-btn"
+                                            title="@(item.NotifyOnPriceDrop ? Localizer["PriceAlertsEnabled"].Value : Localizer["EnablePriceAlerts"].Value)">
+                                        <i class="fas @(item.NotifyOnPriceDrop ? "fa-bell" : "fa-bell-slash")"></i>
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-outline-primary btn-sm quick-view-btn" data-product-id="@item.ProductId" title="@Localizer["QuickView"]">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .wishlist-page .page-header h4 {
+        font-weight: 600;
+    }
+
+    /* Empty State */
+    .empty-state {
+        background: linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%);
+        border-radius: 16px;
+        padding: 3rem;
+    }
+
+    .empty-icon {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        font-size: 2.5rem;
+        color: white;
+    }
+
+    /* Wishlist Card */
+    .wishlist-card {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .wishlist-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+
+    .wishlist-image {
+        position: relative;
+        padding-top: 100%;
+        background: #f8f9fa;
+    }
+
+    .wishlist-image img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .wishlist-card:hover .wishlist-image img {
+        transform: scale(1.05);
+    }
+
+    .discount-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .out-of-stock-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .out-of-stock-overlay span {
+        background: #ef4444;
+        color: white;
+        padding: 8px 20px;
+        border-radius: 25px;
+        font-weight: 600;
+    }
+
+    .remove-btn-form {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+    }
+
+    .remove-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: white;
+        border: none;
+        color: #6b7280;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .remove-btn:hover {
+        background: #ef4444;
+        color: white;
+    }
+
+    .wishlist-body {
+        padding: 1rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .category-badge {
+        display: inline-block;
+        background: #e5e7eb;
+        color: #374151;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .product-name {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+    }
+
+    .product-name a {
+        color: #1f2937;
+        text-decoration: none;
+    }
+
+    .product-name a:hover {
+        color: #667eea;
+    }
+
+    .price-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .current-price {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #059669;
+    }
+
+    .original-price {
+        font-size: 0.85rem;
+        color: #9ca3af;
+        text-decoration: line-through;
+    }
+
+    .stock-info {
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .added-date {
+        margin-bottom: auto;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    /* Price Change Badge */
+    .price-change-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .price-dropped {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        color: #047857;
+    }
+
+    .price-increased {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        color: #b91c1c;
+    }
+
+    .price-change-badge span {
+        font-weight: 400;
+        opacity: 0.8;
+    }
+
+    .price-notify-btn {
+        transition: all 0.2s ease;
+    }
+
+    .price-notify-btn:hover {
+        transform: scale(1.05);
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] .wishlist-card {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .product-name a {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .category-badge {
+        background: #374151;
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .empty-state {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    }
+
+    [data-theme="dark"] .empty-state h5,
+    [data-theme="dark"] .empty-state p {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .price-dropped {
+        background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+        color: #6ee7b7;
+    }
+
+    [data-theme="dark"] .price-increased {
+        background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+        color: #fca5a5;
+    }
+
+    /* Clear All Modal Styles */
+    .clear-icon-wrapper {
+        display: flex;
+        justify-content: center;
+    }
+    .clear-icon-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: pulse-danger 2s infinite;
+    }
+    .clear-icon-circle i {
+        font-size: 2.5rem;
+    }
+    @@keyframes pulse-danger {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+        70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    #clearWishlistModal .modal-content {
+        border-radius: 1rem;
+    }
+    #clearWishlistModal .btn {
+        border-radius: 0.5rem;
+        font-weight: 500;
+    }
+    [data-theme="dark"] #clearWishlistModal .modal-content {
+        background-color: #252538;
+    }
+    [data-theme="dark"] #clearWishlistModal .modal-title {
+        color: #e0e0e0;
+    }
+    [data-theme="dark"] #clearWishlistModal .text-muted {
+        color: #a0a0a0 !important;
+    }
+    [data-theme="dark"] .clear-icon-circle {
+        background: linear-gradient(135deg, #3d2020 0%, #4a2525 100%);
+    }
+</style>
+
+<!-- Clear Wishlist Confirmation Modal -->
+<div class="modal fade" id="clearWishlistModal" tabindex="-1" aria-labelledby="clearWishlistModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="clear-icon-wrapper mb-3">
+                    <div class="clear-icon-circle">
+                        <i class="fas fa-trash-alt text-danger"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="clearWishlistModalLabel">@Localizer["ClearWishlistQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["ConfirmClearWishlist"]</p>
+                <p class="text-muted small">@Localizer["ActionCannotBeUndone"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["NoKeepIt"]
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmClearBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesClearAll"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const clearBtn = document.getElementById('clearAllBtn');
+            const clearForm = document.getElementById('clearAllForm');
+
+            if (clearBtn && clearForm) {
+                const clearModal = new bootstrap.Modal(document.getElementById('clearWishlistModal'));
+
+                clearBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    clearModal.show();
+                });
+
+                document.getElementById('confirmClearBtn').addEventListener('click', function () {
+                    clearModal.hide();
+                    clearForm.submit();
+                });
+            }
+        });
+    </script>
+}

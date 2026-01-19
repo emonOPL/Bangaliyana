@@ -1,0 +1,116 @@
+@model List<Bangaliyana.Models.SeasonalCollection>
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Localizer["SeasonalCollections"];
+    var featuredCollections = ViewBag.FeaturedCollections as List<SeasonalCollection>;
+    var seasonTypes = ViewBag.SeasonTypes as SeasonType[];
+    var selectedSeason = ViewBag.SelectedSeason as SeasonType?;
+}
+
+<div class="seasonal-collections-page py-5">
+    <div class="container">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-5 fw-bold"><i class="fas fa-snowflake text-primary me-2"></i>@Localizer["SeasonalCollections"]</h1>
+            <p class="lead text-muted">@Localizer["DiscoverCuratedCollectionsForEverySeasonAndOccasion"]</p>
+        </div>
+
+        <!-- Season Filters -->
+        <div class="d-flex flex-wrap justify-content-center gap-2 mb-5">
+            <a asp-action="Index" class="btn @(selectedSeason == null ? "btn-primary" : "btn-outline-primary")">@Localizer["AllSeasons"]</a>
+            @foreach (var season in seasonTypes ?? Array.Empty<SeasonType>())
+            {
+                <a asp-action="Index" asp-route-season="@season" class="btn @(selectedSeason == season ? "btn-primary" : "btn-outline-primary")">@season.ToString()</a>
+            }
+        </div>
+
+        <!-- Featured Collections Banner -->
+        @if (featuredCollections?.Any() == true && selectedSeason == null)
+        {
+            <div class="featured-banner mb-5">
+                @{
+                    var mainFeatured = featuredCollections.First();
+                }
+                <a asp-action="Details" asp-route-slug="@mainFeatured.Slug" class="text-decoration-none">
+                    <div class="card border-0 overflow-hidden" style="background: linear-gradient(135deg, @(mainFeatured.PrimaryColor ?? "#667eea") 0%, @(mainFeatured.SecondaryColor ?? "#764ba2") 100%);">
+                        <div class="row g-0">
+                            <div class="col-md-6">
+                                @if (!string.IsNullOrEmpty(mainFeatured.BannerImageUrl))
+                                {
+                                    <img src="~/@mainFeatured.BannerImageUrl" class="img-fluid" alt="@mainFeatured.Name" style="height: 300px; width: 100%; object-fit: cover;">
+                                }
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                                <div class="p-5" style="color: @(mainFeatured.TextColor ?? "white");">
+                                    <span class="badge bg-white text-dark mb-3">@mainFeatured.SeasonType @mainFeatured.Year</span>
+                                    <h2 class="fw-bold mb-3">@mainFeatured.Name</h2>
+                                    @if (!string.IsNullOrEmpty(mainFeatured.Tagline))
+                                    {
+                                        <p class="lead mb-4">@mainFeatured.Tagline</p>
+                                    }
+                                    <span class="btn btn-light">@(mainFeatured.ButtonText ?? Localizer["ExploreCollection"]) <i class="fas fa-arrow-right ms-2"></i></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+
+        <!-- Collections Grid -->
+        @if (Model.Any())
+        {
+            <div class="row g-4">
+                @foreach (var collection in Model)
+                {
+                    <div class="col-lg-4 col-md-6">
+                        <a asp-action="Details" asp-route-slug="@collection.Slug" class="text-decoration-none">
+                            <div class="card h-100 border-0 shadow-sm collection-card overflow-hidden">
+                                @if (!string.IsNullOrEmpty(collection.BannerImageUrl ?? collection.ThumbnailImageUrl))
+                                {
+                                    <div class="position-relative">
+                                        <img src="~/@(collection.ThumbnailImageUrl ?? collection.BannerImageUrl)" class="card-img-top" alt="@collection.Name" style="height: 200px; object-fit: cover;">
+                                        @if (collection.ShowCountdown && collection.EndDate.HasValue && collection.EndDate > DateTime.UtcNow)
+                                        {
+                                            <div class="position-absolute top-0 end-0 m-2">
+                                                <span class="badge bg-danger"><i class="fas fa-clock me-1"></i>@Localizer["LimitedTime"]</span>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                <div class="card-body" style="background: linear-gradient(135deg, @(collection.PrimaryColor ?? "#f8f9fa") 0%, @(collection.SecondaryColor ?? "#ffffff") 100%);">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="badge" style="background-color: @(collection.PrimaryColor ?? "#6366f1"); color: @(collection.TextColor ?? "white");">@collection.SeasonType</span>
+                                        <small class="text-muted">@collection.Year</small>
+                                    </div>
+                                    <h5 class="card-title text-dark">@collection.Name</h5>
+                                    @if (!string.IsNullOrEmpty(collection.Tagline))
+                                    {
+                                        <p class="card-text text-muted small">@collection.Tagline</p>
+                                    }
+                                    @if (collection.IsCurrentlyActive)
+                                    {
+                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>@Localizer["ActiveNow"]</span>
+                                    }
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-snowflake fa-4x text-muted mb-3"></i>
+                <h4>@Localizer["NoCollectionsFound"]</h4>
+                <p class="text-muted">@Localizer["CheckBackLaterForNewSeasonalCollections"]</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .collection-card { transition: all 0.3s ease; }
+    .collection-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+</style>

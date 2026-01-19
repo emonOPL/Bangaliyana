@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#198754">
+    <title>Offline - Bangaliyana</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .offline-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .offline-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+            background: linear-gradient(135deg, #198754 0%, #157347 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .offline-icon svg {
+            width: 60px;
+            height: 60px;
+            fill: white;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        h1 {
+            color: #212529;
+            font-size: 28px;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        p {
+            color: #6c757d;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 14px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #198754 0%, #157347 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(25, 135, 84, 0.3);
+        }
+
+        .tips {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .tips h3 {
+            color: #212529;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .tips ul {
+            text-align: left;
+            color: #6c757d;
+            font-size: 14px;
+            list-style: none;
+        }
+
+        .tips li {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .tips li::before {
+            content: "•";
+            color: #198754;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .brand {
+            margin-top: 30px;
+            color: #adb5bd;
+            font-size: 14px;
+        }
+
+        .brand span {
+            color: #198754;
+            font-weight: 600;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            }
+
+            .offline-container {
+                background: #212529;
+            }
+
+            h1 {
+                color: #f8f9fa;
+            }
+
+            p, .tips ul {
+                color: #adb5bd;
+            }
+
+            .tips {
+                border-top-color: #343a40;
+            }
+
+            .tips h3 {
+                color: #f8f9fa;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l10.08 12.56c.8 1 2.32 1 3.12 0L23.64 7zM2.92 7.65C4.2 6.63 7.31 4.5 12 4.5c4.69 0 7.8 2.13 9.08 3.15L12 18.28 2.92 7.65z"/>
+                <path d="M19.5 13.5L21 12l-1.5-1.5L18 12l1.5 1.5zm-3 3L18 15l-1.5-1.5L15 15l1.5 1.5z" opacity="0.5"/>
+            </svg>
+        </div>
+
+        <h1>You're Offline</h1>
+        <p>It looks like you've lost your internet connection. Don't worry, some content may still be available from cache.</p>
+
+        <button class="btn btn-primary" onclick="window.location.reload()">
+            Try Again
+        </button>
+
+        <div class="tips">
+            <h3>While you wait, try:</h3>
+            <ul>
+                <li>Checking your Wi-Fi connection</li>
+                <li>Turning on mobile data</li>
+                <li>Moving to a better signal area</li>
+                <li>Restarting your router</li>
+            </ul>
+        </div>
+
+        <p class="brand">
+            <span>Bangaliyana</span> - Bengali Shopping
+        </p>
+    </div>
+
+    <script>
+        // Auto-refresh when back online
+        window.addEventListener('online', function() {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>

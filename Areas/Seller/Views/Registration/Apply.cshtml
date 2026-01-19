@@ -1,0 +1,242 @@
+@model Bangaliyana.Areas.Seller.Controllers.SellerApplicationModel
+@{
+    ViewData["Title"] = "Become a Seller";
+    var alreadySeller = ViewBag.AlreadySeller as bool? ?? false;
+    var hasPendingApplication = ViewBag.HasPendingApplication as bool? ?? false;
+    var existingSeller = ViewBag.ExistingSeller as Seller;
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            @if (TempData["StatusMessage"] != null)
+            {
+                var isError = TempData["StatusMessage"]?.ToString()?.StartsWith("Error") == true;
+                <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show">
+                    <i class="fas @(isError ? "fa-exclamation-circle" : "fa-check-circle") me-2"></i>
+                    @TempData["StatusMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            @if (alreadySeller)
+            {
+                <!-- Already a Seller -->
+                <div class="text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-store-alt fa-5x text-success"></i>
+                    </div>
+                    <h2 class="mb-3">You're Already a Seller!</h2>
+                    <p class="text-muted mb-4">
+                        You already have a seller account. Go to your seller dashboard to manage your shop and products.
+                    </p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <a asp-action="Index" asp-controller="Dashboard" class="btn btn-primary btn-lg">
+                            <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+                        </a>
+                        <a asp-action="Index" asp-controller="Shop" class="btn btn-outline-success btn-lg">
+                            <i class="fas fa-store me-2"></i>Manage Shop
+                        </a>
+                    </div>
+                </div>
+            }
+            else if (hasPendingApplication)
+            {
+                <!-- Pending Application -->
+                <div class="text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-hourglass-half fa-5x text-warning"></i>
+                    </div>
+                    <h2 class="mb-3">Application Pending</h2>
+                    <p class="text-muted mb-4">
+                        Your seller application is currently under review. We'll notify you once it's been processed.
+                    </p>
+                    @if (existingSeller != null)
+                    {
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title">@existingSeller.ShopName</h5>
+                                <p class="text-muted mb-2">Applied on @existingSeller.AppliedAt?.ToString("MMMM dd, yyyy")</p>
+                                <span class="badge bg-warning text-dark">
+                                    <i class="fas fa-clock me-1"></i>Pending Review
+                                </span>
+                            </div>
+                        </div>
+                    }
+                    <a asp-area="Identity" asp-page="/Account/Manage/Index" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Account
+                    </a>
+                </div>
+            }
+            else if (existingSeller != null && existingSeller.Status == SellerStatus.Rejected)
+            {
+                <!-- Rejected Application -->
+                <div class="text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-times-circle fa-5x text-danger"></i>
+                    </div>
+                    <h2 class="mb-3">Application Rejected</h2>
+                    <p class="text-muted mb-4">
+                        Unfortunately, your seller application was not approved.
+                        @if (!string.IsNullOrEmpty(existingSeller.RejectionReason))
+                        {
+                            <br /><strong>Reason:</strong> @existingSeller.RejectionReason
+                        }
+                    </p>
+                    <p class="text-muted">
+                        If you believe this was a mistake, please contact our support team.
+                    </p>
+                    <a asp-area="Identity" asp-page="/Account/Manage/SupportTickets" class="btn btn-primary">
+                        <i class="fas fa-headset me-2"></i>Contact Support
+                    </a>
+                </div>
+            }
+            else
+            {
+                <!-- Application Form -->
+                <div class="card">
+                    <div class="card-header bg-gradient text-white seller-header-gradient">
+                        <h4 class="mb-0"><i class="fas fa-store me-2"></i>Become a Seller</h4>
+                    </div>
+                    <div class="card-body p-4">
+                        <p class="text-muted mb-4">
+                            Start selling on Bangaliyana! Fill out the form below to apply for a seller account.
+                            Our team will review your application and get back to you soon.
+                        </p>
+
+                        <form asp-action="Apply" method="post">
+                            @Html.AntiForgeryToken()
+
+                            <div class="mb-4">
+                                <h6 class="text-muted mb-3"><i class="fas fa-store me-2"></i>Shop Details</h6>
+
+                                <div class="mb-3">
+                                    <label asp-for="ShopName" class="form-label">Shop Name *</label>
+                                    <input asp-for="ShopName" class="form-control form-control-lg" placeholder="Enter your shop name" />
+                                    <span asp-validation-for="ShopName" class="text-danger"></span>
+                                    <small class="text-muted">This will be displayed on your shop page</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="BusinessCategory" class="form-label">Business Category *</label>
+                                    <select asp-for="BusinessCategory" class="form-select form-select-lg">
+                                        @foreach (var category in Enum.GetValues<BusinessCategory>())
+                                        {
+                                            <option value="@category">@category.GetDisplayName()</option>
+                                        }
+                                    </select>
+                                    <span asp-validation-for="BusinessCategory" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h6 class="text-muted mb-3"><i class="fas fa-map-marker-alt me-2"></i>Contact Information</h6>
+
+                                <div class="mb-3">
+                                    <label asp-for="BusinessAddress" class="form-label">Business Address</label>
+                                    <textarea asp-for="BusinessAddress" class="form-control" rows="2" placeholder="Enter your business address"></textarea>
+                                    <span asp-validation-for="BusinessAddress" class="text-danger"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="BusinessPhone" class="form-label">Business Phone</label>
+                                    <input asp-for="BusinessPhone" class="form-control" placeholder="+880 1XXX-XXXXXX" />
+                                    <span asp-validation-for="BusinessPhone" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h6 class="text-muted mb-3"><i class="fas fa-info-circle me-2"></i>About Your Business</h6>
+
+                                <div class="mb-3">
+                                    <label asp-for="ApplicationNote" class="form-label">Tell us about your business</label>
+                                    <textarea asp-for="ApplicationNote" class="form-control" rows="4" placeholder="What products do you plan to sell? How long have you been in business? Any relevant experience?"></textarea>
+                                    <span asp-validation-for="ApplicationNote" class="text-danger"></span>
+                                    <small class="text-muted">This helps us understand your business better</small>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    <input asp-for="AcceptTerms" class="form-check-input" />
+                                    <label asp-for="AcceptTerms" class="form-check-label">
+                                        I accept the <a href="/terms" target="_blank">Seller Terms and Conditions</a> and agree to pay a 5% commission on each sale
+                                    </label>
+                                </div>
+                                <span asp-validation-for="AcceptTerms" class="text-danger"></span>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-paper-plane me-2"></i>Submit Application
+                                </button>
+                                <a asp-area="Identity" asp-page="/Account/Manage/Index" class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>Back to Account
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Benefits -->
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <h5 class="text-center mb-4">Why Sell on Bangaliyana?</h5>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="p-3">
+                            <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                            <h6>Large Customer Base</h6>
+                            <p class="text-muted small">Reach thousands of customers across Bangladesh</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="p-3">
+                            <i class="fas fa-shield-alt fa-3x text-success mb-3"></i>
+                            <h6>Secure Payments</h6>
+                            <p class="text-muted small">Get paid securely for all your sales</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="p-3">
+                            <i class="fas fa-chart-line fa-3x text-info mb-3"></i>
+                            <h6>Grow Your Business</h6>
+                            <p class="text-muted small">Analytics and tools to help you succeed</p>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Dark mode */
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .card-body {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .form-control::placeholder {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .text-muted {
+        color: #9ca3af !important;
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

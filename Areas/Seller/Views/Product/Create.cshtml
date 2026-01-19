@@ -1,0 +1,2067 @@
+@model Bangaliyana.Models.Products
+@using Bangaliyana.Models
+
+@{
+    ViewData["Title"] = Localizer["AddNewProduct"].Value;
+}
+
+<div class="container py-4">
+    <div class="card shadow-lg border-0">
+        <div class="card-header bg-success text-white py-3">
+            <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i>@Localizer["AddNewProduct"]</h4>
+        </div>
+        <div class="card-body p-4">
+            <form asp-action="Create" method="post" enctype="multipart/form-data" id="productForm">
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                <!-- Basic Information Section -->
+                <div class="card mb-4 border-success">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-info-circle text-success me-2"></i>@Localizer["BasicInformation"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label asp-for="Name" class="form-label fw-semibold">@Localizer["ProductName"] <span class="text-danger">*</span></label>
+                                <input asp-for="Name" class="form-control" placeholder="@Localizer["EnterProductName"]" />
+                                <span asp-validation-for="Name" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label asp-for="Description" class="form-label fw-semibold">@Localizer["MainDescription"] <span class="text-danger">*</span></label>
+                                <textarea asp-for="Description" class="form-control" rows="4" placeholder="@Localizer["EnterMainProductDescription"]"></textarea>
+                                <span asp-validation-for="Description" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="DescriptionBengali" class="form-label fw-semibold">@Localizer["DescriptionBengali"]</label>
+                                <textarea asp-for="DescriptionBengali" class="form-control bengali-only" rows="4" placeholder="বাংলায় পণ্যের বিবরণ লিখুন"></textarea>
+                                <span class="text-danger small bengali-error" style="display:none;">@Localizer["OnlyBengaliAllowed"]</span>
+                                <span asp-validation-for="DescriptionBengali" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="DescriptionEnglish" class="form-label fw-semibold">@Localizer["DescriptionEnglish"]</label>
+                                <textarea asp-for="DescriptionEnglish" class="form-control english-only" rows="4" placeholder="@Localizer["EnterProductDescriptionEnglish"]"></textarea>
+                                <span class="text-danger small english-error" style="display:none;">@Localizer["OnlyEnglishAllowed"]</span>
+                                <span asp-validation-for="DescriptionEnglish" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label asp-for="ShortDescription" class="form-label fw-semibold">@Localizer["ShortDescription"]</label>
+                                <textarea asp-for="ShortDescription" class="form-control" rows="2" placeholder="@Localizer["ShortDescriptionPlaceholder"]" maxlength="500"></textarea>
+                                <span asp-validation-for="ShortDescription" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label asp-for="Highlights" class="form-label fw-semibold">@Localizer["ProductHighlights"]</label>
+                                <textarea asp-for="Highlights" class="form-control" rows="3" placeholder="@Localizer["KeyFeaturesOrHighlights"]"></textarea>
+                                <small class="text-muted">@Localizer["EnterKeyFeaturesPerLine"]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pricing & Inventory Section -->
+                <div class="card mb-4 border-primary">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-tags text-primary me-2"></i>@Localizer["PricingAndInventory"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label asp-for="Price" class="form-label fw-semibold">@Localizer["PriceBDT"] <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">৳</span>
+                                    <input asp-for="Price" class="form-control" type="number" step="0.01" min="0.01" placeholder="0.00" />
+                                </div>
+                                <span asp-validation-for="Price" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label asp-for="DiscountPrice" class="form-label fw-semibold">@Localizer["DiscountPriceBDT"]</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">৳</span>
+                                    <input asp-for="DiscountPrice" class="form-control" type="number" step="0.01" min="0" placeholder="0.00" />
+                                </div>
+                                <small class="text-muted">@Localizer["LeaveEmptyIfNoDiscount"]</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label asp-for="Stock" class="form-label fw-semibold">@Localizer["StockQuantity"] <span class="text-danger">*</span></label>
+                                <input asp-for="Stock" class="form-control" type="number" min="0" placeholder="0" id="stockInput" />
+                                <span asp-validation-for="Stock" class="text-danger small"></span>
+                                <small class="text-muted">@Localizer["SetToZeroForOutOfStock"]</small>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="SKU" class="form-label fw-semibold">@Localizer["SKU"]</label>
+                                <input asp-for="SKU" class="form-control" placeholder="@Localizer["ProductSKUCode"]" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Status" class="form-label fw-semibold">@Localizer["ProductStatus"] <span class="text-danger">*</span></label>
+                                <select asp-for="Status" class="form-select" id="statusSelect" asp-items="ViewBag.productStatuses">
+                                    <option value="">@Localizer["SelectStatus"]</option>
+                                </select>
+                                <small class="text-muted">@Localizer["AutoSetOutOfStock"]</small>
+                            </div>
+                            <input type="hidden" asp-for="IsAvailable" value="true" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category & Classification Section -->
+                <div class="card mb-4 border-warning">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-folder-open text-warning me-2"></i>@Localizer["CategoryAndClassification"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Cascading Category Selection - 2 per row -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">@Localizer["Category"] <span class="text-danger">*</span> <span class="text-muted">(@Localizer["SelectFromHierarchy"])</span></label>
+                            <div id="categoryBreadcrumb" class="mb-2" style="display:none;">
+                                <small class="text-info"><i class="fas fa-sitemap me-1"></i>@Localizer["Selected"]: <span id="categoryPath"></span></small>
+                            </div>
+                            <div id="cascadingCategories" class="row g-2">
+                                <div class="col-md-6">
+                                    <select class="form-select category-select" data-level="0" asp-items="ViewBag.rootCategories" required>
+                                        <option value="">@Localizer["SelectCategory"]</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <input type="hidden" asp-for="CategoryId" id="finalCategoryId" />
+                            <span id="categoryValidation" class="text-danger small" style="display:none;">@Localizer["PleaseSelectCategory"]</span>
+                            <small class="text-muted">@Localizer["SelectMostSpecificCategory"]</small>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label asp-for="Tags" class="form-label fw-semibold">@Localizer["Tags"]</label>
+                                <input asp-for="Tags" class="form-control" placeholder="@Localizer["EnterTagsSeparatedByCommas"]" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label asp-for="Brand" class="form-label fw-semibold">@Localizer["Brand"]</label>
+                                <input asp-for="Brand" class="form-control" placeholder="@Localizer["BrandName"]" />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label asp-for="Manufacturer" class="form-label fw-semibold">@Localizer["Manufacturer"]</label>
+                                <input asp-for="Manufacturer" class="form-control" placeholder="@Localizer["ManufacturerName"]" />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label asp-for="CountryOfOrigin" class="form-label fw-semibold">@Localizer["CountryOfOrigin"]</label>
+                                <input asp-for="CountryOfOrigin" class="form-control" placeholder="@Localizer["CountryOfOriginExample"]" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Details Section -->
+                <div class="card mb-4 border-info">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-clipboard-list text-info me-2"></i>@Localizer["ProductDetails"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Fabric" class="form-label fw-semibold">@Localizer["FabricMaterial"]</label>
+                                <input asp-for="Fabric" class="form-control" placeholder="@Localizer["FabricMaterialExample"]" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Weight" class="form-label fw-semibold">@Localizer["WeightGrams"]</label>
+                                <input asp-for="Weight" class="form-control" type="number" step="0.01" min="0" placeholder="@Localizer["WeightInGrams"]" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="CareInstructions" class="form-label fw-semibold">@Localizer["CareInstructions"]</label>
+                                <textarea asp-for="CareInstructions" class="form-control" rows="3" placeholder="@Localizer["CareInstructionsPlaceholder"]"></textarea>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="WarrantyInfo" class="form-label fw-semibold">@Localizer["WarrantyInformation"]</label>
+                                <textarea asp-for="WarrantyInfo" class="form-control" rows="3" placeholder="@Localizer["WarrantyInfoPlaceholder"]"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Variants Section -->
+                <div class="card mb-4 border-purple" style="border-color: #6f42c1 !important;">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-palette me-2" style="color: #6f42c1;"></i>@Localizer["ProductVariants"]</h5>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="addVariantBtn">
+                            <i class="fas fa-plus me-1"></i>@Localizer["AddVariant"]
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            @Localizer["VariantsDescription"]
+                        </div>
+
+                        <div id="variantsContainer">
+                            <div class="text-center py-4" id="noVariantsMessage">
+                                <i class="fas fa-cubes fa-3x text-muted mb-3"></i>
+                                <p class="text-muted mb-0">@Localizer["NoVariantsYet"]</p>
+                            </div>
+                            <div class="table-responsive" id="variantsTableContainer" style="display: none;">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>@Localizer["Size"]</th>
+                                            <th>@Localizer["Color"]</th>
+                                            <th>@Localizer["SKU"]</th>
+                                            <th class="text-center">@Localizer["Stock"]</th>
+                                            <th class="text-end">@Localizer["AdditionalPrice"]</th>
+                                            <th class="text-center">@Localizer["Status"]</th>
+                                            <th class="text-end">@Localizer["Actions"]</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="variantsTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Hidden input to store variants JSON -->
+                        <input type="hidden" name="VariantsJson" id="variantsJsonInput" value="[]" />
+                    </div>
+                </div>
+
+                <!-- Images Section -->
+                <div class="card mb-4 border-secondary">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-images text-secondary me-2"></i>@Localizer["ProductImages"] <span class="text-danger">*</span></h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>@Localizer["Instructions"]:</strong> @Localizer["ImageUploadInstructions"]
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">@Localizer["UploadImages"] <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="file" class="form-control" id="imageUploadInput" accept="image/*" multiple />
+                                    <!-- Native camera capture for mobile (works on HTTP) -->
+                                    <input type="file" accept="image/*" capture="environment" id="nativeCameraInput" class="d-none" />
+                                    <button type="button" class="btn btn-outline-success camera-capture-btn" id="openCameraBtn" title="@Localizer["CaptureFromCamera"]">
+                                        <i class="fas fa-camera"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">@Localizer["ImageUploadHint"]</small>
+                            </div>
+                        </div>
+
+                        <!-- Image Preview Grid -->
+                        <div id="imagePreviewGrid" class="row g-3 mb-3" style="min-height: 100px;">
+                            <div class="col-12 text-center text-muted py-4" id="noImagesPlaceholder">
+                                <i class="fas fa-cloud-upload-alt fa-3x mb-2"></i>
+                                <p class="mb-0">@Localizer["NoImagesUploadedYet"]</p>
+                            </div>
+                        </div>
+
+                        <!-- Hidden inputs for form submission -->
+                        <input type="file" name="ImageUrl" id="primaryImageFile" style="display:none;" />
+                        <input type="file" name="AdditionalImages" id="additionalImagesFile" multiple style="display:none;" />
+
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label asp-for="VideoUrl" class="form-label fw-semibold">@Localizer["VideoURL"]</label>
+                                <input asp-for="VideoUrl" class="form-control" placeholder="@Localizer["VideoURLPlaceholder"]" />
+                                <small class="text-muted">@Localizer["ProductDemoVideo"]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipping & Returns Section -->
+                <div class="card mb-4 border-success">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-truck text-success me-2"></i>@Localizer["ShippingAndReturns"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="EstimatedDeliveryDays" class="form-label fw-semibold">@Localizer["EstimatedDeliveryDays"]</label>
+                                <input asp-for="EstimatedDeliveryDays" class="form-control" type="text" placeholder="@Localizer["DeliveryDaysExample"]" oninput="this.value = this.value.replace(/[^0-9-]/g, '')" />
+                                <small class="text-muted">@Localizer["LeaveEmptyForDefault"]</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="ReturnDays" class="form-label fw-semibold">@Localizer["ReturnPeriodDays"]</label>
+                                <input asp-for="ReturnDays" class="form-control" type="number" min="0" value="7" id="returnDaysInput" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="IsCODAvailable" class="form-label fw-semibold d-block">@Localizer["CashOnDelivery"]</label>
+                                <div class="form-check form-switch">
+                                    <input asp-for="IsCODAvailable" class="form-check-input" type="checkbox" checked />
+                                    <label class="form-check-label" for="IsCODAvailable">@Localizer["CODAvailable"]</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="IsReturnable" class="form-label fw-semibold d-block">@Localizer["Returnable"]</label>
+                                <div class="form-check form-switch">
+                                    <input asp-for="IsReturnable" class="form-check-input" type="checkbox" id="isReturnableCheck" checked />
+                                    <label class="form-check-label" for="isReturnableCheck">@Localizer["AcceptReturns"]</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>@Localizer["BackToList"]
+                    </a>
+                    <div>
+                        <button type="reset" class="btn btn-outline-warning me-2">
+                            <i class="fas fa-undo me-2"></i>@Localizer["Reset"]
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i>@Localizer["SaveProduct"]
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Variant Modal for Create -->
+<div class="modal fade" id="createVariantModal" tabindex="-1" aria-labelledby="createVariantModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header modal-header-purple-gradient">
+                <h5 class="modal-title text-white" id="createVariantModalLabel">
+                    <i class="fas fa-palette me-2"></i><span id="createVariantModalTitle">Add New Variant</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="createVariantSize" class="form-label fw-semibold">Size</label>
+                        <select id="createVariantSize" class="form-select">
+                            <option value="">Select Size</option>
+                            <option value="XS">XS</option>
+                            <option value="S">S</option>
+                            <option value="M">M</option>
+                            <option value="L">L</option>
+                            <option value="XL">XL</option>
+                            <option value="XXL">XXL</option>
+                            <option value="XXXL">XXXL</option>
+                            <option value="Free Size">Free Size</option>
+                            <option value="Custom">Custom...</option>
+                        </select>
+                        <input type="text" id="createCustomSize" class="form-control mt-2" placeholder="Enter custom size" style="display: none;" />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="createVariantColor" class="form-label fw-semibold">Color</label>
+                        <input type="text" id="createVariantColor" class="form-control" placeholder="e.g., Red, Blue" />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="createVariantColorCode" class="form-label fw-semibold">Color Code</label>
+                        <div class="input-group">
+                            <input type="color" id="createVariantColorPicker" class="form-control form-control-color" value="#6f42c1" />
+                            <input type="text" id="createVariantColorCode" class="form-control" placeholder="#FFFFFF" />
+                        </div>
+                        <small class="text-muted">Pick or enter hex color code</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="createVariantSKU" class="form-label fw-semibold">SKU</label>
+                        <input type="text" id="createVariantSKU" class="form-control" placeholder="Variant SKU" />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="createVariantStock" class="form-label fw-semibold">Stock Quantity</label>
+                        <input type="number" id="createVariantStock" class="form-control" min="0" value="0" />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="createVariantAdditionalPrice" class="form-label fw-semibold">Additional Price (BDT)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">+৳</span>
+                            <input type="number" id="createVariantAdditionalPrice" class="form-control" min="0" step="1" value="0" />
+                        </div>
+                        <small class="text-muted">Extra charge for this variant</small>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="createVariantIsAvailable" checked />
+                            <label class="form-check-label" for="createVariantIsAvailable">Available for purchase</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn text-white" id="saveCreateVariantBtn" style="background: #6f42c1;">
+                    <i class="fas fa-save me-1"></i>Save Variant
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Variant Confirmation Modal for Create Page -->
+<div class="modal fade" id="deleteCreateVariantModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-danger">
+                        <i class="fas fa-trash-alt" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">Remove Variant?</h4>
+                <p class="text-muted mb-1">Are you sure you want to remove this variant?</p>
+                <p class="text-muted small mb-0">This variant will be removed from the list.</p>
+                <input type="hidden" id="deleteCreateVariantIndex" />
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmDeleteCreateVariantBtn">
+                    <i class="fas fa-check me-1"></i> Yes, Remove
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Camera Capture Modal -->
+<div class="modal fade" id="cameraCaptureModal" tabindex="-1" aria-labelledby="cameraCaptureModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="cameraCaptureModalLabel"><i class="fas fa-camera me-2"></i>Capture Image</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="closeCameraModal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="cameraContainer">
+                    <video id="cameraVideo" autoplay playsinline class="w-100 rounded"></video>
+                </div>
+                <div id="cameraError" class="alert alert-danger d-none mt-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <span id="cameraErrorText">Unable to access camera</span>
+                </div>
+                <div id="cameraControls" class="mt-3">
+                    <select id="cameraSelect" class="form-select mb-3" style="max-width: 300px; margin: 0 auto;">
+                        <option value="">Select Camera</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelCameraBtn">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-success" id="capturePhotoBtn">
+                    <i class="fas fa-camera me-2"></i>Capture Photo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Editor Modal - Powered by Cropper.js -->
+<div class="modal fade" id="imageEditorModal" tabindex="-1" aria-labelledby="imageEditorModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-fullscreen-lg-down modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient modal-header-success-gradient">
+                <h5 class="modal-title text-white" id="imageEditorModalLabel">
+                    <i class="fas fa-magic me-2"></i>Image Editor
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="closeEditorModal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="row g-0 h-100">
+                    <!-- Image Preview Area -->
+                    <div class="col-lg-8 editor-main-area">
+                        <div id="editorPreviewContainer" class="cropper-container-wrapper">
+                            <img id="cropperImage" src="" alt="Edit Image" style="max-width: 100%; display: block;">
+                        </div>
+                        <!-- Zoom slider below image -->
+                        <div class="zoom-control-bar">
+                            <button type="button" class="btn btn-sm btn-light" id="zoomOutBtn">
+                                <i class="fas fa-search-minus"></i>
+                            </button>
+                            <input type="range" class="form-range mx-2" id="zoomSlider" min="50" max="200" step="5" value="100">
+                            <button type="button" class="btn btn-sm btn-light" id="zoomInBtn">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                            <span class="zoom-value ms-2"><span id="zoomValue">100</span>%</span>
+                        </div>
+                    </div>
+                    <!-- Editor Controls Sidebar -->
+                    <div class="col-lg-4 editor-sidebar">
+                        <div class="editor-controls-wrapper">
+                            <!-- Quick Actions -->
+                            <div class="control-section">
+                                <h6 class="control-title"><i class="fas fa-bolt me-2"></i>Quick Actions</h6>
+                                <div class="btn-grid">
+                                    <button type="button" class="btn btn-editor" id="rotateLeftBtn" title="Rotate Left">
+                                        <i class="fas fa-undo"></i>
+                                        <span>Rotate Left</span>
+                                    </button>
+                                    <button type="button" class="btn btn-editor" id="rotateRightBtn" title="Rotate Right">
+                                        <i class="fas fa-redo"></i>
+                                        <span>Rotate Right</span>
+                                    </button>
+                                    <button type="button" class="btn btn-editor" id="flipHorizontalBtn" title="Flip Horizontal">
+                                        <i class="fas fa-arrows-alt-h"></i>
+                                        <span>Flip H</span>
+                                    </button>
+                                    <button type="button" class="btn btn-editor" id="flipVerticalBtn" title="Flip Vertical">
+                                        <i class="fas fa-arrows-alt-v"></i>
+                                        <span>Flip V</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Aspect Ratio -->
+                            <div class="control-section">
+                                <h6 class="control-title"><i class="fas fa-crop-alt me-2"></i>Aspect Ratio</h6>
+                                <div class="ratio-grid">
+                                    <button type="button" class="btn btn-ratio active" data-ratio="NaN" title="Free crop">
+                                        <i class="fas fa-expand"></i>
+                                        <span>Free</span>
+                                    </button>
+                                    <button type="button" class="btn btn-ratio" data-ratio="1" title="Square 1:1">
+                                        <i class="fas fa-square"></i>
+                                        <span>1:1</span>
+                                    </button>
+                                    <button type="button" class="btn btn-ratio" data-ratio="1.333" title="4:3">
+                                        <i class="fas fa-image"></i>
+                                        <span>4:3</span>
+                                    </button>
+                                    <button type="button" class="btn btn-ratio" data-ratio="1.777" title="16:9">
+                                        <i class="fas fa-tv"></i>
+                                        <span>16:9</span>
+                                    </button>
+                                    <button type="button" class="btn btn-ratio" data-ratio="0.75" title="3:4 Portrait">
+                                        <i class="fas fa-mobile-alt"></i>
+                                        <span>3:4</span>
+                                    </button>
+                                    <button type="button" class="btn btn-ratio" data-ratio="0.5625" title="9:16 Story">
+                                        <i class="fas fa-mobile"></i>
+                                        <span>9:16</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Reset -->
+                            <div class="control-section">
+                                <button type="button" class="btn btn-outline-danger w-100" id="resetAllBtn">
+                                    <i class="fas fa-undo-alt me-2"></i>Reset All Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer editor-footer">
+                <button type="button" class="btn btn-outline-secondary" id="retakePhotoBtn">
+                    <i class="fas fa-camera me-2"></i>Retake
+                </button>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="discardImageBtn">
+                    <i class="fas fa-times me-2"></i>Discard
+                </button>
+                <button type="button" class="btn btn-success btn-lg" id="confirmImageBtn">
+                    <i class="fas fa-check me-2"></i>Save & Add Image
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden canvas for image processing -->
+<canvas id="hiddenCanvas" style="display: none;"></canvas>
+
+@section Styles {
+    <!-- Cropper.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" integrity="sha512-hvNR0F/e2J7zPPfLC9auFe3/SE0yG4aJCOd/qxew74NN7eyiSKjr7xJJMu1Jy2wf7FXITpWS1E/RY8yzuXN7VA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Dark mode styles for input fields */
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background-color: #2d2d3d;
+            border-color: #404050;
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] .form-control:focus,
+        [data-theme="dark"] .form-select:focus {
+            background-color: #353545;
+            border-color: #28a745;
+            color: #f0f0f0;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+        }
+        [data-theme="dark"] .form-control::placeholder {
+            color: #9090a0;
+        }
+        [data-theme="dark"] .form-control:disabled,
+        [data-theme="dark"] .form-select:disabled {
+            background-color: #1d1d2d;
+            color: #808090;
+        }
+        [data-theme="dark"] .input-group-text {
+            background-color: #3d3d4d;
+            border-color: #404050;
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] .card {
+            background-color: #1e1e2e;
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] .card-header.bg-light {
+            background-color: #252535 !important;
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] .form-label {
+            color: #d0d0e0;
+        }
+        [data-theme="dark"] .text-muted {
+            color: #9090a0 !important;
+        }
+        [data-theme="dark"] .form-check-label {
+            color: #d0d0e0;
+        }
+
+        /* Card section styles */
+        .card.border-success { border-width: 2px; }
+        .card.border-primary { border-width: 2px; }
+        .card.border-warning { border-width: 2px; }
+        .card.border-info { border-width: 2px; }
+        .card.border-secondary { border-width: 2px; }
+
+        /* Image upload grid styles */
+        .image-upload-card {
+            position: relative;
+            border: 3px solid #dee2e6;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .image-upload-card:hover {
+            border-color: #28a745;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .image-upload-card.primary {
+            border-color: #28a745;
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.3);
+        }
+        .image-upload-card .image-wrapper {
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+        }
+        [data-theme="dark"] .image-upload-card .image-wrapper {
+            background: #2d2d3d;
+        }
+        .image-upload-card img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .image-upload-card .primary-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: #28a745;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .image-upload-card .remove-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .image-upload-card:hover .remove-btn {
+            opacity: 1;
+        }
+        .image-upload-card .image-actions {
+            padding: 8px;
+            background: #f8f9fa;
+            text-align: center;
+        }
+        [data-theme="dark"] .image-upload-card .image-actions {
+            background: #252535;
+        }
+        .image-upload-card .set-primary-btn {
+            font-size: 12px;
+            padding: 4px 12px;
+        }
+        [data-theme="dark"] .image-upload-card {
+            border-color: #404050;
+        }
+        [data-theme="dark"] .image-upload-card.primary {
+            border-color: #28a745;
+        }
+
+        /* Edit button for uploaded images */
+        .image-upload-card .edit-btn {
+            position: absolute;
+            top: 8px;
+            right: 40px;
+            background: #28a745;
+            color: white;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 12px;
+        }
+        .image-upload-card:hover .edit-btn {
+            opacity: 1;
+        }
+        .image-upload-card .edit-btn:hover {
+            background: #20c997;
+        }
+
+        /* Custom validation icon styles */
+        .form-control,
+        .form-select,
+        textarea.form-control {
+            background-image: none !important;
+        }
+
+        .validation-input-wrapper {
+            position: relative;
+        }
+
+        .validation-input-wrapper .form-control,
+        .validation-input-wrapper .form-select {
+            padding-right: 2.5rem;
+        }
+
+        .validation-input-wrapper textarea.form-control {
+            padding-right: 2.5rem;
+        }
+
+        .validation-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+            pointer-events: none;
+            display: none;
+        }
+
+        .validation-input-wrapper.textarea-wrapper .validation-icon {
+            top: 12px;
+            transform: none;
+        }
+
+        .validation-input-wrapper.is-valid .validation-icon.valid-icon {
+            display: block;
+            color: #198754;
+        }
+
+        .validation-input-wrapper.is-invalid .validation-icon.invalid-icon {
+            display: block;
+            color: #dc3545;
+        }
+
+        .validation-input-wrapper.is-valid .form-control,
+        .validation-input-wrapper.is-valid .form-select {
+            border-color: #198754;
+        }
+
+        .validation-input-wrapper.is-invalid .form-control,
+        .validation-input-wrapper.is-invalid .form-select {
+            border-color: #dc3545;
+        }
+
+        [data-theme="dark"] .validation-input-wrapper.is-valid .form-control,
+        [data-theme="dark"] .validation-input-wrapper.is-valid .form-select {
+            border-color: #198754;
+        }
+
+        [data-theme="dark"] .validation-input-wrapper.is-invalid .form-control,
+        [data-theme="dark"] .validation-input-wrapper.is-invalid .form-select {
+            border-color: #dc3545;
+        }
+
+        /* Camera Capture Button */
+        .camera-capture-btn {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            padding: 0.375rem 1rem;
+            font-size: 1.1rem;
+        }
+        .camera-capture-btn:hover {
+            background-color: #28a745;
+            color: #fff;
+        }
+        [data-theme="dark"] .camera-capture-btn {
+            border-color: #404050;
+            color: #28a745;
+        }
+        [data-theme="dark"] .camera-capture-btn:hover {
+            background-color: #28a745;
+            color: #fff;
+            border-color: #28a745;
+        }
+
+        /* Camera Capture Modal */
+        #cameraVideo {
+            max-height: 400px;
+            background: #000;
+            border-radius: 8px;
+        }
+        #cameraContainer {
+            position: relative;
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        [data-theme="dark"] #cameraCaptureModal .modal-content {
+            background-color: #1e1e2e;
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] #cameraCaptureModal .modal-header {
+            border-bottom-color: #404050;
+        }
+        [data-theme="dark"] #cameraCaptureModal .modal-footer {
+            border-top-color: #404050;
+        }
+
+        /* Image Editor Styles */
+        .editor-main-area {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            min-height: 500px;
+        }
+
+        .cropper-container-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #cropperImage {
+            max-width: 100%;
+            max-height: 450px;
+            display: block;
+        }
+
+        .zoom-control-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .zoom-control-bar .form-range {
+            width: 200px;
+            accent-color: #28a745;
+        }
+
+        .zoom-value {
+            color: #fff;
+            font-weight: 600;
+            min-width: 50px;
+        }
+
+        .editor-sidebar {
+            background: #f8f9fa;
+            border-left: 1px solid #dee2e6;
+            overflow-y: auto;
+            max-height: 600px;
+        }
+
+        [data-theme="dark"] .editor-sidebar {
+            background: #1e1e2e;
+            border-left-color: #404050;
+        }
+
+        .editor-controls-wrapper {
+            padding: 20px;
+        }
+
+        .control-section {
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .control-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        [data-theme="dark"] .control-section {
+            border-bottom-color: #404050;
+        }
+
+        .control-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        [data-theme="dark"] .control-title {
+            color: #adb5bd;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .btn-editor {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 8px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            background: #fff;
+            color: #495057;
+            transition: all 0.2s ease;
+            font-size: 0.75rem;
+        }
+
+        .btn-editor:hover {
+            border-color: #28a745;
+            color: #28a745;
+            background: rgba(40, 167, 69, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .btn-editor i {
+            font-size: 1.25rem;
+            margin-bottom: 4px;
+        }
+
+        [data-theme="dark"] .btn-editor {
+            background: #252535;
+            border-color: #404050;
+            color: #e0e0e0;
+        }
+
+        [data-theme="dark"] .btn-editor:hover {
+            border-color: #28a745;
+            background: rgba(40, 167, 69, 0.2);
+        }
+
+        .ratio-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .btn-ratio {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 6px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            background: #fff;
+            color: #495057;
+            transition: all 0.2s ease;
+            font-size: 0.7rem;
+        }
+
+        .btn-ratio:hover {
+            border-color: #28a745;
+            color: #28a745;
+        }
+
+        .btn-ratio.active {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-ratio i {
+            font-size: 1rem;
+            margin-bottom: 2px;
+        }
+
+        [data-theme="dark"] .btn-ratio {
+            background: #252535;
+            border-color: #404050;
+            color: #e0e0e0;
+        }
+
+        [data-theme="dark"] .btn-ratio:hover {
+            border-color: #28a745;
+        }
+
+        .editor-footer {
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            padding: 15px 20px;
+        }
+
+        [data-theme="dark"] .editor-footer {
+            background: #1e1e2e;
+            border-top-color: #404050;
+        }
+
+        [data-theme="dark"] #imageEditorModal .modal-content {
+            background-color: #1e1e2e;
+            color: #e0e0e0;
+        }
+
+        /* Cropper.js Custom Styles */
+        .cropper-view-box,
+        .cropper-face {
+            border-radius: 0;
+        }
+
+        .cropper-view-box {
+            outline: 2px solid #28a745;
+            outline-offset: -2px;
+        }
+
+        .cropper-point {
+            background-color: #28a745;
+            width: 10px;
+            height: 10px;
+        }
+
+        .cropper-line {
+            background-color: #28a745;
+        }
+
+        .cropper-dashed {
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        body.modal-open {
+            overflow: hidden !important;
+        }
+
+        #imageEditorModal .modal-dialog {
+            max-height: 100vh;
+            margin: 0 auto;
+        }
+
+        #imageEditorModal .modal-content {
+            max-height: 100vh;
+            overflow: hidden;
+        }
+
+        #imageEditorModal .modal-body {
+            overflow-y: auto;
+            overflow-x: hidden;
+            max-height: calc(100vh - 130px);
+        }
+
+        .cropper-container-wrapper {
+            overflow: hidden !important;
+            max-width: 100%;
+        }
+
+        .cropper-container {
+            max-width: 100% !important;
+        }
+
+        /* Responsive adjustments */
+        @@media (max-width: 991.98px) {
+            .editor-main-area {
+                min-height: 250px;
+                max-height: 45vh;
+            }
+
+            #cropperImage {
+                max-height: 200px;
+            }
+
+            .cropper-container-wrapper {
+                padding: 10px;
+                max-height: 40vh;
+            }
+
+            .editor-sidebar {
+                max-height: 40vh;
+                overflow-y: auto;
+                border-left: none;
+                border-top: 1px solid #dee2e6;
+            }
+
+            [data-theme="dark"] .editor-sidebar {
+                border-top-color: #404050;
+            }
+
+            .editor-controls-wrapper {
+                padding: 12px;
+            }
+
+            .control-section {
+                margin-bottom: 12px;
+                padding-bottom: 12px;
+            }
+
+            .btn-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .ratio-grid {
+                grid-template-columns: repeat(6, 1fr);
+            }
+
+            .btn-editor span,
+            .btn-ratio span {
+                display: none;
+            }
+
+            .btn-editor i,
+            .btn-ratio i {
+                margin-bottom: 0;
+            }
+
+            .btn-editor {
+                padding: 8px 4px;
+            }
+
+            .btn-ratio {
+                padding: 6px 4px;
+            }
+
+            .zoom-control-bar {
+                padding: 8px 10px;
+            }
+
+            .zoom-control-bar .form-range {
+                width: 120px;
+            }
+
+            #imageEditorModal .modal-body {
+                max-height: calc(100vh - 120px);
+            }
+
+            .image-upload-card .edit-btn,
+            .image-upload-card .remove-btn {
+                opacity: 1;
+            }
+        }
+
+        @@media (max-width: 576px) {
+            .editor-main-area {
+                min-height: 200px;
+                max-height: 40vh;
+            }
+
+            #cropperImage {
+                max-height: 180px;
+            }
+
+            .cropper-container-wrapper {
+                max-height: 35vh;
+            }
+
+            .editor-sidebar {
+                max-height: 35vh;
+            }
+
+            /* Form Actions - Stack buttons on mobile */
+            .d-flex.justify-content-between.align-items-center.pt-3.border-top {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch !important;
+            }
+
+            .d-flex.justify-content-between.align-items-center.pt-3.border-top > a {
+                width: 100%;
+                text-align: center;
+                order: 2;
+            }
+
+            .d-flex.justify-content-between.align-items-center.pt-3.border-top > div {
+                width: 100%;
+                display: flex;
+                gap: 0.5rem;
+                order: 1;
+            }
+
+            .d-flex.justify-content-between.align-items-center.pt-3.border-top > div .btn {
+                flex: 1;
+                padding: 0.625rem 0.5rem;
+                font-size: 0.875rem;
+            }
+
+            .d-flex.justify-content-between.align-items-center.pt-3.border-top > div .btn i {
+                margin-right: 0.25rem !important;
+            }
+        }
+    </style>
+}
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <!-- Cropper.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js" integrity="sha512-9KkIqdfN7ipEW6B6k+Aq20PV31bjODg4AA52W+tYtAE0jE0kMx49bjJ3FgvS56wzmyfMUHbQ4Km2b7l9+Y/+Eg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        $(document).ready(function () {
+            // Cascading Category Selection
+            var categorySelections = [];
+
+            function updateCategoryPath() {
+                if (categorySelections.length > 0) {
+                    var pathNames = categorySelections.map(function(s) { return s.name; });
+                    $('#categoryPath').text(pathNames.join(' > '));
+                    $('#categoryBreadcrumb').show();
+                } else {
+                    $('#categoryBreadcrumb').hide();
+                }
+            }
+
+            function loadChildCategories(parentId, level) {
+                $.get('@Url.Action("GetCategoriesByParent", "Product", new { area = "Seller" })', { parentId: parentId }, function (data) {
+                    if (data && data.length > 0) {
+                        var newWrapper = $('<div class="col-md-6"></div>');
+                        var newSelect = $('<select class="form-select category-select" data-level="' + level + '">' +
+                            '<option value="">Select Subcategory</option>' +
+                            '</select>');
+
+                        $.each(data, function (i, item) {
+                            newSelect.append(
+                                $('<option></option>')
+                                    .val(item.id)
+                                    .text(item.name)
+                                    .data('hasChildren', item.hasChildren)
+                            );
+                        });
+
+                        newWrapper.append(newSelect);
+                        $('#cascadingCategories').append(newWrapper);
+                    }
+                });
+            }
+
+            $(document).on('change', '.category-select', function () {
+                var $this = $(this);
+                var level = parseInt($this.data('level'));
+                var selectedId = $this.val();
+                var selectedText = $this.find('option:selected').text();
+                var hasChildren = $this.find('option:selected').data('hasChildren');
+
+                $('.category-select').filter(function() {
+                    return parseInt($(this).data('level')) > level;
+                }).closest('.col-md-6').remove();
+
+                categorySelections = categorySelections.slice(0, level);
+
+                if (selectedId) {
+                    categorySelections.push({ id: selectedId, name: selectedText });
+                    $('#finalCategoryId').val(selectedId);
+                    $('#categoryValidation').hide();
+                    $('#cascadingCategories .category-select').removeClass('is-invalid');
+
+                    if (hasChildren) {
+                        loadChildCategories(selectedId, level + 1);
+                    }
+                } else {
+                    if (categorySelections.length > 0) {
+                        $('#finalCategoryId').val(categorySelections[categorySelections.length - 1].id);
+                    } else {
+                        $('#finalCategoryId').val('');
+                    }
+                }
+
+                updateCategoryPath();
+            });
+
+            // Load hasChildren for root categories
+            $.get('@Url.Action("GetCategoriesByParent", "Product", new { area = "Seller" })', { parentId: null }, function (data) {
+                var $rootSelect = $('.category-select[data-level="0"]');
+                $rootSelect.find('option:not(:first)').remove();
+                $.each(data, function (i, item) {
+                    $rootSelect.append(
+                        $('<option></option>')
+                            .val(item.id)
+                            .text(item.name)
+                            .data('hasChildren', item.hasChildren)
+                    );
+                });
+            });
+
+            // Stock-Status auto-update
+            $('#stockInput').on('input', function () {
+                var stock = parseInt($(this).val()) || 0;
+                var statusSelect = $('#statusSelect');
+                var currentStatus = statusSelect.val();
+
+                if (stock <= 0) {
+                    statusSelect.val('OutOfStock');
+                } else if (currentStatus === 'OutOfStock') {
+                    statusSelect.val('Active');
+                }
+            });
+
+            // Return days toggle based on returnable
+            $('#isReturnableCheck').change(function () {
+                $('#returnDaysInput').prop('disabled', !$(this).is(':checked'));
+            });
+
+            // Bengali text validation
+            $('.bengali-only').on('input', function () {
+                var text = $(this).val();
+                var bengaliPattern = /^[\u0980-\u09FF\s\.,!?;:\-\(\)\[\]'"0-9]*$/;
+                var errorSpan = $(this).siblings('.bengali-error');
+
+                if (text && !bengaliPattern.test(text)) {
+                    errorSpan.show();
+                    $(this).addClass('is-invalid');
+                } else {
+                    errorSpan.hide();
+                    $(this).removeClass('is-invalid');
+                }
+            });
+
+            // English text validation
+            $('.english-only').on('input', function () {
+                var text = $(this).val();
+                var englishPattern = /^[a-zA-Z0-9\s\.,!?;:\-\(\)\[\]'"]*$/;
+                var errorSpan = $(this).siblings('.english-error');
+
+                if (text && !englishPattern.test(text)) {
+                    errorSpan.show();
+                    $(this).addClass('is-invalid');
+                } else {
+                    errorSpan.hide();
+                    $(this).removeClass('is-invalid');
+                }
+            });
+
+            // Image Upload Management
+            var uploadedImages = [];
+            var primaryIndex = 0;
+
+            $('#imageUploadInput').change(function () {
+                var files = Array.from(this.files);
+
+                files.forEach(function (file, index) {
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        uploadedImages.push({
+                            file: file,
+                            dataUrl: e.target.result,
+                            name: file.name
+                        });
+                        if (uploadedImages.length === 1) {
+                            primaryIndex = 0;
+                        }
+                        renderImageGrid();
+                    };
+                    reader.readAsDataURL(file);
+                });
+
+                $(this).val('');
+            });
+
+            function renderImageGrid() {
+                var grid = $('#imagePreviewGrid');
+                grid.empty();
+
+                if (uploadedImages.length === 0) {
+                    grid.html('<div class="col-12 text-center text-muted py-4" id="noImagesPlaceholder">' +
+                        '<i class="fas fa-cloud-upload-alt fa-3x mb-2"></i>' +
+                        '<p class="mb-0">No images uploaded yet. Select images above.</p></div>');
+                    return;
+                }
+
+                uploadedImages.forEach(function (img, index) {
+                    var isPrimary = index === primaryIndex;
+                    var cardHtml = '<div class="col-6 col-md-4 col-lg-3">' +
+                        '<div class="image-upload-card' + (isPrimary ? ' primary' : '') + '" data-index="' + index + '">' +
+                        (isPrimary ? '<span class="primary-badge"><i class="fas fa-star me-1"></i>Primary</span>' : '') +
+                        '<button type="button" class="edit-btn" onclick="editImage(' + index + '); event.stopPropagation();" title="Edit image">' +
+                        '<i class="fas fa-edit"></i></button>' +
+                        '<button type="button" class="remove-btn" onclick="removeImage(' + index + '); event.stopPropagation();" title="Remove image">' +
+                        '<i class="fas fa-times"></i></button>' +
+                        '<div class="image-wrapper">' +
+                        '<img src="' + img.dataUrl + '" alt="' + img.name + '" />' +
+                        '</div>' +
+                        '<div class="image-actions">' +
+                        (isPrimary ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Primary Image</span>' :
+                            '<button type="button" class="btn btn-sm btn-outline-success set-primary-btn" onclick="setPrimary(' + index + '); event.stopPropagation();">' +
+                            '<i class="fas fa-star me-1"></i>Set as Primary</button>') +
+                        '</div></div></div>';
+                    grid.append(cardHtml);
+                });
+
+                updateHiddenInputs();
+            }
+
+            window.removeImage = function(index) {
+                if (uploadedImages.length <= 1) {
+                    if (typeof alertify !== 'undefined') {
+                        alertify.warning('Cannot remove the last image. Every product must have at least one image.');
+                    } else {
+                        alert('Cannot remove the last image. Every product must have at least one image.');
+                    }
+                    return;
+                }
+
+                uploadedImages.splice(index, 1);
+
+                if (primaryIndex >= uploadedImages.length) {
+                    primaryIndex = uploadedImages.length - 1;
+                } else if (primaryIndex > index) {
+                    primaryIndex--;
+                } else if (primaryIndex === index) {
+                    primaryIndex = 0;
+                }
+
+                renderImageGrid();
+            };
+
+            window.setPrimary = function(index) {
+                primaryIndex = index;
+                renderImageGrid();
+            };
+
+            var editingImageIndex = -1;
+
+            window.editImage = function(index) {
+                editingImageIndex = index;
+                var img = uploadedImages[index];
+                if (img && img.dataUrl) {
+                    openImageEditor(img.dataUrl);
+                }
+            };
+
+            function updateHiddenInputs() {
+                var primaryDT = new DataTransfer();
+                var additionalDT = new DataTransfer();
+
+                uploadedImages.forEach(function (img, index) {
+                    if (index === primaryIndex) {
+                        primaryDT.items.add(img.file);
+                    } else {
+                        additionalDT.items.add(img.file);
+                    }
+                });
+
+                document.getElementById('primaryImageFile').files = primaryDT.files;
+                document.getElementById('additionalImagesFile').files = additionalDT.files;
+            }
+
+            // Form validation before submit
+            $('#productForm').on('submit', function (e) {
+                var bengaliField = $('.bengali-only');
+                var englishField = $('.english-only');
+
+                var categoryId = $('#finalCategoryId').val();
+                if (!categoryId || categoryId === '') {
+                    e.preventDefault();
+                    $('#categoryValidation').show();
+                    $('#cascadingCategories .category-select:first').addClass('is-invalid');
+                    if (typeof alertify !== 'undefined') {
+                        alertify.error('Please select a category for the product');
+                    }
+                    $('html, body').animate({
+                        scrollTop: $('#cascadingCategories').offset().top - 100
+                    }, 300);
+                    return false;
+                }
+
+                if (uploadedImages.length === 0) {
+                    e.preventDefault();
+                    if (typeof alertify !== 'undefined') {
+                        alertify.error('Please upload at least one product image');
+                    } else {
+                        alert('Please upload at least one product image');
+                    }
+                    $('#imageUploadInput').focus();
+                    return false;
+                }
+
+                if (bengaliField.hasClass('is-invalid')) {
+                    e.preventDefault();
+                    if (typeof alertify !== 'undefined') {
+                        alertify.error('Please fix Bengali description field - only Bengali text allowed');
+                    }
+                    bengaliField.focus();
+                    return false;
+                }
+
+                if (englishField.hasClass('is-invalid')) {
+                    e.preventDefault();
+                    if (typeof alertify !== 'undefined') {
+                        alertify.error('Please fix English description field - only English text allowed');
+                    }
+                    englishField.focus();
+                    return false;
+                }
+            });
+
+            // Validation Icons Management
+            function initValidationIcons() {
+                var formControls = $('#productForm').find('input.form-control, textarea.form-control, select.form-select');
+
+                formControls.each(function () {
+                    var $input = $(this);
+
+                    if ($input.attr('type') === 'hidden' || $input.attr('type') === 'file' || $input.css('display') === 'none') {
+                        return;
+                    }
+
+                    if ($input.closest('.input-group').length > 0) {
+                        return;
+                    }
+
+                    if (!$input.parent().hasClass('validation-input-wrapper')) {
+                        var isTextarea = $input.is('textarea');
+                        $input.wrap('<div class="validation-input-wrapper' + (isTextarea ? ' textarea-wrapper' : '') + '"></div>');
+
+                        var $wrapper = $input.parent();
+                        $wrapper.append('<i class="fas fa-check-circle validation-icon valid-icon"></i>');
+                        $wrapper.append('<i class="fas fa-exclamation-circle validation-icon invalid-icon"></i>');
+                    }
+
+                    $input.off('input.validation blur.validation change.validation').on('input.validation blur.validation change.validation', function () {
+                        updateValidationState($(this));
+                    });
+                });
+            }
+
+            function updateValidationState($input) {
+                var $wrapper = $input.parent('.validation-input-wrapper');
+                if (!$wrapper.length) return;
+
+                var value = $input.val();
+                var hasCustomError = $input.hasClass('is-invalid');
+                var $validationSpan = $input.siblings('span[data-valmsg-for]').add($input.parent().siblings('span[data-valmsg-for]'));
+                var hasServerError = $validationSpan.length && $validationSpan.text().trim().length > 0 && $validationSpan.hasClass('field-validation-error');
+
+                $wrapper.removeClass('is-valid is-invalid');
+                $input.removeClass('is-valid');
+
+                if (hasCustomError || hasServerError) {
+                    $wrapper.addClass('is-invalid');
+                } else if (value && value.toString().trim().length > 0) {
+                    $wrapper.addClass('is-valid');
+                }
+            }
+
+            setTimeout(function () {
+                initValidationIcons();
+            }, 100);
+
+            // Camera Capture Functionality
+            var cameraStream = null;
+            var cameraCaptureModal = new bootstrap.Modal(document.getElementById('cameraCaptureModal'));
+            var imageEditorModal = new bootstrap.Modal(document.getElementById('imageEditorModal'));
+
+            var cropper = null;
+            var originalImageDataUrl = null;
+            var scaleX = 1;
+            var scaleY = 1;
+
+            function isMediaDevicesAvailable() {
+                return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+            }
+
+            function isSecureContext() {
+                return window.isSecureContext ||
+                       location.protocol === 'https:' ||
+                       location.hostname === 'localhost' ||
+                       location.hostname === '127.0.0.1';
+            }
+
+            $('#openCameraBtn').click(function() {
+                if (isSecureContext() && isMediaDevicesAvailable()) {
+                    openCameraDirectly();
+                } else {
+                    $('#nativeCameraInput').click();
+                }
+            });
+
+            $('#nativeCameraInput').change(function() {
+                var file = this.files[0];
+                if (file) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        openImageEditor(e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+                $(this).val('');
+            });
+
+            function openCameraDirectly() {
+                $('#cameraError').addClass('d-none');
+                $('#cameraVideo').show();
+
+                var constraints = {
+                    video: { facingMode: 'environment' },
+                    audio: false
+                };
+
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(function(stream) {
+                        cameraStream = stream;
+                        var video = document.getElementById('cameraVideo');
+                        video.srcObject = stream;
+                        video.play();
+                        cameraCaptureModal.show();
+
+                        navigator.mediaDevices.enumerateDevices()
+                            .then(function(devices) {
+                                var videoDevices = devices.filter(function(d) { return d.kind === 'videoinput'; });
+                                var cameraSelect = $('#cameraSelect');
+                                cameraSelect.empty().append('<option value="">Select Camera</option>');
+
+                                videoDevices.forEach(function(device, index) {
+                                    cameraSelect.append(
+                                        $('<option></option>')
+                                            .val(device.deviceId)
+                                            .text(device.label || 'Camera ' + (index + 1))
+                                    );
+                                });
+
+                                var currentTrack = stream.getVideoTracks()[0];
+                                if (currentTrack) {
+                                    var settings = currentTrack.getSettings();
+                                    if (settings.deviceId) {
+                                        cameraSelect.val(settings.deviceId);
+                                    }
+                                }
+                            });
+                    })
+                    .catch(function(err) {
+                        console.log('Camera API failed, using native capture:', err.message);
+                        $('#nativeCameraInput').click();
+                    });
+            }
+
+            function startCamera(deviceId) {
+                stopCamera();
+                var constraints = {
+                    video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' },
+                    audio: false
+                };
+
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(function(stream) {
+                        cameraStream = stream;
+                        var video = document.getElementById('cameraVideo');
+                        video.srcObject = stream;
+                        video.play();
+                        $('#cameraError').addClass('d-none');
+                    })
+                    .catch(function(err) {
+                        showCameraError('Camera access denied: ' + err.message);
+                    });
+            }
+
+            function stopCamera() {
+                if (cameraStream) {
+                    cameraStream.getTracks().forEach(function(track) { track.stop(); });
+                    cameraStream = null;
+                }
+            }
+
+            function showCameraError(message) {
+                $('#cameraErrorText').text(message);
+                $('#cameraError').removeClass('d-none');
+                $('#cameraVideo').hide();
+            }
+
+            $('#cameraSelect').change(function() {
+                var deviceId = $(this).val();
+                if (deviceId) startCamera(deviceId);
+            });
+
+            $('#capturePhotoBtn').click(function() {
+                var video = document.getElementById('cameraVideo');
+                var canvas = document.getElementById('hiddenCanvas');
+                var ctx = canvas.getContext('2d');
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+
+                var imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                stopCamera();
+                cameraCaptureModal.hide();
+                openImageEditor(imageDataUrl);
+            });
+
+            $('#cameraCaptureModal').on('hidden.bs.modal', function() {
+                stopCamera();
+            });
+
+            // Cropper.js Image Editor
+            function openImageEditor(imageDataUrl) {
+                originalImageDataUrl = imageDataUrl;
+                scaleX = 1;
+                scaleY = 1;
+
+                $('.btn-ratio').removeClass('active');
+                $('.btn-ratio[data-ratio="NaN"]').addClass('active');
+                $('#zoomSlider').val(100);
+                $('#zoomValue').text('100');
+
+                var cropperImage = document.getElementById('cropperImage');
+                cropperImage.src = imageDataUrl;
+
+                imageEditorModal.show();
+
+                setTimeout(function() {
+                    if (cropper) {
+                        cropper.destroy();
+                    }
+                    cropper = new Cropper(cropperImage, {
+                        viewMode: 1,
+                        aspectRatio: NaN,
+                        autoCropArea: 1,
+                        responsive: true,
+                        restore: false,
+                        guides: true,
+                        center: true,
+                        highlight: true,
+                        cropBoxMovable: true,
+                        cropBoxResizable: true,
+                        toggleDragModeOnDblclick: false,
+                        ready: function() {
+                            $('#zoomSlider').val(100);
+                            $('#zoomValue').text('100');
+                        }
+                    });
+                }, 300);
+            }
+
+            $('#rotateLeftBtn').click(function() {
+                if (cropper) cropper.rotate(-90);
+            });
+
+            $('#rotateRightBtn').click(function() {
+                if (cropper) cropper.rotate(90);
+            });
+
+            $('#flipHorizontalBtn').click(function() {
+                if (cropper) {
+                    scaleX = scaleX * -1;
+                    cropper.scaleX(scaleX);
+                }
+            });
+
+            $('#flipVerticalBtn').click(function() {
+                if (cropper) {
+                    scaleY = scaleY * -1;
+                    cropper.scaleY(scaleY);
+                }
+            });
+
+            $('.btn-ratio').click(function() {
+                $('.btn-ratio').removeClass('active');
+                $(this).addClass('active');
+                var ratio = parseFloat($(this).data('ratio'));
+                if (cropper) {
+                    cropper.setAspectRatio(ratio);
+                }
+            });
+
+            $('#zoomSlider').on('input', function() {
+                var val = parseInt($(this).val());
+                $('#zoomValue').text(val);
+                if (cropper) {
+                    cropper.zoomTo(val / 100);
+                }
+            });
+
+            $('#zoomInBtn').click(function() {
+                var currentVal = parseInt($('#zoomSlider').val());
+                var newVal = Math.min(200, currentVal + 10);
+                $('#zoomSlider').val(newVal).trigger('input');
+            });
+
+            $('#zoomOutBtn').click(function() {
+                var currentVal = parseInt($('#zoomSlider').val());
+                var newVal = Math.max(50, currentVal - 10);
+                $('#zoomSlider').val(newVal).trigger('input');
+            });
+
+            $('#resetAllBtn').click(function() {
+                if (cropper && originalImageDataUrl) {
+                    scaleX = 1;
+                    scaleY = 1;
+                    cropper.reset();
+                    $('.btn-ratio').removeClass('active');
+                    $('.btn-ratio[data-ratio="NaN"]').addClass('active');
+                    $('#zoomSlider').val(100);
+                    $('#zoomValue').text('100');
+                }
+            });
+
+            $('#retakePhotoBtn').click(function() {
+                if (cropper) {
+                    cropper.destroy();
+                    cropper = null;
+                }
+                imageEditorModal.hide();
+                if (isSecureContext() && isMediaDevicesAvailable()) {
+                    openCameraDirectly();
+                } else {
+                    $('#nativeCameraInput').click();
+                }
+            });
+
+            $('#confirmImageBtn').click(function() {
+                if (cropper) {
+                    var canvas = cropper.getCroppedCanvas({
+                        maxWidth: 1200,
+                        maxHeight: 1200,
+                        fillColor: '#fff'
+                    });
+
+                    canvas.toBlob(function(blob) {
+                        var fileName = 'product_image_' + Date.now() + '.jpg';
+                        var file = new File([blob], fileName, { type: 'image/jpeg' });
+
+                        if (editingImageIndex >= 0) {
+                            uploadedImages[editingImageIndex] = {
+                                file: file,
+                                dataUrl: canvas.toDataURL('image/jpeg', 0.9),
+                                name: fileName
+                            };
+                            editingImageIndex = -1;
+                        } else {
+                            uploadedImages.push({
+                                file: file,
+                                dataUrl: canvas.toDataURL('image/jpeg', 0.9),
+                                name: fileName
+                            });
+                            if (uploadedImages.length === 1) {
+                                primaryIndex = 0;
+                            }
+                        }
+
+                        renderImageGrid();
+                        cropper.destroy();
+                        cropper = null;
+                        imageEditorModal.hide();
+                    }, 'image/jpeg', 0.9);
+                }
+            });
+
+            $('#imageEditorModal').on('hidden.bs.modal', function() {
+                if (cropper) {
+                    cropper.destroy();
+                    cropper = null;
+                }
+                editingImageIndex = -1;
+            });
+
+            // =============================================
+            // PRODUCT VARIANTS MANAGEMENT (Create Page)
+            // =============================================
+
+            var tempVariants = [];
+            var editingVariantIndex = -1;
+
+            function updateVariantsUI() {
+                if (tempVariants.length === 0) {
+                    $('#noVariantsMessage').show();
+                    $('#variantsTableContainer').hide();
+                } else {
+                    $('#noVariantsMessage').hide();
+                    $('#variantsTableContainer').show();
+
+                    var tbody = $('#variantsTableBody');
+                    tbody.empty();
+
+                    tempVariants.forEach(function(v, index) {
+                        var colorSwatch = v.ColorCode ? '<span style="background-color: ' + v.ColorCode + '; width: 18px; height: 18px; border-radius: 50%; border: 1px solid #ddd; display: inline-block; margin-right: 5px;"></span>' : '';
+                        var row = '<tr data-index="' + index + '">' +
+                            '<td>' + (v.Size ? '<span class="badge bg-secondary">' + v.Size + '</span>' : '<span class="text-muted">-</span>') + '</td>' +
+                            '<td>' + (v.Color ? '<div class="d-flex align-items-center">' + colorSwatch + '<span>' + v.Color + '</span></div>' : '<span class="text-muted">-</span>') + '</td>' +
+                            '<td><code class="small">' + (v.SKU || '-') + '</code></td>' +
+                            '<td class="text-center"><span class="badge ' + (v.Stock > 0 ? 'bg-success' : 'bg-danger') + '">' + v.Stock + '</span></td>' +
+                            '<td class="text-end">' + (v.AdditionalPrice > 0 ? '<span class="text-success">+৳' + v.AdditionalPrice + '</span>' : '<span class="text-muted">-</span>') + '</td>' +
+                            '<td class="text-center">' + (v.IsAvailable ? '<span class="badge bg-success"><i class="fas fa-check"></i></span>' : '<span class="badge bg-secondary"><i class="fas fa-times"></i></span>') + '</td>' +
+                            '<td class="text-end">' +
+                                '<div class="btn-group btn-group-sm">' +
+                                    '<button type="button" class="btn btn-outline-primary edit-temp-variant-btn" data-index="' + index + '" title="Edit"><i class="fas fa-edit"></i></button>' +
+                                    '<button type="button" class="btn btn-outline-danger delete-temp-variant-btn" data-index="' + index + '" title="Delete"><i class="fas fa-trash"></i></button>' +
+                                '</div>' +
+                            '</td>' +
+                        '</tr>';
+                        tbody.append(row);
+                    });
+                }
+
+                // Update hidden input
+                $('#variantsJsonInput').val(JSON.stringify(tempVariants));
+            }
+
+            // Show/hide custom size input
+            $('#createVariantSize').on('change', function() {
+                if ($(this).val() === 'Custom') {
+                    $('#createCustomSize').show().focus();
+                } else {
+                    $('#createCustomSize').hide().val('');
+                }
+            });
+
+            // Sync color picker with text input
+            $('#createVariantColorPicker').on('input', function() {
+                $('#createVariantColorCode').val($(this).val());
+            });
+            $('#createVariantColorCode').on('input', function() {
+                var val = $(this).val();
+                if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+                    $('#createVariantColorPicker').val(val);
+                }
+            });
+
+            function resetCreateVariantForm() {
+                editingVariantIndex = -1;
+                $('#createVariantSize').val('');
+                $('#createCustomSize').hide().val('');
+                $('#createVariantColor').val('');
+                $('#createVariantColorCode').val('');
+                $('#createVariantColorPicker').val('#6f42c1');
+                $('#createVariantSKU').val('');
+                $('#createVariantStock').val('0');
+                $('#createVariantAdditionalPrice').val('0');
+                $('#createVariantIsAvailable').prop('checked', true);
+                $('#createVariantModalTitle').text('Add New Variant');
+            }
+
+            // Add Variant button
+            $('#addVariantBtn').on('click', function() {
+                resetCreateVariantForm();
+                var modal = new bootstrap.Modal(document.getElementById('createVariantModal'));
+                modal.show();
+            });
+
+            // Edit variant button
+            $(document).on('click', '.edit-temp-variant-btn', function() {
+                var index = $(this).data('index');
+                var v = tempVariants[index];
+                editingVariantIndex = index;
+
+                var sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'Free Size'];
+                if (v.Size && sizeOptions.indexOf(v.Size) === -1) {
+                    $('#createVariantSize').val('Custom');
+                    $('#createCustomSize').show().val(v.Size);
+                } else {
+                    $('#createVariantSize').val(v.Size || '');
+                    $('#createCustomSize').hide().val('');
+                }
+
+                $('#createVariantColor').val(v.Color || '');
+                $('#createVariantColorCode').val(v.ColorCode || '');
+                if (v.ColorCode && /^#[0-9A-Fa-f]{6}$/.test(v.ColorCode)) {
+                    $('#createVariantColorPicker').val(v.ColorCode);
+                }
+                $('#createVariantSKU').val(v.SKU || '');
+                $('#createVariantStock').val(v.Stock || 0);
+                $('#createVariantAdditionalPrice').val(v.AdditionalPrice || 0);
+                $('#createVariantIsAvailable').prop('checked', v.IsAvailable !== false);
+                $('#createVariantModalTitle').text('Edit Variant');
+
+                var modal = new bootstrap.Modal(document.getElementById('createVariantModal'));
+                modal.show();
+            });
+
+            // Save variant
+            $('#saveCreateVariantBtn').on('click', function() {
+                var size = $('#createVariantSize').val() === 'Custom' ? $('#createCustomSize').val() : $('#createVariantSize').val();
+                var color = $('#createVariantColor').val();
+
+                if (!size && !color) {
+                    if (typeof alertify !== 'undefined') {
+                        alertify.error('Please enter at least a size or color');
+                    } else {
+                        alert('Please enter at least a size or color');
+                    }
+                    return;
+                }
+
+                var variant = {
+                    Size: size,
+                    Color: color,
+                    ColorCode: $('#createVariantColorCode').val(),
+                    SKU: $('#createVariantSKU').val(),
+                    Stock: parseInt($('#createVariantStock').val()) || 0,
+                    AdditionalPrice: parseFloat($('#createVariantAdditionalPrice').val()) || 0,
+                    IsAvailable: $('#createVariantIsAvailable').is(':checked')
+                };
+
+                if (editingVariantIndex >= 0) {
+                    tempVariants[editingVariantIndex] = variant;
+                    if (typeof alertify !== 'undefined') alertify.success('Variant updated');
+                } else {
+                    tempVariants.push(variant);
+                    if (typeof alertify !== 'undefined') alertify.success('Variant added');
+                }
+
+                updateVariantsUI();
+                bootstrap.Modal.getInstance(document.getElementById('createVariantModal')).hide();
+            });
+
+            // Delete variant - show modal
+            var deleteCreateVariantModal = new bootstrap.Modal(document.getElementById('deleteCreateVariantModal'));
+
+            $(document).on('click', '.delete-temp-variant-btn', function() {
+                $('#deleteCreateVariantIndex').val($(this).data('index'));
+                deleteCreateVariantModal.show();
+            });
+
+            // Confirm delete variant
+            $('#confirmDeleteCreateVariantBtn').on('click', function() {
+                var index = parseInt($('#deleteCreateVariantIndex').val());
+                tempVariants.splice(index, 1);
+                updateVariantsUI();
+                deleteCreateVariantModal.hide();
+                if (typeof alertify !== 'undefined') alertify.success('Variant removed');
+            });
+        });
+    </script>
+}

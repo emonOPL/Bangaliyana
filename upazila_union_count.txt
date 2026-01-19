@@ -1,0 +1,497 @@
+UpazilaId|UpazilaName|DistrictName|DivisionName|CurrentUnions
+---------|-----------|------------|------------|-------------
+1|Amtali|Barguna|Barishal|0
+2|Bamna|Barguna|Barishal|0
+3|Barguna Sadar|Barguna|Barishal|0
+4|Betagi|Barguna|Barishal|0
+5|Patharghata|Barguna|Barishal|0
+6|Taltali|Barguna|Barishal|0
+7|Agailjhara|Barishal|Barishal|0
+8|Babuganj|Barishal|Barishal|0
+9|Bakerganj|Barishal|Barishal|0
+10|Banaripara|Barishal|Barishal|0
+11|Barishal Sadar|Barishal|Barishal|8
+12|Gournadi|Barishal|Barishal|0
+13|Hizla|Barishal|Barishal|0
+14|Mehendiganj|Barishal|Barishal|0
+15|Muladi|Barishal|Barishal|0
+16|Wazirpur|Barishal|Barishal|0
+17|Bhola Sadar|Bhola|Barishal|0
+18|Burhanuddin|Bhola|Barishal|0
+19|Char Fasson|Bhola|Barishal|0
+20|Daulatkhan|Bhola|Barishal|0
+21|Lalmohan|Bhola|Barishal|0
+22|Manpura|Bhola|Barishal|0
+23|Tazumuddin|Bhola|Barishal|0
+24|Jhalokathi Sadar|Jhalokati|Barishal|0
+25|Kathalia|Jhalokati|Barishal|0
+26|Nalchity|Jhalokati|Barishal|0
+27|Rajapur|Jhalokati|Barishal|0
+28|Bauphal|Patuakhali|Barishal|0
+29|Dashmina|Patuakhali|Barishal|0
+30|Dumki|Patuakhali|Barishal|0
+31|Galachipa|Patuakhali|Barishal|0
+32|Kalapara|Patuakhali|Barishal|0
+33|Mirzaganj|Patuakhali|Barishal|0
+34|Patuakhali Sadar|Patuakhali|Barishal|0
+35|Rangabali|Patuakhali|Barishal|0
+36|Bhandaria|Pirojpur|Barishal|0
+37|Kawkhali|Pirojpur|Barishal|0
+38|Mathbaria|Pirojpur|Barishal|0
+39|Nazirpur|Pirojpur|Barishal|0
+40|Nesarabad|Pirojpur|Barishal|0
+41|Pirojpur Sadar|Pirojpur|Barishal|0
+42|Zianagar|Pirojpur|Barishal|0
+43|Ali Kadam|Bandarban|Chattogram|0
+44|Bandarban Sadar|Bandarban|Chattogram|0
+45|Lama|Bandarban|Chattogram|0
+46|Naikhongchhari|Bandarban|Chattogram|0
+47|Rowangchhari|Bandarban|Chattogram|0
+48|Ruma|Bandarban|Chattogram|0
+49|Thanchi|Bandarban|Chattogram|6
+50|Akhaura|Brahmanbaria|Chattogram|5
+51|Ashuganj|Brahmanbaria|Chattogram|7
+52|Bancharampur|Brahmanbaria|Chattogram|0
+58|Bijoynagar|Brahmanbaria|Chattogram|0
+53|Brahmanbaria Sadar|Brahmanbaria|Chattogram|0
+54|Kasba|Brahmanbaria|Chattogram|0
+55|Nabinagar|Brahmanbaria|Chattogram|0
+56|Nasirnagar|Brahmanbaria|Chattogram|0
+57|Sarail|Brahmanbaria|Chattogram|0
+59|Chandpur Sadar|Chandpur|Chattogram|0
+60|Faridganj|Chandpur|Chattogram|0
+61|Haimchar|Chandpur|Chattogram|0
+62|Haziganj|Chandpur|Chattogram|0
+63|Kachua|Chandpur|Chattogram|0
+64|Matlab Dakshin|Chandpur|Chattogram|0
+65|Matlab Uttar|Chandpur|Chattogram|0
+66|Shahrasti|Chandpur|Chattogram|5
+67|Anwara|Chattogram|Chattogram|6
+68|Banshkhali|Chattogram|Chattogram|0
+69|Boalkhali|Chattogram|Chattogram|7
+70|Chandanaish|Chattogram|Chattogram|0
+71|Chattogram Port|Chattogram|Chattogram|0
+72|Double Mooring|Chattogram|Chattogram|0
+73|Fatikchhari|Chattogram|Chattogram|0
+74|Hathazari|Chattogram|Chattogram|0
+75|Kotwali|Chattogram|Chattogram|0
+76|Lohagara|Chattogram|Chattogram|0
+77|Mirsharai|Chattogram|Chattogram|0
+78|Pahartali|Chattogram|Chattogram|0
+79|Panchlaish|Chattogram|Chattogram|0
+80|Patiya|Chattogram|Chattogram|0
+81|Rangunia|Chattogram|Chattogram|0
+82|Raozan|Chattogram|Chattogram|0
+83|Sandwip|Chattogram|Chattogram|0
+84|Satkania|Chattogram|Chattogram|0
+85|Sitakunda|Chattogram|Chattogram|0
+103|Chakaria|Coxs Bazar|Chattogram|0
+104|Cox's Bazar Sadar|Coxs Bazar|Chattogram|0
+105|Kutubdia|Coxs Bazar|Chattogram|8
+106|Maheshkhali|Coxs Bazar|Chattogram|5
+110|Pekua|Coxs Bazar|Chattogram|0
+107|Ramu|Coxs Bazar|Chattogram|4
+108|Teknaf|Coxs Bazar|Chattogram|0
+109|Ukhia|Coxs Bazar|Chattogram|0
+86|Barura|Cumilla|Chattogram|0
+87|Brahmanpara|Cumilla|Chattogram|0
+88|Burichang|Cumilla|Chattogram|0
+89|Chandina|Cumilla|Chattogram|9
+90|Chauddagram|Cumilla|Chattogram|4
+91|Cumilla Sadar|Cumilla|Chattogram|6
+92|Cumilla Sadar Dakshin|Cumilla|Chattogram|4
+93|Daudkandi|Cumilla|Chattogram|0
+94|Debidwar|Cumilla|Chattogram|0
+95|Homna|Cumilla|Chattogram|0
+97|Laksam|Cumilla|Chattogram|0
+96|Lalmai|Cumilla|Chattogram|0
+98|Meghna|Cumilla|Chattogram|0
+99|Monohargonj|Cumilla|Chattogram|0
+100|Muradnagar|Cumilla|Chattogram|0
+101|Nangalkot|Cumilla|Chattogram|0
+102|Titas|Cumilla|Chattogram|0
+111|Chhagalnaiya|Feni|Chattogram|6
+112|Daganbhuiyan|Feni|Chattogram|5
+113|Feni Sadar|Feni|Chattogram|0
+114|Fulgazi|Feni|Chattogram|5
+115|Parshuram|Feni|Chattogram|0
+116|Sonagazi|Feni|Chattogram|0
+117|Dighinala|Khagrachhari|Chattogram|0
+118|Khagrachari Sadar|Khagrachhari|Chattogram|0
+119|Lakshmichhari|Khagrachhari|Chattogram|0
+120|Mahalchhari|Khagrachhari|Chattogram|0
+121|Manikchhari|Khagrachhari|Chattogram|0
+122|Matiranga|Khagrachhari|Chattogram|0
+123|Panchhari|Khagrachhari|Chattogram|0
+124|Ramgarh|Khagrachhari|Chattogram|0
+125|Kamalnagar|Lakshmipur|Chattogram|0
+126|Lakshmipur Sadar|Lakshmipur|Chattogram|0
+127|Raipur|Lakshmipur|Chattogram|0
+128|Ramganj|Lakshmipur|Chattogram|0
+129|Ramgati|Lakshmipur|Chattogram|0
+130|Begumganj|Noakhali|Chattogram|0
+131|Chatkhil|Noakhali|Chattogram|0
+132|Companiganj|Noakhali|Chattogram|0
+133|Hatiya|Noakhali|Chattogram|0
+134|Kabir Hat|Noakhali|Chattogram|7
+135|Noakhali Sadar|Noakhali|Chattogram|5
+136|Senbagh|Noakhali|Chattogram|0
+137|Sonaimuri|Noakhali|Chattogram|0
+138|Subarnachar|Noakhali|Chattogram|0
+139|Baghaichhari|Rangamati|Chattogram|5
+140|Barkal|Rangamati|Chattogram|0
+148|Bilaichhari|Rangamati|Chattogram|9
+141|Juraichhari|Rangamati|Chattogram|0
+142|Kaptai|Rangamati|Chattogram|0
+143|Kawkhali|Rangamati|Chattogram|0
+144|Langadu|Rangamati|Chattogram|9
+145|Naniarchar|Rangamati|Chattogram|0
+146|Rajasthali|Rangamati|Chattogram|0
+147|Rangamati Sadar|Rangamati|Chattogram|0
+149|Dhamrai|Dhaka|Dhaka|0
+150|Dohar|Dhaka|Dhaka|0
+151|Keraniganj|Dhaka|Dhaka|0
+152|Nawabganj|Dhaka|Dhaka|0
+153|Savar|Dhaka|Dhaka|0
+154|Alfadanga|Faridpur|Dhaka|0
+155|Bhanga|Faridpur|Dhaka|0
+156|Boalmari|Faridpur|Dhaka|0
+157|Charbhadrasan|Faridpur|Dhaka|0
+158|Faridpur Sadar|Faridpur|Dhaka|0
+159|Madhukhali|Faridpur|Dhaka|0
+160|Nagarkanda|Faridpur|Dhaka|0
+161|Sadarpur|Faridpur|Dhaka|0
+162|Saltha|Faridpur|Dhaka|0
+163|Gazipur Sadar|Gazipur|Dhaka|0
+164|Kaliakair|Gazipur|Dhaka|0
+165|Kaliganj|Gazipur|Dhaka|0
+166|Kapasia|Gazipur|Dhaka|0
+167|Sreepur|Gazipur|Dhaka|0
+168|Gopalganj Sadar|Gopalganj|Dhaka|0
+169|Kashiani|Gopalganj|Dhaka|0
+170|Kotalipara|Gopalganj|Dhaka|0
+171|Muksudpur|Gopalganj|Dhaka|0
+172|Tungipara|Gopalganj|Dhaka|0
+173|Austagram|Kishoreganj|Dhaka|0
+174|Bajitpur|Kishoreganj|Dhaka|0
+175|Bhairab|Kishoreganj|Dhaka|0
+176|Hossainpur|Kishoreganj|Dhaka|0
+177|Itna|Kishoreganj|Dhaka|0
+178|Karimganj|Kishoreganj|Dhaka|0
+179|Katiadi|Kishoreganj|Dhaka|0
+180|Kishoreganj Sadar|Kishoreganj|Dhaka|0
+181|Kuliarchar|Kishoreganj|Dhaka|0
+182|Mithamain|Kishoreganj|Dhaka|0
+183|Nikli|Kishoreganj|Dhaka|0
+184|Pakundia|Kishoreganj|Dhaka|0
+185|Tarail|Kishoreganj|Dhaka|0
+186|Kalkini|Madaripur|Dhaka|0
+187|Madaripur Sadar|Madaripur|Dhaka|0
+188|Rajoir|Madaripur|Dhaka|0
+189|Shibchar|Madaripur|Dhaka|0
+190|Daulatpur|Manikganj|Dhaka|0
+191|Ghior|Manikganj|Dhaka|0
+192|Harirampur|Manikganj|Dhaka|0
+193|Manikganj Sadar|Manikganj|Dhaka|0
+194|Saturia|Manikganj|Dhaka|0
+195|Shivalaya|Manikganj|Dhaka|0
+196|Singair|Manikganj|Dhaka|0
+197|Gazaria|Munshiganj|Dhaka|0
+198|Lohajang|Munshiganj|Dhaka|0
+199|Munshiganj Sadar|Munshiganj|Dhaka|0
+200|Serajdikhan|Munshiganj|Dhaka|0
+201|Sreenagar|Munshiganj|Dhaka|0
+202|Tongibari|Munshiganj|Dhaka|0
+203|Araihazar|Narayanganj|Dhaka|0
+204|Bandar|Narayanganj|Dhaka|0
+205|Narayanganj Sadar|Narayanganj|Dhaka|0
+206|Rupganj|Narayanganj|Dhaka|0
+207|Sonargaon|Narayanganj|Dhaka|0
+208|Belabo|Narsingdi|Dhaka|0
+209|Monohardi|Narsingdi|Dhaka|0
+210|Narsingdi Sadar|Narsingdi|Dhaka|0
+211|Palash|Narsingdi|Dhaka|0
+212|Raipura|Narsingdi|Dhaka|0
+213|Shibpur|Narsingdi|Dhaka|0
+214|Baliakandi|Rajbari|Dhaka|0
+215|Goalandaghat|Rajbari|Dhaka|0
+218|Kalukhali|Rajbari|Dhaka|0
+216|Pangsha|Rajbari|Dhaka|0
+217|Rajbari Sadar|Rajbari|Dhaka|0
+219|Bhedarganj|Shariatpur|Dhaka|0
+220|Damudya|Shariatpur|Dhaka|0
+221|Gosairhat|Shariatpur|Dhaka|0
+222|Naria|Shariatpur|Dhaka|0
+223|Shariatpur Sadar|Shariatpur|Dhaka|0
+224|Zajira|Shariatpur|Dhaka|0
+225|Basail|Tangail|Dhaka|0
+226|Bhuapur|Tangail|Dhaka|0
+227|Delduar|Tangail|Dhaka|0
+236|Dhanbari|Tangail|Dhaka|0
+228|Ghatail|Tangail|Dhaka|0
+229|Gopalpur|Tangail|Dhaka|0
+230|Kalihati|Tangail|Dhaka|0
+231|Madhupur|Tangail|Dhaka|0
+232|Mirzapur|Tangail|Dhaka|0
+233|Nagarpur|Tangail|Dhaka|0
+234|Sakhipur|Tangail|Dhaka|0
+235|Tangail Sadar|Tangail|Dhaka|0
+237|Bagerhat Sadar|Bagerhat|Khulna|0
+238|Chitalmari|Bagerhat|Khulna|0
+239|Fakirhat|Bagerhat|Khulna|0
+240|Kachua|Bagerhat|Khulna|0
+241|Mollahat|Bagerhat|Khulna|0
+242|Mongla|Bagerhat|Khulna|0
+243|Morrelganj|Bagerhat|Khulna|0
+244|Rampal|Bagerhat|Khulna|0
+245|Sarankhola|Bagerhat|Khulna|0
+246|Alamdanga|Chuadanga|Khulna|0
+247|Chuadanga Sadar|Chuadanga|Khulna|0
+248|Damurhuda|Chuadanga|Khulna|0
+249|Jibannagar|Chuadanga|Khulna|0
+250|Abhaynagar|Jashore|Khulna|0
+251|Bagherpara|Jashore|Khulna|0
+252|Chaugachha|Jashore|Khulna|10
+253|Jashore Sadar|Jashore|Khulna|0
+254|Jhikargachha|Jashore|Khulna|0
+255|Keshabpur|Jashore|Khulna|0
+256|Manirampur|Jashore|Khulna|0
+257|Sharsha|Jashore|Khulna|0
+258|Harinakunda|Jhenaidah|Khulna|0
+259|Jhenaidah Sadar|Jhenaidah|Khulna|0
+260|Kaliganj|Jhenaidah|Khulna|0
+261|Kotchandpur|Jhenaidah|Khulna|0
+262|Maheshpur|Jhenaidah|Khulna|0
+263|Shailkupa|Jhenaidah|Khulna|0
+264|Batiaghata|Khulna|Khulna|0
+265|Dacope|Khulna|Khulna|0
+267|Dighalia|Khulna|Khulna|0
+266|Dumuria|Khulna|Khulna|0
+268|Koyra|Khulna|Khulna|0
+269|Paikgachha|Khulna|Khulna|0
+270|Phultala|Khulna|Khulna|0
+271|Rupsa|Khulna|Khulna|0
+272|Terokhada|Khulna|Khulna|0
+273|Bheramara|Kushtia|Khulna|0
+274|Daulatpur|Kushtia|Khulna|0
+275|Khoksa|Kushtia|Khulna|0
+276|Kumarkhali|Kushtia|Khulna|0
+277|Kushtia Sadar|Kushtia|Khulna|0
+278|Mirpur|Kushtia|Khulna|0
+279|Magura Sadar|Magura|Khulna|0
+280|Mohammadpur|Magura|Khulna|0
+281|Salikha|Magura|Khulna|0
+282|Sreepur|Magura|Khulna|0
+283|Gangni|Meherpur|Khulna|0
+284|Meherpur Sadar|Meherpur|Khulna|0
+285|Mujibnagar|Meherpur|Khulna|0
+286|Kalia|Narail|Khulna|0
+287|Lohagara|Narail|Khulna|0
+288|Narail Sadar|Narail|Khulna|0
+289|Assasuni|Satkhira|Khulna|0
+290|Debhata|Satkhira|Khulna|0
+291|Kalaroa|Satkhira|Khulna|0
+292|Kaliganj|Satkhira|Khulna|0
+293|Satkhira Sadar|Satkhira|Khulna|0
+294|Shyamnagar|Satkhira|Khulna|0
+295|Tala|Satkhira|Khulna|0
+296|Baksiganj|Jamalpur|Mymensingh|0
+297|Dewanganj|Jamalpur|Mymensingh|0
+298|Islampur|Jamalpur|Mymensingh|0
+299|Jamalpur Sadar|Jamalpur|Mymensingh|0
+300|Madarganj|Jamalpur|Mymensingh|0
+301|Melandaha|Jamalpur|Mymensingh|0
+302|Sarishabari|Jamalpur|Mymensingh|0
+303|Bhaluka|Mymensingh|Mymensingh|0
+304|Dhobaura|Mymensingh|Mymensingh|0
+305|Fulbaria|Mymensingh|Mymensingh|0
+306|Gaffargaon|Mymensingh|Mymensingh|0
+307|Gauripur|Mymensingh|Mymensingh|0
+308|Haluaghat|Mymensingh|Mymensingh|0
+309|Ishwarganj|Mymensingh|Mymensingh|0
+311|Muktagachha|Mymensingh|Mymensingh|0
+310|Mymensingh Sadar|Mymensingh|Mymensingh|0
+312|Nandail|Mymensingh|Mymensingh|0
+313|Phulpur|Mymensingh|Mymensingh|0
+314|Trishal|Mymensingh|Mymensingh|0
+315|Atpara|Netrokona|Mymensingh|0
+316|Barhatta|Netrokona|Mymensingh|0
+317|Durgapur|Netrokona|Mymensingh|0
+319|Kalmakanda|Netrokona|Mymensingh|0
+320|Kendua|Netrokona|Mymensingh|0
+318|Khaliajuri|Netrokona|Mymensingh|0
+321|Madan|Netrokona|Mymensingh|0
+322|Mohanganj|Netrokona|Mymensingh|0
+323|Netrokona Sadar|Netrokona|Mymensingh|0
+324|Purbadhala|Netrokona|Mymensingh|0
+325|Jhenaigati|Sherpur|Mymensingh|0
+326|Nakla|Sherpur|Mymensingh|0
+327|Nalitabari|Sherpur|Mymensingh|0
+328|Sherpur Sadar|Sherpur|Mymensingh|0
+329|Sreebardi|Sherpur|Mymensingh|0
+330|Adamdighi|Bogura|Rajshahi|0
+331|Bogura Sadar|Bogura|Rajshahi|8
+332|Dhunat|Bogura|Rajshahi|0
+333|Dhupchanchia|Bogura|Rajshahi|0
+334|Gabtali|Bogura|Rajshahi|0
+335|Kahaloo|Bogura|Rajshahi|0
+336|Nandigram|Bogura|Rajshahi|0
+337|Sariakandi|Bogura|Rajshahi|0
+338|Shajahanpur|Bogura|Rajshahi|0
+339|Sherpur|Bogura|Rajshahi|0
+340|Shibganj|Bogura|Rajshahi|0
+341|Sonatala|Bogura|Rajshahi|0
+364|Bholahat|Chapainawabganj|Rajshahi|0
+367|Chapainawabganj Sadar|Chapainawabganj|Rajshahi|0
+365|Gomastapur|Chapainawabganj|Rajshahi|0
+366|Nachol|Chapainawabganj|Rajshahi|0
+368|Shibganj|Chapainawabganj|Rajshahi|0
+342|Akkelpur|Joypurhat|Rajshahi|0
+343|Joypurhat Sadar|Joypurhat|Rajshahi|0
+344|Kalai|Joypurhat|Rajshahi|0
+345|Khetlal|Joypurhat|Rajshahi|0
+346|Panchbibi|Joypurhat|Rajshahi|0
+347|Atrai|Naogaon|Rajshahi|0
+348|Badalgachhi|Naogaon|Rajshahi|0
+350|Dhamoirhat|Naogaon|Rajshahi|0
+349|Manda|Naogaon|Rajshahi|0
+351|Mohadevpur|Naogaon|Rajshahi|0
+352|Naogaon Sadar|Naogaon|Rajshahi|0
+353|Niamatpur|Naogaon|Rajshahi|0
+354|Patnitala|Naogaon|Rajshahi|0
+355|Porsha|Naogaon|Rajshahi|0
+356|Raninagar|Naogaon|Rajshahi|0
+357|Sapahar|Naogaon|Rajshahi|0
+358|Bagatipara|Natore|Rajshahi|0
+359|Baraigram|Natore|Rajshahi|0
+360|Gurudaspur|Natore|Rajshahi|0
+361|Lalpur|Natore|Rajshahi|0
+362|Natore Sadar|Natore|Rajshahi|0
+363|Singra|Natore|Rajshahi|0
+369|Atgharia|Pabna|Rajshahi|0
+370|Bera|Pabna|Rajshahi|0
+371|Bhangura|Pabna|Rajshahi|0
+372|Chatmohar|Pabna|Rajshahi|0
+373|Faridpur|Pabna|Rajshahi|0
+374|Ishwardi|Pabna|Rajshahi|0
+375|Pabna Sadar|Pabna|Rajshahi|0
+376|Santhia|Pabna|Rajshahi|0
+377|Sujanagar|Pabna|Rajshahi|0
+378|Bagha|Rajshahi|Rajshahi|0
+379|Bagmara|Rajshahi|Rajshahi|8
+380|Charghat|Rajshahi|Rajshahi|0
+381|Durgapur|Rajshahi|Rajshahi|0
+382|Godagari|Rajshahi|Rajshahi|0
+383|Mohanpur|Rajshahi|Rajshahi|0
+384|Paba|Rajshahi|Rajshahi|0
+385|Puthia|Rajshahi|Rajshahi|0
+386|Tanore|Rajshahi|Rajshahi|0
+387|Belkuchi|Sirajganj|Rajshahi|0
+388|Chauhali|Sirajganj|Rajshahi|0
+389|Kamarkhand|Sirajganj|Rajshahi|0
+390|Kazipur|Sirajganj|Rajshahi|0
+391|Raiganj|Sirajganj|Rajshahi|0
+392|Shahjadpur|Sirajganj|Rajshahi|0
+393|Sirajganj Sadar|Sirajganj|Rajshahi|0
+394|Tarash|Sirajganj|Rajshahi|0
+395|Ullahpara|Sirajganj|Rajshahi|0
+398|Biral|Dinajpur|Rangpur|0
+396|Birampur|Dinajpur|Rangpur|0
+397|Birganj|Dinajpur|Rangpur|0
+399|Bochaganj|Dinajpur|Rangpur|0
+400|Chirirbandar|Dinajpur|Rangpur|0
+406|Dinajpur Sadar|Dinajpur|Rangpur|0
+402|Ghoraghat|Dinajpur|Rangpur|0
+403|Hakimpur|Dinajpur|Rangpur|0
+404|Kaharole|Dinajpur|Rangpur|0
+405|Khansama|Dinajpur|Rangpur|0
+407|Nawabganj|Dinajpur|Rangpur|0
+408|Parbatipur|Dinajpur|Rangpur|0
+401|Phulbari|Dinajpur|Rangpur|0
+410|Gaibandha Sadar|Gaibandha|Rangpur|0
+411|Gobindaganj|Gaibandha|Rangpur|0
+412|Palashbari|Gaibandha|Rangpur|0
+409|Phulchhari|Gaibandha|Rangpur|0
+413|Sadullapur|Gaibandha|Rangpur|0
+414|Saghata|Gaibandha|Rangpur|0
+415|Sundarganj|Gaibandha|Rangpur|0
+416|Bhurungamari|Kurigram|Rangpur|0
+417|Char Rajibpur|Kurigram|Rangpur|0
+418|Chilmari|Kurigram|Rangpur|0
+420|Kurigram Sadar|Kurigram|Rangpur|0
+421|Nageshwari|Kurigram|Rangpur|0
+419|Phulbari|Kurigram|Rangpur|0
+422|Rajarhat|Kurigram|Rangpur|0
+423|Raomari|Kurigram|Rangpur|0
+424|Ulipur|Kurigram|Rangpur|0
+425|Aditmari|Lalmonirhat|Rangpur|0
+426|Hatibandha|Lalmonirhat|Rangpur|0
+427|Kaliganj|Lalmonirhat|Rangpur|0
+428|Lalmonirhat Sadar|Lalmonirhat|Rangpur|0
+429|Patgram|Lalmonirhat|Rangpur|0
+430|Dimla|Nilphamari|Rangpur|0
+431|Domar|Nilphamari|Rangpur|8
+432|Jaldhaka|Nilphamari|Rangpur|0
+433|Kishoreganj|Nilphamari|Rangpur|0
+434|Nilphamari Sadar|Nilphamari|Rangpur|0
+435|Saidpur|Nilphamari|Rangpur|0
+436|Atwari|Panchagarh|Rangpur|0
+437|Boda|Panchagarh|Rangpur|0
+438|Debiganj|Panchagarh|Rangpur|0
+439|Panchagarh Sadar|Panchagarh|Rangpur|0
+440|Tetulia|Panchagarh|Rangpur|0
+441|Badarganj|Rangpur|Rangpur|0
+442|Gangachara|Rangpur|Rangpur|0
+443|Kaunia|Rangpur|Rangpur|0
+445|Mithapukur|Rangpur|Rangpur|0
+446|Pirgachha|Rangpur|Rangpur|0
+447|Pirganj|Rangpur|Rangpur|0
+444|Rangpur Sadar|Rangpur|Rangpur|0
+448|Taraganj|Rangpur|Rangpur|0
+449|Baliadangi|Thakurgaon|Rangpur|0
+450|Haripur|Thakurgaon|Rangpur|0
+451|Pirganj|Thakurgaon|Rangpur|0
+452|Ranisankail|Thakurgaon|Rangpur|0
+453|Thakurgaon Sadar|Thakurgaon|Rangpur|0
+454|Ajmiriganj|Habiganj|Sylhet|0
+455|Bahubal|Habiganj|Sylhet|0
+456|Baniyachong|Habiganj|Sylhet|0
+457|Chunarughat|Habiganj|Sylhet|0
+458|Habiganj Sadar|Habiganj|Sylhet|0
+459|Lakhai|Habiganj|Sylhet|0
+460|Madhabpur|Habiganj|Sylhet|0
+461|Nabiganj|Habiganj|Sylhet|0
+462|Sayestaganj|Habiganj|Sylhet|0
+463|Barlekha|Moulvibazar|Sylhet|0
+464|Juri|Moulvibazar|Sylhet|0
+465|Kamalganj|Moulvibazar|Sylhet|0
+466|Kulaura|Moulvibazar|Sylhet|0
+467|Moulvibazar Sadar|Moulvibazar|Sylhet|0
+468|Rajnagar|Moulvibazar|Sylhet|0
+469|Sreemangal|Moulvibazar|Sylhet|0
+470|Bishwamvarpur|Sunamganj|Sylhet|0
+471|Chhatak|Sunamganj|Sylhet|0
+472|Derai|Sunamganj|Sylhet|0
+473|Dharamapasha|Sunamganj|Sylhet|0
+474|Dowarabazar|Sunamganj|Sylhet|0
+475|Jagannathpur|Sunamganj|Sylhet|0
+476|Jamalganj|Sunamganj|Sylhet|0
+479|Shanthiganj|Sunamganj|Sylhet|0
+477|Sulla|Sunamganj|Sylhet|0
+478|Sunamganj Sadar|Sunamganj|Sylhet|0
+480|Tahirpur|Sunamganj|Sylhet|8
+481|Balaganj|Sylhet|Sylhet|0
+482|Beanibazar|Sylhet|Sylhet|0
+483|Bishwanath|Sylhet|Sylhet|0
+484|Companiganj|Sylhet|Sylhet|0
+485|Dakshin Surma|Sylhet|Sylhet|0
+486|Fenchuganj|Sylhet|Sylhet|0
+487|Golapganj|Sylhet|Sylhet|0
+488|Gowainghat|Sylhet|Sylhet|0
+489|Jaintiapur|Sylhet|Sylhet|0
+490|Kanaighat|Sylhet|Sylhet|0
+491|Osmani Nagar|Sylhet|Sylhet|0
+492|Sylhet Sadar|Sylhet|Sylhet|0
+493|Zakiganj|Sylhet|Sylhet|0
+
+(493 rows affected)

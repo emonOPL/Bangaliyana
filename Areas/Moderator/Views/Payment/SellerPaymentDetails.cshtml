@@ -1,0 +1,960 @@
+@model Bangaliyana.Models.Seller
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+
+@{
+    ViewData["Title"] = Localizer["SellerPaymentDetails"].Value;
+    var seller = ViewBag.Seller as Seller;
+    var sellerOrders = ViewBag.SellerOrders as List<OrderItem>;
+    var previousPayouts = ViewBag.PreviousPayouts as List<ManualSellerPayout>;
+    var monthlyReports = ViewBag.MonthlyReports as List<SellerMonthlyReport>;
+    var selectedReport = ViewBag.SelectedReport as SellerMonthlyReport;
+    var reportItems = ViewBag.ReportItems as IEnumerable<MonthlyReportOrderItem>;
+    var totalSales = (decimal)ViewBag.TotalSales;
+    var commissionAmount = (decimal)ViewBag.CommissionAmount;
+    var payableAmount = (decimal)ViewBag.PayableAmount;
+    var totalPaidAmount = ViewBag.TotalPaidAmount != null ? (decimal)ViewBag.TotalPaidAmount : 0;
+    var maxPayable = (int)payableAmount;
+    var areaName = ViewBag.AreaName as string ?? "Moderator";
+    var controllerName = ViewBag.ControllerName as string ?? "Payment";
+}
+
+<div class="container py-4">
+    <!-- Header with Back Button and Actions -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div class="d-flex align-items-center">
+            <a asp-action="SellerPayments" class="btn btn-outline-secondary me-3">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h4 class="mb-0"><i class="fas fa-store text-primary me-2"></i>@seller?.ShopName</h4>
+                <p class="text-muted mb-0">@seller?.User?.Email | @seller?.User?.PhoneNumber</p>
+            </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="@Url.Action("PrintSellerPendingPayouts", controllerName, new { area = areaName, sellerId = seller?.Id })" target="_blank" class="btn btn-outline-primary">
+                <i class="fas fa-print me-2"></i>@Localizer["PrintPendingPayouts"]
+            </a>
+            <a href="@Url.Action("PrintSellerCompletedPayouts", controllerName, new { area = areaName, sellerId = seller?.Id })" target="_blank" class="btn btn-outline-success">
+                <i class="fas fa-file-pdf me-2"></i>@Localizer["PrintCompletedPayouts"]
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100 bg-primary bg-gradient text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3">
+                            <i class="fas fa-shopping-cart fa-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0">@totalSales.ToString("N0") BDT</h3>
+                            <small class="opacity-75">@Localizer["TotalSales"]</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100 bg-danger bg-gradient text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3">
+                            <i class="fas fa-percentage fa-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0">@commissionAmount.ToString("N0") BDT</h3>
+                            <small class="opacity-75">@Localizer["CommissionWithRate", seller?.CommissionRate]</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100 bg-info bg-gradient text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3">
+                            <i class="fas fa-check-circle fa-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0">@totalPaidAmount.ToString("N0") BDT</h3>
+                            <small class="opacity-75">@Localizer["TotalPaid"]</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100 bg-success bg-gradient text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3 me-3">
+                            <i class="fas fa-money-bill-wave fa-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0">@payableAmount.ToString("N0") BDT</h3>
+                            <small class="opacity-75">@Localizer["PayableAmount"]</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Seller Payment Accounts Info -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="fas fa-university me-2 text-primary"></i>@Localizer["SellerPaymentAccounts"]</h5>
+                </div>
+                <div class="card-body">
+                    @if (seller?.BankAccounts?.Any() == true)
+                    {
+                        <h6 class="text-muted mb-3"><i class="fas fa-landmark me-2"></i>@Localizer["BankAccounts"]</h6>
+                        @foreach (var account in seller.BankAccounts.Where(b => b.IsVerified))
+                        {
+                            <div class="border rounded p-3 mb-3 @(account.IsPrimary ? "border-primary" : "")">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <strong class="text-dark">@account.BankName</strong>
+                                    @if (account.IsPrimary)
+                                    {
+                                        <span class="badge bg-primary">@Localizer["Primary"]</span>
+                                    }
+                                </div>
+                                <p class="mb-1 small"><i class="fas fa-hashtag me-1 text-muted"></i>@account.AccountNumber</p>
+                                <p class="mb-1 small"><i class="fas fa-user me-1 text-muted"></i>@account.AccountHolderName</p>
+                                @if (!string.IsNullOrEmpty(account.BranchName))
+                                {
+                                    <p class="mb-0 small"><i class="fas fa-map-marker-alt me-1 text-muted"></i>@account.BranchName</p>
+                                }
+                            </div>
+                        }
+                    }
+
+                    @if (seller?.MobileBankingProvider != MobileBankingProvider.None && !string.IsNullOrEmpty(seller?.MobileBankingNumber))
+                    {
+                        <h6 class="text-muted mb-3 mt-4"><i class="fas fa-mobile-alt me-2"></i>@Localizer["MobileBanking"]</h6>
+                        <div class="border rounded p-3">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-success me-2">@seller.MobileBankingProvider</span>
+                                <span class="fw-bold">@seller.MobileBankingNumber</span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(seller.MobileBankingAccountName))
+                            {
+                                <p class="mb-0 small mt-2"><i class="fas fa-user me-1 text-muted"></i>@seller.MobileBankingAccountName</p>
+                            }
+                        </div>
+                    }
+
+                    @if (seller?.BankAccounts?.Any(b => b.IsVerified) != true && (seller?.MobileBankingProvider == MobileBankingProvider.None || string.IsNullOrEmpty(seller?.MobileBankingNumber)))
+                    {
+                        <div class="text-center py-4">
+                            <i class="fas fa-exclamation-circle fa-2x text-warning mb-2"></i>
+                            <p class="text-muted mb-0">@Localizer["NoVerifiedPaymentAccounts"]</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Complete Payment Form -->
+        <div class="col-lg-8 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="fas fa-credit-card me-2 text-success"></i>@Localizer["CompletePayment"]</h5>
+                </div>
+                <div class="card-body">
+                    @if (maxPayable <= 0)
+                    {
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i>@Localizer["NoPayableAmountAvailable"]
+                        </div>
+                    }
+                    else
+                    {
+                        <form id="payoutForm" novalidate>
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="sellerId" value="@seller?.Id" />
+                            <input type="hidden" id="maxPayableAmount" value="@maxPayable" />
+
+                            <!-- Amount and Payment Method Row -->
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold">@Localizer["AmountBDT"] <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">৳</span>
+                                        <input type="text" name="amount" id="payoutAmount" class="form-control form-control-lg"
+                                               value="@maxPayable" inputmode="numeric"
+                                               data-max="@maxPayable" autocomplete="off" />
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-1">
+                                        <small class="text-muted">@Localizer["Maximum"]: ৳@maxPayable.ToString("N0")</small>
+                                        <small id="amountError" class="text-danger d-none"></small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold">@Localizer["PaymentMethod"] <span class="text-danger">*</span></label>
+                                    <select name="paymentMethod" id="paymentMethod" class="form-select form-select-lg" required>
+                                        <option value="">-- @Localizer["SelectMethod"] --</option>
+                                        <option value="BankTransfer">@Localizer["BankTransfer"]</option>
+                                        <option value="bKash">bKash</option>
+                                        <option value="Nagad">Nagad</option>
+                                        <option value="Rocket">Rocket</option>
+                                        <option value="Upay">Upay</option>
+                                        <option value="Cash">@Localizer["Cash"]</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Bank Transfer Fields -->
+                            @{
+                                var primaryBankAccount = seller?.BankAccounts?.FirstOrDefault(b => b.IsVerified && b.IsPrimary)
+                                                        ?? seller?.BankAccounts?.FirstOrDefault(b => b.IsVerified);
+                            }
+                            <div id="bankFields" class="d-none">
+                                <hr class="my-3" />
+                                <h6 class="text-primary mb-3"><i class="fas fa-landmark me-2"></i>@Localizer["BankTransferDetails"]</h6>
+
+                                <!-- Receiver Info (Seller's Bank Account - Read Only) -->
+                                <div class="card bg-success bg-opacity-10 border-success mb-3">
+                                    <div class="card-body py-2">
+                                        <h6 class="mb-2 text-success"><i class="fas fa-arrow-down me-2"></i>@Localizer["ReceiverSellerBankAccount"]</h6>
+                                        @if (primaryBankAccount != null)
+                                        {
+                                            <div class="row small">
+                                                <div class="col-md-6"><strong>@Localizer["Bank"]:</strong> @primaryBankAccount.BankName</div>
+                                                <div class="col-md-6"><strong>@Localizer["AccountNo"]:</strong> @primaryBankAccount.AccountNumber</div>
+                                                <div class="col-md-6"><strong>@Localizer["AccountHolder"]:</strong> @primaryBankAccount.AccountHolderName</div>
+                                                <div class="col-md-6"><strong>@Localizer["Branch"]:</strong> @primaryBankAccount.BranchName</div>
+                                            </div>
+                                            <!-- Hidden fields to send receiver info -->
+                                            <input type="hidden" name="bankName" value="@primaryBankAccount.BankName" />
+                                            <input type="hidden" name="bankAccountNumber" value="@primaryBankAccount.AccountNumber" />
+                                            <input type="hidden" name="bankAccountHolderName" value="@primaryBankAccount.AccountHolderName" />
+                                            <input type="hidden" name="bankBranchName" value="@primaryBankAccount.BranchName" />
+                                            <input type="hidden" name="bankRoutingNumber" value="@primaryBankAccount.RoutingNumber" />
+                                        }
+                                        else
+                                        {
+                                            <p class="text-warning mb-0"><i class="fas fa-exclamation-triangle me-1"></i>@Localizer["NoVerifiedBankAccountFound"]</p>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Sender Info (Input Required) -->
+                                <h6 class="mb-2"><i class="fas fa-arrow-up me-2 text-primary"></i>@Localizer["SenderCompanyBankAccount"]</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">@Localizer["SenderBankName"] <span class="text-danger">*</span></label>
+                                        <input type="text" name="senderBankName" id="senderBankName" class="form-control"
+                                               placeholder="@Localizer["SenderBankNamePlaceholder"]" maxlength="100" />
+                                        <span id="senderBankNameError" class="text-danger small"></span>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">@Localizer["SenderAccountNumber"] <span class="text-danger">*</span></label>
+                                        <input type="text" name="senderAccountNumber" id="senderAccountNumber" class="form-control"
+                                               placeholder="@Localizer["CompanyAccountNumber"]" maxlength="50" inputmode="numeric" />
+                                        <span id="senderAccountNumberError" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">@Localizer["TransactionReference"] <span class="text-danger">*</span></label>
+                                        <input type="text" name="bankTransactionReference" id="bankTransactionReference" class="form-control"
+                                               placeholder="@Localizer["BankTransactionReference"]" maxlength="100" />
+                                        <span id="bankTransactionReferenceError" class="text-danger small"></span>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">@Localizer["PaymentDate"] <span class="text-danger">*</span></label>
+                                        <input type="date" name="paymentDateBank" id="paymentDateBank" class="form-control"
+                                               value="@DateTime.Today.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                        <span id="paymentDateBankError" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mobile Banking Fields -->
+                            <div id="mobileFields" class="d-none">
+                                <hr class="my-3" />
+                                <h6 class="text-success mb-3"><i class="fas fa-mobile-alt me-2"></i>@Localizer["MobileBankingDetails"]</h6>
+
+                                <!-- Receiver Info (Seller's Mobile Banking - Read Only) -->
+                                <div class="card bg-success bg-opacity-10 border-success mb-3">
+                                    <div class="card-body py-2">
+                                        <h6 class="mb-2 text-success"><i class="fas fa-arrow-down me-2"></i>@Localizer["ReceiverSellerMobileBanking"]</h6>
+                                        @if (seller?.MobileBankingProvider != MobileBankingProvider.None && !string.IsNullOrEmpty(seller?.MobileBankingNumber))
+                                        {
+                                            <div class="row small">
+                                                <div class="col-md-6"><strong>@Localizer["Provider"]:</strong> @seller.MobileBankingProvider</div>
+                                                <div class="col-md-6"><strong>@Localizer["Number"]:</strong> @seller.MobileBankingNumber</div>
+                                                @if (!string.IsNullOrEmpty(seller.MobileBankingAccountName))
+                                                {
+                                                    <div class="col-md-6"><strong>@Localizer["AccountName"]:</strong> @seller.MobileBankingAccountName</div>
+                                                }
+                                            </div>
+                                            <!-- Hidden field to send receiver info -->
+                                            <input type="hidden" name="receiverMobileNumber" value="@seller.MobileBankingNumber" />
+                                        }
+                                        else
+                                        {
+                                            <p class="text-warning mb-0"><i class="fas fa-exclamation-triangle me-1"></i>@Localizer["NoMobileBankingAccountFound"]</p>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Sender Info (Input Required) -->
+                                <h6 class="mb-2"><i class="fas fa-arrow-up me-2 text-success"></i>@Localizer["SenderCompanyMobileBanking"]</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">@Localizer["SenderNumber"] <span class="text-danger">*</span></label>
+                                        <input type="text" name="senderNumber" id="senderNumber" class="form-control bd-phone"
+                                               placeholder="01XXXXXXXXX" maxlength="11" inputmode="numeric" />
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">@Localizer["TransactionID"] <span class="text-danger">*</span></label>
+                                        <input type="text" name="transactionId" id="transactionId" class="form-control"
+                                               placeholder="@Localizer["TransactionIDPlaceholder"]" maxlength="50" />
+                                        <span id="transactionIdError" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">@Localizer["PaymentDate"] <span class="text-danger">*</span></label>
+                                        <input type="date" name="mbPaymentDate" id="mbPaymentDate" class="form-control"
+                                               value="@DateTime.Today.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                        <span id="mbPaymentDateError" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cash Fields -->
+                            <div id="cashFields" class="d-none">
+                                <hr class="my-3" />
+                                <h6 class="text-warning mb-3"><i class="fas fa-money-bill me-2"></i>@Localizer["CashPaymentDetails"]</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">@Localizer["PaymentDate"] <span class="text-danger">*</span></label>
+                                        <input type="date" name="paymentDateCash" id="paymentDateCash" class="form-control"
+                                               value="@DateTime.Today.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                        <span id="paymentDateCashError" class="text-danger small"></span>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">@Localizer["ReferenceReceiptNumber"]</label>
+                                        <input type="text" name="cashReference" id="cashReference" class="form-control"
+                                               placeholder="@Localizer["CashReceiptNumberOptional"]" maxlength="100" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="row mt-3">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">@Localizer["AdminNotes"]</label>
+                                    <textarea name="adminNotes" class="form-control" rows="2" placeholder="@Localizer["InternalNotesOptional"]"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Submit Buttons -->
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="submit" id="submitBtn" class="btn btn-success btn-lg px-4">
+                                    <i class="fas fa-check-circle me-2"></i>@Localizer["CompletePayment"]
+                                </button>
+                                <a asp-action="SellerPayments" class="btn btn-outline-secondary btn-lg">
+                                    <i class="fas fa-times me-2"></i>@Localizer["Cancel"]
+                                </a>
+                            </div>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Reports -->
+    @if (monthlyReports?.Any() == true)
+    {
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-file-invoice-dollar me-2 text-primary"></i>@Localizer["MonthlyReports"]</h5>
+                <span class="badge bg-primary">@Localizer["ReportsCount", monthlyReports.Count]</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>@Localizer["Period"]</th>
+                                <th>@Localizer["ReportNumber"]</th>
+                                <th class="text-end">@Localizer["Sales"]</th>
+                                <th class="text-end">@Localizer["Commission"]</th>
+                                <th class="text-end">@Localizer["NetPayable"]</th>
+                                <th class="text-center">@Localizer["Status"]</th>
+                                <th class="text-center">@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var report in monthlyReports.Take(12))
+                            {
+                                var statusClass = report.Status switch
+                                {
+                                    MonthlyReportStatus.Open => "bg-primary",
+                                    MonthlyReportStatus.Finalized => "bg-info",
+                                    MonthlyReportStatus.PendingPayout => "bg-warning text-dark",
+                                    MonthlyReportStatus.PayoutCreated => "bg-secondary",
+                                    MonthlyReportStatus.Paid => "bg-success",
+                                    MonthlyReportStatus.CarriedForward => "bg-dark",
+                                    _ => "bg-secondary"
+                                };
+                                <tr class="@(selectedReport?.Id == report.Id ? "table-active" : "")">
+                                    <td>
+                                        <strong>@(new DateTime(report.Year, report.Month, 1).ToString("MMMM yyyy"))</strong>
+                                        @if (report.CarryForwardFromPrevious > 0)
+                                        {
+                                            <small class="d-block text-info"><i class="fas fa-arrow-right me-1"></i>+@report.CarryForwardFromPrevious.ToString("N0") CF</small>
+                                        }
+                                    </td>
+                                    <td><span class="text-muted">@report.ReportNumber</span></td>
+                                    <td class="text-end">@report.TotalSales.ToString("N0") BDT</td>
+                                    <td class="text-end text-danger">-@report.CommissionAmount.ToString("N0") BDT</td>
+                                    <td class="text-end fw-bold text-success">@report.NetPayable.ToString("N0") BDT</td>
+                                    <td class="text-center">
+                                        <span class="badge @statusClass">@report.Status.GetDisplayName()</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <a asp-action="SellerPaymentDetails" asp-route-id="@seller?.Id" asp-route-reportId="@report.Id" class="btn btn-sm btn-outline-primary" title="@Localizer["ViewDetails"]">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        @if (areaName == "Moderator")
+                                        {
+                                            <a asp-area="Moderator" asp-controller="MonthlyReport" asp-action="Details" asp-route-id="@report.Id" class="btn btn-sm btn-outline-info" title="@Localizer["FullReport"]">
+                                                <i class="fas fa-file-alt"></i>
+                                            </a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Selected Report Items (if any) -->
+        @if (selectedReport != null && reportItems?.Any() == true)
+        {
+            <div class="card border-0 shadow-sm mb-4 border-start border-primary border-4">
+                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2 text-primary"></i>
+                        @(new DateTime(selectedReport.Year, selectedReport.Month, 1).ToString("MMMM yyyy")) - @Localizer["OrderItems"]
+                    </h5>
+                    <span class="badge bg-primary">@Localizer["ItemsCount", reportItems.Count()]</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>@Localizer["OrderNumber"]</th>
+                                    <th>@Localizer["Amount"]</th>
+                                    <th>@Localizer["Commission"]</th>
+                                    <th>@Localizer["Net"]</th>
+                                    <th>@Localizer["Status"]</th>
+                                    <th>@Localizer["Date"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in reportItems)
+                                {
+                                    var itemStatusClass = item.Status switch
+                                    {
+                                        ReportItemStatus.Delivered => "bg-success",
+                                        ReportItemStatus.Returned => "bg-danger",
+                                        ReportItemStatus.Refunded => "bg-warning",
+                                        _ => "bg-secondary"
+                                    };
+                                    <tr class="@(item.Status != ReportItemStatus.Delivered ? "table-danger" : "")">
+                                        <td><a asp-area="@areaName" asp-controller="Order" asp-action="Details" asp-route-id="@item.OrderId">#@item.OrderId</a></td>
+                                        <td>@item.ItemAmount.ToString("N0") BDT</td>
+                                        <td class="text-danger">-@item.CommissionAmount.ToString("N0") BDT</td>
+                                        <td class="text-success fw-bold">@item.NetAmount.ToString("N0") BDT</td>
+                                        <td><span class="badge @itemStatusClass">@item.Status</span></td>
+                                        <td>@item.DeliveredAt?.ToString("dd MMM yyyy")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+
+    <!-- Previous Payouts -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-history me-2 text-info"></i>@Localizer["PreviousPayouts"]</h5>
+            @if (previousPayouts?.Any() == true)
+            {
+                <span class="badge bg-info">@Localizer["PayoutsCount", previousPayouts.Count]</span>
+            }
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>@Localizer["PayoutNumber"]</th>
+                            <th>@Localizer["Date"]</th>
+                            <th class="text-end">@Localizer["Amount"]</th>
+                            <th>@Localizer["Method"]</th>
+                            <th>@Localizer["SenderInfo"]</th>
+                            <th>@Localizer["ReferenceTrxID"]</th>
+                            <th>@Localizer["Status"]</th>
+                            <th>@Localizer["ProcessedBy"]</th>
+                            <th class="text-center">@Localizer["Actions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (previousPayouts?.Any() == true)
+                        {
+                            @foreach (var payout in previousPayouts)
+                            {
+                                <tr>
+                                    <td><span class="fw-bold text-primary">@payout.PayoutNumber</span></td>
+                                    <td>@(payout.PaymentDate?.ToString("dd MMM yyyy") ?? payout.CreatedAt.ToString("dd MMM yyyy"))</td>
+                                    <td class="text-end fw-bold text-success">৳@payout.Amount.ToString("N0")</td>
+                                    <td>
+                                        <span class="badge @(payout.IsBankTransfer ? "bg-primary" : payout.IsMobileBanking ? "bg-success" : "bg-warning")">
+                                            @payout.PaymentMethodDisplay
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (payout.IsBankTransfer)
+                                        {
+                                            <span class="small">@(payout.SenderBankName ?? "-")</span>
+                                            @if (!string.IsNullOrEmpty(payout.SenderAccountNumber))
+                                            {
+                                                <br /><span class="small text-muted">@Localizer["AccountNo"]: @payout.SenderAccountNumber</span>
+                                            }
+                                        }
+                                        else if (payout.IsMobileBanking)
+                                        {
+                                            <span class="small">@(payout.SenderMobileNumber ?? "-")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="small text-muted">@Localizer["Cash"]</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (payout.IsBankTransfer)
+                                        {
+                                            <span class="small">@(payout.BankTransactionReference ?? "-")</span>
+                                        }
+                                        else if (payout.IsMobileBanking)
+                                        {
+                                            <span class="small">@(payout.MobileTransactionId ?? "-")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="small">@(payout.Notes ?? "-")</span>
+                                        }
+                                    </td>
+                                    <td><span class="badge @payout.StatusBadgeClass">@payout.Status</span></td>
+                                    <td><span class="small text-muted">@(payout.ProcessedByName ?? "-")</span></td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="PayoutDetails" asp-route-id="@payout.Id" class="btn btn-outline-info btn-sm" title="@Localizer["ViewDetails"]">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a asp-action="EditPayout" asp-route-id="@payout.Id" class="btn btn-outline-warning btn-sm" title="@Localizer["EditPayout"]">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <i class="fas fa-inbox fa-2x text-muted mb-2 d-block"></i>
+                                    <p class="text-muted mb-0">@Localizer["NoPreviousPayoutsFound"]</p>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delivered Orders -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-box me-2 text-primary"></i>@Localizer["DeliveredOrders"]</h5>
+            <span class="badge bg-primary">@Localizer["OrdersCount", sellerOrders?.Count ?? 0]</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>@Localizer["OrderNumber"]</th>
+                            <th>@Localizer["Product"]</th>
+                            <th class="text-center">@Localizer["Qty"]</th>
+                            <th class="text-end">@Localizer["Amount"]</th>
+                            <th>@Localizer["Delivered"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (sellerOrders?.Any() == true)
+                        {
+                            @foreach (var item in sellerOrders)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-area="@areaName" asp-controller="Order" asp-action="Details" asp-route-id="@item.OrderId" class="fw-bold">
+                                            #@item.OrderId
+                                        </a>
+                                    </td>
+                                    <td>@item.Product?.Name</td>
+                                    <td class="text-center">@item.Quantity</td>
+                                    <td class="text-end fw-bold">৳@item.TotalPrice.ToString("N0")</td>
+                                    <td>@item.Order?.DeliveredAt?.ToString("dd MMM yyyy")</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center py-4">
+                                    <i class="fas fa-inbox fa-2x text-muted mb-2 d-block"></i>
+                                    <p class="text-muted mb-0">@Localizer["NoDeliveredOrders"]</p>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const maxPayableAmount = @maxPayable;
+        const amountInput = document.getElementById('payoutAmount');
+        const amountError = document.getElementById('amountError');
+        const paymentMethodSelect = document.getElementById('paymentMethod');
+        const bankFields = document.getElementById('bankFields');
+        const mobileFields = document.getElementById('mobileFields');
+        const cashFields = document.getElementById('cashFields');
+        const form = document.getElementById('payoutForm');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // Amount input - only allow integers
+        amountInput.addEventListener('input', function(e) {
+            // Remove non-numeric characters
+            let value = this.value.replace(/[^0-9]/g, '');
+
+            // Convert to number and validate
+            let numValue = parseInt(value) || 0;
+
+            // Check max limit
+            if (numValue > maxPayableAmount) {
+                numValue = maxPayableAmount;
+                showAmountError('@Localizer["MaxPayableAmountError"].Value'.replace('{0}', maxPayableAmount.toLocaleString()));
+            } else {
+                hideAmountError();
+            }
+
+            this.value = numValue > 0 ? numValue : '';
+        });
+
+        // Prevent arrow key increments beyond max
+        amountInput.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+            }
+        });
+
+        // Prevent paste of invalid values
+        amountInput.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+            const numValue = parseInt(pastedText.replace(/[^0-9]/g, '')) || 0;
+            const finalValue = Math.min(numValue, maxPayableAmount);
+            this.value = finalValue > 0 ? finalValue : '';
+
+            if (numValue > maxPayableAmount) {
+                showAmountError('@Localizer["MaxPayableAmountError"].Value'.replace('{0}', maxPayableAmount.toLocaleString()));
+            }
+        });
+
+        function showAmountError(message) {
+            amountError.textContent = message;
+            amountError.classList.remove('d-none');
+            amountInput.classList.add('is-invalid');
+        }
+
+        function hideAmountError() {
+            amountError.classList.add('d-none');
+            amountInput.classList.remove('is-invalid');
+        }
+
+        // Payment method change handler
+        paymentMethodSelect.addEventListener('change', function() {
+            const method = this.value;
+
+            // Hide all fields first
+            bankFields.classList.add('d-none');
+            mobileFields.classList.add('d-none');
+            cashFields.classList.add('d-none');
+
+            // Clear required attributes
+            clearRequiredFields();
+
+            // Show relevant fields
+            if (method === 'BankTransfer') {
+                bankFields.classList.remove('d-none');
+                setRequiredFields(['senderBankName', 'senderAccountNumber', 'bankTransactionReference', 'paymentDateBank']);
+            } else if (['bKash', 'Nagad', 'Rocket', 'Upay'].includes(method)) {
+                mobileFields.classList.remove('d-none');
+                setRequiredFields(['senderNumber', 'transactionId', 'mbPaymentDate']);
+            } else if (method === 'Cash') {
+                cashFields.classList.remove('d-none');
+                setRequiredFields(['paymentDateCash']);
+            }
+        });
+
+        function setRequiredFields(fieldIds) {
+            fieldIds.forEach(id => {
+                const field = document.getElementById(id);
+                if (field) field.required = true;
+            });
+        }
+
+        function clearRequiredFields() {
+            const allFields = [
+                'senderBankName', 'senderAccountNumber', 'bankTransactionReference', 'paymentDateBank',
+                'senderNumber', 'transactionId', 'mbPaymentDate',
+                'paymentDateCash'
+            ];
+            allFields.forEach(id => {
+                const field = document.getElementById(id);
+                if (field) field.required = false;
+            });
+        }
+
+        // Form submission
+        form?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const amount = parseInt(formData.get('amount')) || 0;
+            const paymentMethod = formData.get('paymentMethod');
+
+            // Validate amount
+            if (amount <= 0) {
+                alertify.error('@Localizer["PleaseEnterValidAmount"].Value');
+                amountInput.focus();
+                return;
+            }
+
+            if (amount > maxPayableAmount) {
+                alertify.error('@Localizer["AmountCannotExceed"].Value'.replace('{0}', maxPayableAmount.toLocaleString()));
+                amountInput.focus();
+                return;
+            }
+
+            // Validate payment method
+            if (!paymentMethod) {
+                alertify.error('@Localizer["PleaseSelectPaymentMethod"].Value');
+                paymentMethodSelect.focus();
+                return;
+            }
+
+            // Validate method-specific fields
+            if (paymentMethod === 'BankTransfer') {
+                if (!validateBankFields()) return;
+            } else if (['bKash', 'Nagad', 'Rocket', 'Upay'].includes(paymentMethod)) {
+                if (!validateMobileFields()) return;
+            } else if (paymentMethod === 'Cash') {
+                if (!validateCashFields()) return;
+            }
+
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>@Localizer["Processing"].Value...';
+
+            try {
+                const response = await fetch('@Url.Action("CompletePayment", ViewBag.ControllerName as string, new { area = ViewBag.AreaName as string })', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alertify.success(result.message || '@Localizer["PaymentCompletedSuccessfully"].Value');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    alertify.error(result.message || '@Localizer["FailedToCompletePayment"].Value');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alertify.error('@Localizer["ErrorProcessingPayment"].Value');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>@Localizer["CompletePayment"].Value';
+            }
+        });
+
+        // Helper functions to show/hide validation errors below input fields
+        function showFieldError(fieldId, message) {
+            const input = document.getElementById(fieldId);
+            const errorSpan = document.getElementById(fieldId + 'Error');
+            if (input) {
+                input.classList.add('is-invalid');
+                input.classList.remove('is-valid');
+            }
+            if (errorSpan) {
+                errorSpan.textContent = message;
+            }
+        }
+
+        function hideFieldError(fieldId) {
+            const input = document.getElementById(fieldId);
+            const errorSpan = document.getElementById(fieldId + 'Error');
+            if (input) {
+                input.classList.remove('is-invalid');
+            }
+            if (errorSpan) {
+                errorSpan.textContent = '';
+            }
+        }
+
+        function clearAllFieldErrors() {
+            const errorSpans = document.querySelectorAll('[id$="Error"]');
+            errorSpans.forEach(span => span.textContent = '');
+            const invalidInputs = document.querySelectorAll('.is-invalid');
+            invalidInputs.forEach(input => input.classList.remove('is-invalid'));
+        }
+
+        function validateBankFields() {
+            clearAllFieldErrors();
+            let isValid = true;
+            let firstInvalid = null;
+
+            const fields = [
+                { id: 'senderBankName', label: '@Localizer["SenderBankNameRequired"].Value' },
+                { id: 'senderAccountNumber', label: '@Localizer["SenderAccountNumberRequired"].Value' },
+                { id: 'bankTransactionReference', label: '@Localizer["TransactionReferenceRequired"].Value' },
+                { id: 'paymentDateBank', label: '@Localizer["PaymentDateRequired"].Value' }
+            ];
+
+            for (const field of fields) {
+                const element = document.getElementById(field.id);
+                if (!element || !element.value.trim()) {
+                    showFieldError(field.id, field.label);
+                    if (!firstInvalid) firstInvalid = element;
+                    isValid = false;
+                }
+            }
+
+            // Validate payment date is not in the future (use string comparison to avoid timezone issues)
+            const paymentDate = document.getElementById('paymentDateBank');
+            if (paymentDate && paymentDate.value) {
+                const todayStr = new Date().toLocaleDateString('en-CA'); // Format: yyyy-MM-dd
+                if (paymentDate.value > todayStr) {
+                    showFieldError('paymentDateBank', '@Localizer["PaymentDateCannotBeFuture"].Value');
+                    if (!firstInvalid) firstInvalid = paymentDate;
+                    isValid = false;
+                }
+            }
+
+            if (firstInvalid) firstInvalid.focus();
+            return isValid;
+        }
+
+        function validateMobileFields() {
+            clearAllFieldErrors();
+            let isValid = true;
+            let firstInvalid = null;
+
+            // Sender Number validation is handled by phone-validation.js (bd-phone class)
+            // Just check if it's empty
+            const senderNumber = document.getElementById('senderNumber');
+            if (!senderNumber || !senderNumber.value.trim()) {
+                // phone-validation.js will show the error, just track validity
+                if (!firstInvalid) firstInvalid = senderNumber;
+                isValid = false;
+            } else if (senderNumber.classList.contains('is-invalid')) {
+                // phone-validation.js marked it invalid
+                if (!firstInvalid) firstInvalid = senderNumber;
+                isValid = false;
+            }
+
+            // Transaction ID validation
+            const transactionId = document.getElementById('transactionId');
+            if (!transactionId || !transactionId.value.trim()) {
+                showFieldError('transactionId', '@Localizer["TransactionIDRequired"].Value');
+                if (!firstInvalid) firstInvalid = transactionId;
+                isValid = false;
+            }
+
+            // Payment Date validation (use string comparison to avoid timezone issues)
+            const paymentDate = document.getElementById('mbPaymentDate');
+            if (!paymentDate || !paymentDate.value) {
+                showFieldError('mbPaymentDate', '@Localizer["PaymentDateRequired"].Value');
+                if (!firstInvalid) firstInvalid = paymentDate;
+                isValid = false;
+            } else {
+                const todayStr = new Date().toLocaleDateString('en-CA'); // Format: yyyy-MM-dd
+                if (paymentDate.value > todayStr) {
+                    showFieldError('mbPaymentDate', '@Localizer["PaymentDateCannotBeFuture"].Value');
+                    if (!firstInvalid) firstInvalid = paymentDate;
+                    isValid = false;
+                }
+            }
+
+            if (firstInvalid) firstInvalid.focus();
+            return isValid;
+        }
+
+        function validateCashFields() {
+            clearAllFieldErrors();
+            let isValid = true;
+
+            const paymentDate = document.getElementById('paymentDateCash');
+            if (!paymentDate || !paymentDate.value) {
+                showFieldError('paymentDateCash', '@Localizer["PaymentDateRequired"].Value');
+                if (paymentDate) paymentDate.focus();
+                return false;
+            }
+
+            // Validate payment date is not in the future (use string comparison to avoid timezone issues)
+            const todayStr = new Date().toLocaleDateString('en-CA'); // Format: yyyy-MM-dd
+            if (paymentDate.value > todayStr) {
+                showFieldError('paymentDateCash', '@Localizer["PaymentDateCannotBeFuture"].Value');
+                paymentDate.focus();
+                return false;
+            }
+
+            return true;
+        }
+    </script>
+}

@@ -1,0 +1,384 @@
+@model List<Bangaliyana.Models.Order>
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = Localizer["MyOrders"].Value;
+    var currentPage = (int)ViewBag.CurrentPage;
+    var totalPages = (int)ViewBag.TotalPages;
+    var totalOrders = (int)ViewBag.TotalOrders;
+    var status = ViewBag.Status as string;
+    var search = ViewBag.Search as string;
+    var statusCounts = ViewBag.StatusCounts as Dictionary<OrderStatus, int> ?? new Dictionary<OrderStatus, int>();
+    var sellerId = (int)ViewBag.SellerId;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-shopping-bag text-primary me-2"></i>@Localizer["MyOrders"]</h1>
+            <p class="text-muted mb-0">@Localizer["OrdersFromCustomersCount", totalOrders]</p>
+        </div>
+        <a asp-action="Index" asp-controller="Dashboard" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>@Localizer["BackToDashboard"]
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Status Tabs -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <ul class="nav nav-pills flex-wrap">
+                <li class="nav-item">
+                    <a class="nav-link @(string.IsNullOrEmpty(status) ? "active" : "")" asp-action="Index">
+                        @Localizer["All"] <span class="badge bg-secondary ms-1">@totalOrders</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(status == "Pending" ? "active" : "")" asp-action="Index" asp-route-status="Pending">
+                        <i class="fas fa-clock me-1"></i>@Localizer["Pending"]
+                        @if (statusCounts.TryGetValue(OrderStatus.Pending, out var pendingCount) && pendingCount > 0)
+                        {
+                            <span class="badge bg-warning text-dark ms-1">@pendingCount</span>
+                        }
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(status == "Confirmed" ? "active" : "")" asp-action="Index" asp-route-status="Confirmed">
+                        <i class="fas fa-check me-1"></i>@Localizer["Confirmed"]
+                        @if (statusCounts.TryGetValue(OrderStatus.Confirmed, out var confirmedCount) && confirmedCount > 0)
+                        {
+                            <span class="badge bg-secondary ms-1">@confirmedCount</span>
+                        }
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(status == "Processing" ? "active" : "")" asp-action="Index" asp-route-status="Processing">
+                        <i class="fas fa-cog me-1"></i>@Localizer["Processing"]
+                        @if (statusCounts.TryGetValue(OrderStatus.Processing, out var processingCount) && processingCount > 0)
+                        {
+                            <span class="badge bg-info ms-1">@processingCount</span>
+                        }
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(status == "Shipped" ? "active" : "")" asp-action="Index" asp-route-status="Shipped">
+                        <i class="fas fa-shipping-fast me-1"></i>@Localizer["Shipped"]
+                        @if (statusCounts.TryGetValue(OrderStatus.Shipped, out var shippedCount) && shippedCount > 0)
+                        {
+                            <span class="badge bg-primary ms-1">@shippedCount</span>
+                        }
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(status == "Delivered" ? "active" : "")" asp-action="Index" asp-route-status="Delivered">
+                        <i class="fas fa-check-double me-1"></i>@Localizer["Delivered"]
+                        @if (statusCounts.TryGetValue(OrderStatus.Delivered, out var deliveredCount) && deliveredCount > 0)
+                        {
+                            <span class="badge bg-success ms-1">@deliveredCount</span>
+                        }
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="Index" method="get" class="row g-3">
+                <input type="hidden" name="status" value="@status" />
+                <div class="col-md-10">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" name="search" value="@search" class="form-control"
+                               placeholder="@Localizer["SearchOrderPlaceholder"]" />
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">@Localizer["Search"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>@Localizer["OrderNumber"]</th>
+                                <th>@Localizer["Customer"]</th>
+                                <th>@Localizer["Products"]</th>
+                                <th>@Localizer["Total"]</th>
+                                <th>@Localizer["Payment"]</th>
+                                <th>@Localizer["Status"]</th>
+                                <th>@Localizer["Date"]</th>
+                                <th>@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model)
+                            {
+                                var statusClass = order.Status switch
+                                {
+                                    OrderStatus.Pending => "bg-warning text-dark",
+                                    OrderStatus.Confirmed => "bg-secondary",
+                                    OrderStatus.Processing => "bg-info",
+                                    OrderStatus.Shipped => "bg-primary",
+                                    OrderStatus.Delivered => "bg-success",
+                                    OrderStatus.Cancelled => "bg-danger",
+                                    _ => "bg-secondary"
+                                };
+                                var paymentClass = order.PaymentMethod == PaymentMethod.CashOnDelivery ? "text-warning" : "text-success";
+                                var sellerTotal = order.OrderItems.Sum(oi => oi.TotalPrice);
+                                <tr>
+                                    <td>
+                                        <a asp-action="Details" asp-route-id="@order.Id" class="fw-semibold text-decoration-none">
+                                            #@order.OrderNumber
+                                        </a>
+                                    </td>
+                                    <td>
+                                        @order.User?.FullName
+                                        <br /><small class="text-muted">@order.User?.Email</small>
+                                    </td>
+                                    <td>
+                                        @foreach (var item in order.OrderItems.Take(2))
+                                        {
+                                            <div class="d-flex align-items-center mb-1">
+                                                <img src="~/@(item.Product?.ImageUrl ?? "images/products/noimage.jpg")"
+                                                     class="rounded me-2" style="width: 30px; height: 30px; object-fit: cover;" />
+                                                <div>
+                                                    <small>@item.Product?.Name.Truncate(20) x @item.Quantity</small>
+                                                    @if (!string.IsNullOrEmpty(item.VariantInfo))
+                                                    {
+                                                        <br /><small class="text-info" style="font-size: 0.7rem;">@item.VariantInfo</small>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (order.OrderItems.Count > 2)
+                                        {
+                                            <small class="text-muted">@Localizer["MoreItems", order.OrderItems.Count - 2]</small>
+                                        }
+                                    </td>
+                                    <td class="fw-semibold">৳@((int)Math.Round(sellerTotal))</td>
+                                    <td>
+                                        <span class="@paymentClass">
+                                            <i class="fas @(order.PaymentMethod == PaymentMethod.CashOnDelivery ? "fa-money-bill-wave" : "fa-credit-card") me-1"></i>
+                                            @(order.PaymentMethod == PaymentMethod.CashOnDelivery ? Localizer["COD"].Value : Localizer["Online"].Value)
+                                        </span>
+                                    </td>
+                                    <td><span class="badge @statusClass">@order.Status.GetDisplayName()</span></td>
+                                    <td>
+                                        <small>@order.OrderDate.ToBangladeshShortDateString()</small>
+                                        <br /><small class="text-muted">@order.OrderDate.ToBangladeshString("hh:mm tt")</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="Details" asp-route-id="@order.Id" class="btn btn-outline-primary" title="@Localizer["ViewDetails"]">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            @if (order.Status == OrderStatus.Pending && order.PaymentMethod == PaymentMethod.CashOnDelivery)
+                                            {
+                                                <form asp-action="Confirm" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@order.Id" />
+                                                    <button type="submit" class="btn btn-outline-success" title="@Localizer["ConfirmOrder"]">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                            @if (order.Status == OrderStatus.Confirmed)
+                                            {
+                                                <form asp-action="UpdateStatus" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@order.Id" />
+                                                    <input type="hidden" name="status" value="@OrderStatus.Processing" />
+                                                    <button type="submit" class="btn btn-outline-info" title="@Localizer["StartProcessing"]">
+                                                        <i class="fas fa-cog"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                            @if (order.Status == OrderStatus.Processing)
+                                            {
+                                                <form asp-action="UpdateStatus" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@order.Id" />
+                                                    <input type="hidden" name="status" value="@OrderStatus.Shipped" />
+                                                    <button type="submit" class="btn btn-outline-primary" title="@Localizer["MarkAsShipped"]">
+                                                        <i class="fas fa-shipping-fast"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                            @if (order.Status == OrderStatus.Shipped)
+                                            {
+                                                <form asp-action="UpdateStatus" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@order.Id" />
+                                                    <input type="hidden" name="status" value="@OrderStatus.Delivered" />
+                                                    <button type="submit" class="btn btn-outline-success" title="@Localizer["MarkAsDelivered"]">
+                                                        <i class="fas fa-check-double"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if (totalPages > 1)
+                {
+                    <nav class="p-3">
+                        <ul class="pagination justify-content-center mb-0">
+                            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@(currentPage - 1)"
+                                   asp-route-status="@status" asp-route-search="@search">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                <li class="page-item @(i == currentPage ? "active" : "")">
+                                    <a class="page-link" asp-action="Index" asp-route-page="@i"
+                                       asp-route-status="@status" asp-route-search="@search">@i</a>
+                                </li>
+                            }
+                            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@(currentPage + 1)"
+                                   asp-route-status="@status" asp-route-search="@search">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-shopping-bag fa-4x text-muted mb-3"></i>
+                    <h5>@Localizer["NoOrdersFound"]</h5>
+                    <p class="text-muted">
+                        @if (!string.IsNullOrEmpty(search) || !string.IsNullOrEmpty(status))
+                        {
+                            @Localizer["TryAdjustingFilters"]
+                        }
+                        else
+                        {
+                            @Localizer["OrdersWillAppearHere"]
+                        }
+                    </p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Light mode nav-pills styling */
+    .nav-pills .nav-link {
+        color: #374151;
+    }
+
+    .nav-pills .nav-link.active {
+        background-color: #4f46e5;
+        color: #ffffff !important;
+    }
+
+    .nav-pills .nav-link:hover:not(.active) {
+        color: #1f2937;
+        background-color: #f3f4f6;
+    }
+
+    /* Dark mode styles */
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .table {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .table-light {
+        background-color: #374151;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .nav-pills .nav-link {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .nav-pills .nav-link.active {
+        background-color: #4f46e5;
+        color: #ffffff !important;
+    }
+
+    [data-theme="dark"] .nav-pills .nav-link:hover:not(.active) {
+        color: #e5e7eb;
+        background-color: #374151;
+    }
+
+    [data-theme="dark"] .form-control {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .input-group-text {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #9ca3af;
+    }
+
+    /* Dark mode badge visibility fixes */
+    [data-theme="dark"] .badge.bg-warning {
+        color: #1f2937 !important;
+    }
+
+    [data-theme="dark"] .badge.bg-info {
+        background-color: #0891b2 !important;
+        color: #ffffff !important;
+    }
+
+    [data-theme="dark"] .badge.bg-primary {
+        background-color: #4f46e5 !important;
+        color: #ffffff !important;
+    }
+
+    [data-theme="dark"] .badge.bg-success {
+        background-color: #059669 !important;
+        color: #ffffff !important;
+    }
+
+    [data-theme="dark"] .badge.bg-danger {
+        background-color: #dc2626 !important;
+        color: #ffffff !important;
+    }
+
+    [data-theme="dark"] .badge.bg-secondary {
+        background-color: #4b5563 !important;
+        color: #f3f4f6 !important;
+    }
+</style>

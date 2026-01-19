@@ -1,0 +1,72 @@
+@using Bangaliyana.Models
+@model (Category Category, int Depth)
+
+@{
+    var category = Model.Category;
+    var depth = Model.Depth;
+    var hasChildren = category.Children?.Any(c => c.IsActive) == true;
+    var activeChildren = category.Children?.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ThenBy(c => c.Name).ToList() ?? new List<Category>();
+}
+
+@if (hasChildren)
+{
+    <li class="category-item has-children" data-depth="@depth">
+        <div class="category-row">
+            <a class="category-link" asp-area="Customer" asp-controller="Home" asp-action="Category" asp-route-id="@category.Id">
+                @if (!string.IsNullOrEmpty(category.IconClass))
+                {
+                    <i class="@category.IconClass category-icon"></i>
+                }
+                else if (depth == 0)
+                {
+                    <i class="fas fa-folder category-icon"></i>
+                }
+                else
+                {
+                    <i class="fas fa-angle-right category-icon small-icon"></i>
+                }
+                <span class="category-name">@category.Name</span>
+            </a>
+            <span class="expand-toggle" role="button" tabindex="0">
+                <i class="fas fa-chevron-right"></i>
+            </span>
+        </div>
+        <ul class="category-submenu">
+            @foreach (var child in activeChildren.Take(15))
+            {
+                @await Html.PartialAsync("Components/DynamicTags/_CategoryItem", (child, depth + 1))
+            }
+            @if (activeChildren.Count > 15)
+            {
+                <li class="category-item view-more">
+                    <a class="category-link text-success" asp-area="Customer" asp-controller="Home" asp-action="Category" asp-route-id="@category.Id">
+                        <i class="fas fa-ellipsis-h category-icon"></i>
+                        <span class="category-name">View all @activeChildren.Count</span>
+                    </a>
+                </li>
+            }
+        </ul>
+    </li>
+}
+else
+{
+    <li class="category-item" data-depth="@depth">
+        <div class="category-row">
+            <a class="category-link" asp-area="Customer" asp-controller="Home" asp-action="Category" asp-route-id="@category.Id">
+                @if (!string.IsNullOrEmpty(category.IconClass))
+                {
+                    <i class="@category.IconClass category-icon"></i>
+                }
+                else if (depth == 0)
+                {
+                    <i class="fas fa-folder category-icon"></i>
+                }
+                else
+                {
+                    <i class="fas fa-angle-right category-icon small-icon"></i>
+                }
+                <span class="category-name">@category.Name</span>
+            </a>
+        </div>
+    </li>
+}

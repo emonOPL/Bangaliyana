@@ -1,0 +1,453 @@
+@using Microsoft.AspNetCore.Identity
+@using Bangaliyana.Models
+@using Bangaliyana.Services
+@using Bangaliyana.Data
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+@inject ICartService CartService
+@inject ICompareService CompareService
+@inject ApplicationDbContext DbContext
+
+@{
+    // Get cart count for current user
+    int cartCount = 0;
+    int compareCount = CompareService.GetCompareCount();
+    int messageCount = 0;
+    int notificationCount = 0;
+    string? userId = null;
+    ApplicationUser? currentUser = null;
+
+    if (SignInManager.IsSignedIn(User))
+    {
+        userId = UserManager.GetUserId(User);
+        currentUser = await UserManager.GetUserAsync(User);
+
+        // Get unread message count
+        if (!string.IsNullOrEmpty(userId))
+        {
+            messageCount = DbContext.SellerConversations
+                .Where(c => c.BuyerId == userId && !c.IsArchived)
+                .Sum(c => c.UnreadCountBuyer);
+
+            // Get unread notification count
+            notificationCount = DbContext.UserNotifications
+                .Count(n => n.UserId == userId && !n.IsRead);
+        }
+    }
+
+    // Get cart count asynchronously
+    cartCount = await CartService.GetCartCountAsync(userId);
+}
+
+<div class="d-flex align-items-center gap-2">
+    @if (SignInManager.IsSignedIn(User))
+    {
+        <!-- Messages Icon -->
+        <div class="nav-item">
+            <a class="nav-link position-relative icon-link" asp-area="Customer" asp-controller="Messages" asp-action="Index"
+               title="Messages @(messageCount > 0 ? $"({messageCount} unread)" : "")" data-bs-toggle="tooltip">
+                <i class="fas fa-comment-dots"></i>
+                @if (messageCount > 0)
+                {
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info icon-badge">
+                        @(messageCount > 9 ? "9+" : messageCount.ToString())
+                    </span>
+                }
+            </a>
+        </div>
+
+        <!-- Notifications Icon -->
+        <div class="nav-item">
+            <a class="nav-link position-relative icon-link" asp-area="Identity" asp-page="/Account/Manage/Notifications"
+               title="Notifications @(notificationCount > 0 ? $"({notificationCount} unread)" : "")" data-bs-toggle="tooltip">
+                <i class="fas fa-bell"></i>
+                @if (notificationCount > 0)
+                {
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger icon-badge">
+                        @(notificationCount > 9 ? "9+" : notificationCount.ToString())
+                    </span>
+                }
+            </a>
+        </div>
+    }
+
+    <!-- Shopping Cart - Always visible -->
+    <div class="nav-item">
+        <a class="nav-link position-relative cart-link" asp-area="Customer" asp-controller="Home" asp-action="Cart"
+           title="(@cartCount items)" data-bs-toggle="tooltip">
+            <i class="fas fa-shopping-cart"></i>
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary cart-count @(cartCount == 0 ? "d-none" : "")">
+                @cartCount
+            </span>
+        </a>
+    </div>
+
+    @if (SignInManager.IsSignedIn(User))
+    {
+        <!-- User Dropdown Menu -->
+        <div class="nav-item dropdown">
+            <a class="nav-link user-menu d-flex align-items-center" href="#" id="userDropdown"
+               role="button" data-bs-toggle="dropdown" aria-expanded="false" title="@User.Identity?.Name">
+                <div class="user-avatar">
+                    @if (!string.IsNullOrEmpty(currentUser?.AvatarUrl))
+                    {
+                        <img src="@currentUser.AvatarUrl" alt="Profile" class="navbar-avatar-img" />
+                    }
+                    else
+                    {
+                        <i class="fas fa-user-circle fa-lg"></i>
+                    }
+                </div>
+            </a>
+            
+            <ul class="dropdown-menu dropdown-menu-end user-dropdown shadow-lg border-0" aria-labelledby="userDropdown">
+                <li class="dropdown-header">
+                    <div class="d-flex align-items-center">
+                        @if (!string.IsNullOrEmpty(currentUser?.AvatarUrl))
+                        {
+                            <img src="@currentUser.AvatarUrl" alt="Profile" class="dropdown-avatar-img me-3" />
+                        }
+                        else
+                        {
+                            <i class="fas fa-user-circle fa-2x me-3 text-primary"></i>
+                        }
+                        <div>
+                            <div class="fw-semibold">
+                                @{
+                                    var displayName = !string.IsNullOrEmpty(currentUser?.FirstName)
+                                        ? (currentUser.FirstName + (!string.IsNullOrEmpty(currentUser.LastName) ? " " + currentUser.LastName : ""))
+                                        : User.Identity?.Name?.ToLower();
+                                }
+                                @displayName
+                            </div>
+                            <small class="text-muted">Member since @(currentUser?.CreatedAt.Year ?? DateTime.Now.Year)</small>
+                        </div>
+                    </div>
+                </li>
+                
+                <!-- My Orders -->
+                <li>
+                    <a class="dropdown-item" asp-area="Customer" asp-controller="Home" asp-action="Orders">
+                        <i class="fas fa-receipt me-2"></i>
+                        My Orders
+                        @if (cartCount > 0)
+                        {
+                            <span class="badge bg-secondary ms-auto">Active</span>
+                        }
+                    </a>
+                </li>
+
+                <!-- Wishlist -->
+                <li>
+                    <a class="dropdown-item" asp-area="Customer" asp-controller="Wishlist" asp-action="Index">
+                        <i class="fas fa-heart me-2 text-danger"></i>
+                        My Wishlist
+                    </a>
+                </li>
+
+                <!-- Followed Shops -->
+                <li>
+                    <a class="dropdown-item" asp-area="Customer" asp-controller="Home" asp-action="FollowedShops">
+                        <i class="fas fa-store me-2 text-primary"></i>
+                        Followed Shops
+                    </a>
+                </li>
+
+                <!-- My Questions -->
+                <li>
+                    <a class="dropdown-item" asp-area="Customer" asp-controller="QA" asp-action="Index">
+                        <i class="fas fa-question-circle me-2"></i>
+                        My Questions
+                    </a>
+                </li>
+
+                <!-- Profile Settings -->
+                <li>
+                    <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">
+                        <i class="fas fa-user-cog me-2"></i>
+                        Profile Settings
+                    </a>
+                </li>
+                
+                <!-- Change Password -->
+                <li>
+                    <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/ChangePassword">
+                        <i class="fas fa-key me-2"></i>
+                        Change Password
+                    </a>
+                </li>
+                
+                <li><hr class="dropdown-divider"></li>
+                
+                <!-- Logout -->
+                <li>
+                    <form asp-area="Identity" asp-page="/Account/Logout" 
+                          asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "Customer" })" 
+                          class="d-inline w-100">
+                        <button type="submit" class="dropdown-item text-danger logout-btn">
+                            <i class="fas fa-sign-out-alt me-2"></i>
+                            Logout
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    }
+    else
+    {
+        <!-- Authentication Links for Guests -->
+        <div class="d-flex align-items-center gap-2">
+            <!-- Login Button -->
+            <a class="btn btn-outline-primary btn-sm" asp-area="Identity" asp-page="/Account/Login">
+                <i class="fas fa-sign-in-alt me-1"></i>
+                <span class="d-none d-sm-inline">Login</span>
+            </a>
+            
+            <!-- Register Button -->
+            <a class="btn btn-primary btn-sm" asp-area="Identity" asp-page="/Account/Register">
+                <i class="fas fa-user-plus me-1"></i>
+                <span class="d-none d-sm-inline">Sign Up</span>
+            </a>
+        </div>
+    }
+</div>
+
+<style>
+/* Modern Login Partial Styles */
+/* Icon Links (Messages, Notifications, Cart) */
+.icon-link,
+.cart-link {
+    color: var(--text-color) !important;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--border-radius);
+    transition: all var(--transition-fast);
+    text-decoration: none;
+    position: relative;
+}
+
+.icon-link:hover,
+.cart-link:hover {
+    color: var(--primary-color) !important;
+    background-color: var(--primary-light);
+    transform: translateY(-1px);
+}
+
+.icon-badge {
+    animation: pulse 2s infinite;
+    font-size: 0.6rem;
+    min-width: 1rem;
+    height: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.15rem 0.3rem;
+}
+
+[data-theme="dark"] .icon-link:hover {
+    background-color: rgba(99, 102, 241, 0.1);
+}
+
+[data-theme="dark"] .cart-link:hover {
+    background-color: rgba(99, 102, 241, 0.1);
+}
+
+.cart-count,
+.compare-count {
+    animation: pulse 2s infinite;
+    font-size: 0.65rem;
+    min-width: 1.2rem;
+    height: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.compare-link:hover {
+    color: var(--primary-color) !important;
+    background-color: var(--primary-light);
+    transform: translateY(-1px);
+}
+
+[data-theme="dark"] .compare-link:hover {
+    background-color: rgba(99, 102, 241, 0.1);
+}
+
+@@keyframes pulse {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.1); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+.user-menu {
+    color: var(--text-color) !important;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--border-radius);
+    transition: all var(--transition-fast);
+    text-decoration: none;
+    border: none;
+    background: none;
+}
+
+.user-menu:hover {
+    color: var(--primary-color) !important;
+    background-color: var(--primary-light);
+}
+
+[data-theme="dark"] .user-menu:hover {
+    background-color: rgba(99, 102, 241, 0.1);
+}
+
+.user-menu:focus {
+    box-shadow: 0 0 0 0.125rem rgba(99, 102, 241, 0.25);
+}
+
+.user-avatar {
+    color: var(--primary-color);
+}
+
+.navbar-avatar-img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary-color);
+}
+
+.dropdown-avatar-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary-color);
+}
+
+.user-name {
+    font-weight: 500;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-dropdown {
+    min-width: 280px;
+    margin-top: 0.5rem;
+    border: none;
+    background-color: var(--bg-color);
+    box-shadow: var(--card-shadow-lg);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+}
+
+.dropdown-header {
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem;
+    margin: 0;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+}
+
+.user-dropdown .dropdown-item {
+    color: var(--text-color);
+    padding: 0.75rem 1rem;
+    border-radius: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.user-dropdown .dropdown-item:hover {
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+}
+
+[data-theme="dark"] .user-dropdown .dropdown-item:hover {
+    background-color: rgba(99, 102, 241, 0.1);
+}
+
+.logout-btn:hover {
+    background-color: var(--danger-light) !important;
+    color: var(--danger-color) !important;
+}
+
+[data-theme="dark"] .logout-btn:hover {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Dark mode dropdown divider */
+[data-theme="dark"] .user-dropdown .dropdown-divider {
+    border-color: #495057;
+}
+
+.dropdown-item i {
+    width: 1.2rem;
+    text-align: center;
+}
+
+.btn-sm {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+    font-weight: 500;
+}
+
+/* Mobile optimizations */
+@@media (max-width: 768px) {
+    .user-dropdown {
+        min-width: 250px;
+        right: 0;
+        left: auto;
+    }
+    
+    .dropdown-header {
+        padding: 0.75rem;
+    }
+    
+    .user-name {
+        max-width: 80px;
+    }
+}
+
+/* Focus styles for accessibility */
+.cart-link:focus,
+.user-menu:focus,
+.btn:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Badge animations */
+.badge {
+    animation: fadeIn 0.3s ease;
+}
+
+@@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Loading state for buttons */
+.btn[data-loading="true"] {
+    pointer-events: none;
+    position: relative;
+}
+
+.btn[data-loading="true"]:before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Smooth transitions */
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+</style>

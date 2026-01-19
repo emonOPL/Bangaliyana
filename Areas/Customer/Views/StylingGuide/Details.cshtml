@@ -1,0 +1,112 @@
+@model Bangaliyana.Models.StylingGuide
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Model.Title;
+    var moreGuides = ViewBag.MoreGuides as List<StylingGuide>;
+}
+
+<div class="styling-guide-details-page py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <!-- Breadcrumb -->
+                <nav aria-label="breadcrumb" class="mb-4">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a asp-area="Customer" asp-controller="Home" asp-action="Index">@Localizer["Home"]</a></li>
+                        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["StylingGuides"]</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">@Model.Title</li>
+                    </ol>
+                </nav>
+
+                <article class="guide-article">
+                    <!-- Header -->
+                    <header class="mb-4">
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            <span class="badge bg-info">@Model.GuideType</span>
+                            @if (!string.IsNullOrEmpty(Model.TargetGender))
+                            {
+                                <span class="badge bg-secondary">@Model.TargetGender</span>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.Occasion))
+                            {
+                                <span class="badge bg-secondary">@Model.Occasion</span>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.Season))
+                            {
+                                <span class="badge bg-secondary">@Model.Season</span>
+                            }
+                        </div>
+                        <h1 class="guide-title">@Model.Title</h1>
+                        @if (!string.IsNullOrEmpty(Model.Subtitle))
+                        {
+                            <p class="lead text-muted">@Model.Subtitle</p>
+                        }
+                        <div class="text-muted small">
+                            <i class="far fa-eye me-1"></i>@Model.ViewCount @Localizer["Views"]
+                        </div>
+                    </header>
+
+                    <!-- Cover Image -->
+                    @if (!string.IsNullOrEmpty(Model.CoverImageUrl))
+                    {
+                        <div class="guide-cover mb-4">
+                            <img src="~/@Model.CoverImageUrl" class="img-fluid rounded" alt="@Model.Title">
+                        </div>
+                    }
+
+                    <!-- Content -->
+                    <div class="guide-content">
+                        @Html.Raw(Model.Content)
+                    </div>
+
+                    <!-- Share -->
+                    <div class="guide-share mt-4 pt-4 border-top">
+                        <strong class="me-2"><i class="fas fa-share-alt"></i> @Localizer["ShareThisGuide"]:</strong>
+                        <a href="https://www.facebook.com/sharer/sharer.php?u=@Url.Action("Details", "StylingGuide", new { slug = Model.Slug }, Context.Request.Scheme)" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fab fa-facebook-f"></i></a>
+                        <a href="https://twitter.com/intent/tweet?url=@Url.Action("Details", "StylingGuide", new { slug = Model.Slug }, Context.Request.Scheme)&text=@Model.Title" target="_blank" class="btn btn-outline-info btn-sm"><i class="fab fa-twitter"></i></a>
+                        <a href="https://wa.me/?text=@Model.Title - @Url.Action("Details", "StylingGuide", new { slug = Model.Slug }, Context.Request.Scheme)" target="_blank" class="btn btn-outline-success btn-sm"><i class="fab fa-whatsapp"></i></a>
+                    </div>
+                </article>
+
+                <!-- More Guides -->
+                @if (moreGuides?.Any() == true)
+                {
+                    <div class="more-guides mt-5 pt-5 border-top">
+                        <h4 class="mb-4"><i class="fas fa-palette me-2"></i>@Localizer["MoreGuides", Model.GuideType]</h4>
+                        <div class="row g-4">
+                            @foreach (var guide in moreGuides)
+                            {
+                                <div class="col-md-4">
+                                    <a asp-action="Details" asp-route-slug="@guide.Slug" class="text-decoration-none">
+                                        <div class="card h-100 border-0 shadow-sm">
+                                            @if (!string.IsNullOrEmpty(guide.ThumbnailImageUrl ?? guide.CoverImageUrl))
+                                            {
+                                                <img src="~/@(guide.ThumbnailImageUrl ?? guide.CoverImageUrl)" class="card-img-top" alt="@guide.Title" style="height: 120px; object-fit: cover;">
+                                            }
+                                            <div class="card-body">
+                                                <h6 class="card-title text-dark">@guide.Title</h6>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Back Button -->
+                <div class="mt-5 text-center">
+                    <a asp-action="Index" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>@Localizer["BackToStylingGuides"]
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .guide-content { font-size: 1.1rem; line-height: 1.8; }
+    .guide-content img { max-width: 100%; height: auto; margin: 1rem 0; }
+    .guide-content h2, .guide-content h3 { margin-top: 2rem; margin-bottom: 1rem; }
+</style>

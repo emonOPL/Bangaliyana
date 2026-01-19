@@ -1,0 +1,207 @@
+@model X.PagedList.IPagedList<Bangaliyana.Models.Transaction>
+@using X.PagedList.Mvc.Core
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+
+@{
+    ViewData["Title"] = Localizer["PaymentManagement"].Value;
+}
+
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-1"><i class="fas fa-money-bill-wave text-primary me-2"></i>@Localizer["PaymentManagement"]</h4>
+            <p class="text-muted mb-0">@Localizer["PaymentManagementSubtitle"]</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="fas fa-list text-primary"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0">@ViewBag.TotalTransactions</h4>
+                            <small class="text-muted">@Localizer["TotalTransactions"]</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
+                            <i class="fas fa-clock text-warning"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0">@ViewBag.PendingPayouts</h4>
+                            <small class="text-muted">@Localizer["PendingPayouts"]</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-danger bg-opacity-10 p-3 me-3">
+                            <i class="fas fa-undo text-danger"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0">@ViewBag.PendingRefunds</h4>
+                            <small class="text-muted">@Localizer["PendingRefunds"]</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
+                            <i class="fas fa-check-circle text-success"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0">@(((decimal)ViewBag.TotalRevenue).ToString("N0")) BDT</h4>
+                            <small class="text-muted">@Localizer["TotalRevenue"]</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">@Localizer["TransactionType"]</label>
+                    <select name="type" class="form-select">
+                        <option value="">@Localizer["AllTypes"]</option>
+                        @foreach (var type in (List<TransactionType>)ViewBag.TransactionTypes)
+                        {
+                            <option value="@type" selected="@(ViewBag.CurrentType == type.ToString())">@type</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">@Localizer["Status"]</label>
+                    <select name="status" class="form-select">
+                        <option value="">@Localizer["AllStatuses"]</option>
+                        @foreach (var status in (List<TransactionStatus>)ViewBag.TransactionStatuses)
+                        {
+                            <option value="@status" selected="@(ViewBag.CurrentStatus == status.ToString())">@status</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2"><i class="fas fa-filter me-1"></i>@Localizer["Filter"]</button>
+                    <a href="@Url.Action("Index")" class="btn btn-outline-secondary">@Localizer["Clear"]</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>@Localizer["ID"]</th>
+                            <th>@Localizer["Type"]</th>
+                            <th>@Localizer["Amount"]</th>
+                            <th>@Localizer["OrderSeller"]</th>
+                            <th>@Localizer["Status"]</th>
+                            <th>@Localizer["Date"]</th>
+                            <th>@Localizer["Actions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            @foreach (var transaction in Model)
+                            {
+                                <tr>
+                                    <td>#@transaction.Id</td>
+                                    <td>
+                                        @{
+                                            var typeClass = transaction.Type switch
+                                            {
+                                                TransactionType.Payment => "bg-success",
+                                                TransactionType.Refund => "bg-danger",
+                                                TransactionType.SellerPayout => "bg-info",
+                                                _ => "bg-secondary"
+                                            };
+                                        }
+                                        <span class="badge @typeClass">@transaction.Type.GetDisplayName()</span>
+                                    </td>
+                                    <td class="fw-medium">@((int)Math.Round(transaction.Amount)) BDT</td>
+                                    <td>
+                                        @if (transaction.Order != null)
+                                        {
+                                            <a asp-action="Details" asp-controller="Order" asp-route-id="@transaction.OrderId">
+                                                @Localizer["Order"] #@(transaction.Order.OrderNumber ?? transaction.OrderId.ToString())
+                                            </a>
+                                        }
+                                        @if (transaction.Seller != null)
+                                        {
+                                            <span class="d-block small text-muted">@transaction.Seller.ShopName</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @{
+                                            var statusClass = transaction.Status switch
+                                            {
+                                                TransactionStatus.Completed => "bg-success",
+                                                TransactionStatus.Pending => "bg-warning text-dark",
+                                                TransactionStatus.Failed => "bg-danger",
+                                                _ => "bg-secondary"
+                                            };
+                                        }
+                                        <span class="badge @statusClass">@transaction.Status.GetDisplayName()</span>
+                                    </td>
+                                    <td>@transaction.CreatedAt.ToBangladeshString()</td>
+                                    <td>
+                                        <a asp-action="TransactionDetails" asp-route-id="@transaction.Id" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3 d-block"></i>
+                                    <p class="text-muted mb-0">@Localizer["NoTransactionsFound"]</p>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @if (Model.PageCount > 1)
+        {
+            <div class="card-footer">
+                <nav>
+                    @Html.PagedListPager(Model, page => Url.Action("Index", new { page, type = ViewBag.CurrentType, status = ViewBag.CurrentStatus }), new PagedListRenderOptions { DisplayLinkToFirstPage = PagedListDisplayMode.IfNeeded, DisplayLinkToLastPage = PagedListDisplayMode.IfNeeded })
+                </nav>
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,148 @@
+@model Bangaliyana.Models.SeasonalCollection
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Model.Name;
+    var products = ViewBag.Products as List<Products>;
+    var otherCollections = ViewBag.OtherCollections as List<SeasonalCollection>;
+}
+
+<div class="seasonal-collection-details">
+    <!-- Hero Banner -->
+    <div class="collection-hero position-relative" style="background: linear-gradient(135deg, @(Model.PrimaryColor ?? "#667eea") 0%, @(Model.SecondaryColor ?? "#764ba2") 100%);">
+        @if (!string.IsNullOrEmpty(Model.BannerImageUrl))
+        {
+            <div class="hero-background position-absolute w-100 h-100" style="background-image: url('/@Model.BannerImageUrl'); background-size: cover; background-position: center; opacity: 0.3;"></div>
+        }
+        <div class="container position-relative py-5">
+            <div class="row align-items-center py-5">
+                <div class="col-lg-8 mx-auto text-center" style="color: @(Model.TextColor ?? "white");">
+                    <span class="badge bg-white text-dark mb-3 fs-6">@Model.SeasonType @Model.Year</span>
+                    <h1 class="display-4 fw-bold mb-3">@Model.Name</h1>
+                    @if (!string.IsNullOrEmpty(Model.Tagline))
+                    {
+                        <p class="lead mb-4">@Model.Tagline</p>
+                    }
+                    @if (Model.ShowCountdown && Model.EndDate.HasValue && Model.EndDate > DateTime.UtcNow)
+                    {
+                        <div class="countdown mb-4">
+                            <span class="badge bg-danger fs-6"><i class="fas fa-clock me-2"></i>@Localizer["Ends"] @Model.EndDate.Value.ToString("dd MMM yyyy")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container py-5">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-area="Customer" asp-controller="Home" asp-action="Index">@Localizer["Home"]</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Collections"]</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
+            </ol>
+        </nav>
+
+        <!-- Description -->
+        @if (!string.IsNullOrEmpty(Model.Description))
+        {
+            <div class="collection-description mb-5">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8 text-center">
+                        <p class="lead">@Model.Description</p>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Products -->
+        @if (products?.Any() == true)
+        {
+            <div class="collection-products mb-5">
+                <h3 class="mb-4"><i class="fas fa-tshirt me-2"></i>@Localizer["CollectionProducts"]</h3>
+                <div class="row g-4">
+                    @foreach (var product in products)
+                    {
+                        <div class="col-lg-3 col-md-4 col-6">
+                            <a asp-area="Customer" asp-controller="Home" asp-action="Details" asp-route-slug="@product.Slug" class="text-decoration-none">
+                                <div class="card h-100 border-0 shadow-sm product-card">
+                                    <div class="position-relative">
+                                        <img src="~/@(!string.IsNullOrEmpty(product.ImageUrl) ? product.ImageUrl : "images/products/noimage.jpg")" class="card-img-top" alt="@product.Name" style="height: 180px; object-fit: cover;">
+                                        @if (product.DiscountPrice.HasValue && product.DiscountPrice < product.Price)
+                                        {
+                                            var discount = (int)Math.Round(((product.Price - product.DiscountPrice.Value) / product.Price) * 100);
+                                            <span class="position-absolute top-0 end-0 m-2 badge bg-danger">-@discount%</span>
+                                        }
+                                    </div>
+                                    <div class="card-body">
+                                        <h6 class="card-title text-dark text-truncate">@product.Name</h6>
+                                        <div class="d-flex align-items-center gap-2">
+                                            @if (product.DiscountPrice.HasValue && product.DiscountPrice < product.Price)
+                                            {
+                                                <span class="text-primary fw-bold">৳@product.DiscountPrice.Value.ToString("N0")</span>
+                                                <small class="text-muted text-decoration-line-through">৳@product.Price.ToString("N0")</small>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-primary fw-bold">৳@product.Price.ToString("N0")</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.CollectionUrl))
+                {
+                    <div class="text-center mt-4">
+                        <a href="@Model.CollectionUrl" class="btn btn-primary btn-lg">
+                            @(Model.ButtonText ?? Localizer["ViewAllProducts"]) <i class="fas fa-arrow-right ms-2"></i>
+                        </a>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Other Collections -->
+        @if (otherCollections?.Any() == true)
+        {
+            <div class="other-collections mt-5 pt-5 border-top">
+                <h4 class="mb-4"><i class="fas fa-snowflake me-2"></i>@Localizer["MoreCollections"]</h4>
+                <div class="row g-4">
+                    @foreach (var collection in otherCollections)
+                    {
+                        <div class="col-lg-3 col-md-6">
+                            <a asp-action="Details" asp-route-slug="@collection.Slug" class="text-decoration-none">
+                                <div class="card h-100 border-0 shadow-sm">
+                                    @if (!string.IsNullOrEmpty(collection.ThumbnailImageUrl ?? collection.BannerImageUrl))
+                                    {
+                                        <img src="~/@(collection.ThumbnailImageUrl ?? collection.BannerImageUrl)" class="card-img-top" alt="@collection.Name" style="height: 120px; object-fit: cover;">
+                                    }
+                                    <div class="card-body">
+                                        <span class="badge bg-info mb-2">@collection.SeasonType</span>
+                                        <h6 class="card-title text-dark">@collection.Name</h6>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Back Button -->
+        <div class="mt-5 text-center">
+            <a asp-action="Index" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-2"></i>@Localizer["BackToCollections"]
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .collection-hero { min-height: 400px; }
+    .product-card { transition: all 0.3s ease; }
+    .product-card:hover { transform: translateY(-5px); }
+</style>

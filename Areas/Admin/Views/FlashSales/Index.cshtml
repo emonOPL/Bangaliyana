@@ -1,0 +1,336 @@
+@using Bangaliyana.Models
+@model IEnumerable<FlashSale>
+@{
+    ViewData["Title"] = "Flash Sales Management";
+    var currentPage = ViewBag.CurrentPage as int? ?? 1;
+    var totalPages = ViewBag.TotalPages as int? ?? 1;
+    var totalFlashSales = ViewBag.TotalFlashSales as int? ?? 0;
+    var activeFlashSales = ViewBag.ActiveFlashSales as int? ?? 0;
+    var upcomingFlashSales = ViewBag.UpcomingFlashSales as int? ?? 0;
+    var expiredFlashSales = ViewBag.ExpiredFlashSales as int? ?? 0;
+    var status = ViewBag.Status as string;
+}
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-bolt text-warning me-2"></i>Flash Sales Management</h1>
+            <p class="text-muted mb-0">Create and manage time-limited flash sales</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <a asp-action="Create" class="btn btn-warning">
+                <i class="fas fa-plus me-1"></i>Create Flash Sale
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-primary bg-opacity-10">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle bg-primary bg-opacity-25 p-3 me-3">
+                        <i class="fas fa-bolt text-primary fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0 fw-bold">@totalFlashSales</h3>
+                        <small class="text-muted">Total Flash Sales</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-success bg-opacity-10">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle bg-success bg-opacity-25 p-3 me-3">
+                        <i class="fas fa-fire text-success fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0 fw-bold">@activeFlashSales</h3>
+                        <small class="text-muted">Active Now</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-info bg-opacity-10">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle bg-info bg-opacity-25 p-3 me-3">
+                        <i class="fas fa-clock text-info fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0 fw-bold">@upcomingFlashSales</h3>
+                        <small class="text-muted">Upcoming</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-danger bg-opacity-10">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle bg-danger bg-opacity-25 p-3 me-3">
+                        <i class="fas fa-history text-danger fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0 fw-bold">@expiredFlashSales</h3>
+                        <small class="text-muted">Expired</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["onSave"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["onSave"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["onEdit"] != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show">
+            <i class="fas fa-info-circle me-2"></i>@TempData["onEdit"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["onDelete"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show">
+            <i class="fas fa-exclamation-triangle me-2"></i>@TempData["onDelete"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Filters Card -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <form asp-action="Index" method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted mb-1">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="active" selected="@(status == "active")">Active Now</option>
+                        <option value="upcoming" selected="@(status == "upcoming")">Upcoming</option>
+                        <option value="expired" selected="@(status == "expired")">Expired</option>
+                        <option value="inactive" selected="@(status == "inactive")">Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-grow-1">
+                            <i class="fas fa-filter me-1"></i>Filter
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Anti-forgery token for AJAX requests -->
+    @Html.AntiForgeryToken()
+
+    <!-- Flash Sales Table Card -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Flash Sale</th>
+                                <th>Products</th>
+                                <th>Duration</th>
+                                <th class="text-center">Status</th>
+                                <th style="width: 180px;" class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var flashSale in Model)
+                            {
+                                var now = DateTime.UtcNow;
+                                var isExpired = flashSale.EndDate < now;
+                                var isUpcoming = flashSale.StartDate > now;
+                                var isActive = flashSale.IsActive && !isExpired && !isUpcoming;
+
+                                var statusClass = isActive ? "bg-success" : (isExpired ? "bg-danger" : (isUpcoming ? "bg-info" : "bg-secondary"));
+                                var statusText = isActive ? "Active" : (isExpired ? "Expired" : (isUpcoming ? "Upcoming" : "Inactive"));
+
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            @if (!string.IsNullOrEmpty(flashSale.BannerImageUrl))
+                                            {
+                                                <img src="@flashSale.BannerImageUrl" alt="Banner" class="rounded me-2" style="width: 60px; height: 40px; object-fit: cover;">
+                                            }
+                                            <div>
+                                                <a asp-action="Details" asp-route-id="@flashSale.Id" class="fw-bold text-decoration-none">
+                                                    @flashSale.Name
+                                                </a>
+                                                @if (!string.IsNullOrEmpty(flashSale.Description))
+                                                {
+                                                    <br /><small class="text-muted">@(flashSale.Description.Length > 50 ? flashSale.Description.Substring(0, 50) + "..." : flashSale.Description)</small>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">@flashSale.Products.Count Products</span>
+                                    </td>
+                                    <td>
+                                        <small>
+                                            <i class="fas fa-calendar text-muted me-1"></i>@flashSale.StartDate.ToString("MMM dd, yyyy HH:mm")
+                                            <br />
+                                            <i class="fas fa-calendar-check text-muted me-1"></i>@flashSale.EndDate.ToString("MMM dd, yyyy HH:mm")
+                                        </small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge @statusClass">@statusText</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="ManageProducts" asp-route-id="@flashSale.Id" class="btn btn-outline-primary" title="Manage Products">
+                                                <i class="fas fa-boxes"></i>
+                                            </a>
+                                            <a asp-action="Edit" asp-route-id="@flashSale.Id" class="btn btn-outline-secondary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-secondary toggle-active-btn" data-id="@flashSale.Id" title="@(flashSale.IsActive ? "Deactivate" : "Activate")">
+                                                <i class="fas @(flashSale.IsActive ? "fa-toggle-on text-success" : "fa-toggle-off")"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="@flashSale.Id" data-name="@flashSale.Name" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if (totalPages > 1)
+                {
+                    <div class="d-flex justify-content-center p-3">
+                        <nav>
+                            <ul class="pagination mb-0">
+                                @if (currentPage > 1)
+                                {
+                                    <li class="page-item">
+                                        <a class="page-link" asp-action="Index" asp-route-status="@status" asp-route-page="@(currentPage - 1)">Previous</a>
+                                    </li>
+                                }
+                                @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                                {
+                                    <li class="page-item @(i == currentPage ? "active" : "")">
+                                        <a class="page-link" asp-action="Index" asp-route-status="@status" asp-route-page="@i">@i</a>
+                                    </li>
+                                }
+                                @if (currentPage < totalPages)
+                                {
+                                    <li class="page-item">
+                                        <a class="page-link" asp-action="Index" asp-route-status="@status" asp-route-page="@(currentPage + 1)">Next</a>
+                                    </li>
+                                }
+                            </ul>
+                        </nav>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-bolt fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No flash sales found</h5>
+                    <p class="text-muted">Create your first flash sale to get started</p>
+                    <a asp-action="Create" class="btn btn-warning">
+                        <i class="fas fa-plus me-1"></i>Create Flash Sale
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the flash sale "<strong id="flashSaleName"></strong>"?</p>
+                <p class="text-danger mb-0"><small>This action cannot be undone.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" asp-action="Delete" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Delete modal
+            $('#deleteModal').on('show.bs.modal', function (event) {
+                var button = $(event.relatedTarget);
+                var id = button.data('id');
+                var name = button.data('name');
+                $('#flashSaleName').text(name);
+                $('#deleteForm').attr('action', '@Url.Action("Delete")/' + id);
+            });
+
+            // Toggle active status
+            $(document).on('click', '.toggle-active-btn', function (e) {
+                e.preventDefault();
+                var $btn = $(this);
+                var id = $btn.data('id');
+                var $row = $btn.closest('tr');
+                var $statusBadge = $row.find('td:nth-child(4) .badge');
+
+                $btn.prop('disabled', true);
+
+                $.ajax({
+                    url: '@Url.Action("ToggleActive")',
+                    type: 'POST',
+                    data: { id: id },
+                    headers: { 'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val() },
+                    success: function (response) {
+                        if (response.success) {
+                            if (response.isActive) {
+                                $btn.html('<i class="fas fa-toggle-on text-success"></i>');
+                                $btn.attr('title', 'Deactivate');
+                            } else {
+                                $btn.html('<i class="fas fa-toggle-off"></i>');
+                                $btn.attr('title', 'Activate');
+                            }
+                            // Refresh the page to update status badge correctly
+                            location.reload();
+                        }
+                    },
+                    error: function () {
+                        alert('An error occurred while toggling status.');
+                    },
+                    complete: function () {
+                        $btn.prop('disabled', false);
+                    }
+                });
+            });
+        });
+    </script>
+}

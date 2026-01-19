@@ -1,0 +1,209 @@
+@model Bangaliyana.Models.SellerSubscriptionPlan
+
+@{
+    ViewData["Title"] = "Edit Subscription Plan";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Subscription Plans</a></li>
+            <li class="breadcrumb-item active">Edit - @Model.Name</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-edit text-primary me-2"></i>Edit Subscription Plan</h1>
+            <p class="text-muted mb-0">Update plan details and features</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Plans
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Plan Details</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Edit" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        <input type="hidden" asp-for="CreatedAt" />
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label asp-for="Name" class="form-label">Plan Name <span class="text-danger">*</span></label>
+                                <input asp-for="Name" class="form-control" placeholder="e.g., Basic, Standard, Premium" />
+                                <span asp-validation-for="Name" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="MonthlyPrice" class="form-label">Monthly Price (৳) <span class="text-danger">*</span></label>
+                                <input asp-for="MonthlyPrice" class="form-control" type="number" step="1" min="0" />
+                                <span asp-validation-for="MonthlyPrice" class="text-danger"></span>
+                                <small class="text-muted">Set to 0 for free tier</small>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="Description" class="form-label">Description</label>
+                                <textarea asp-for="Description" class="form-control" rows="2" placeholder="Brief description of the plan"></textarea>
+                                <span asp-validation-for="Description" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="MaxProducts" class="form-label">Max Products</label>
+                                <input asp-for="MaxProducts" class="form-control" type="number" min="-1" />
+                                <span asp-validation-for="MaxProducts" class="text-danger"></span>
+                                <small class="text-muted">Set to -1 for unlimited</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="CommissionRate" class="form-label">Commission Rate (%) <span class="text-danger">*</span></label>
+                                <input asp-for="CommissionRate" class="form-control" type="number" step="0.01" min="0" max="100" />
+                                <span asp-validation-for="CommissionRate" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="SortOrder" class="form-label">Sort Order</label>
+                                <input asp-for="SortOrder" class="form-control" type="number" min="0" />
+                                <span asp-validation-for="SortOrder" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="BadgeColor" class="form-label">Badge Color</label>
+                                <select asp-for="BadgeColor" class="form-select">
+                                    <option value="bg-primary">Primary (Blue)</option>
+                                    <option value="bg-secondary">Secondary (Gray)</option>
+                                    <option value="bg-success">Success (Green)</option>
+                                    <option value="bg-warning">Warning (Yellow)</option>
+                                    <option value="bg-danger">Danger (Red)</option>
+                                    <option value="bg-info">Info (Cyan)</option>
+                                    <option value="bg-dark">Dark</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="IconClass" class="form-label">Icon Class (FontAwesome)</label>
+                                <input asp-for="IconClass" class="form-control" placeholder="e.g., fas fa-star, fas fa-crown" />
+                                <span asp-validation-for="IconClass" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">Features</label>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input asp-for="HasPrioritySupport" class="form-check-input" />
+                                            <label asp-for="HasPrioritySupport" class="form-check-label">Priority Support</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input asp-for="HasFeaturedListing" class="form-check-input" />
+                                            <label asp-for="HasFeaturedListing" class="form-check-label">Featured Listing</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input asp-for="HasAdvancedAnalytics" class="form-check-input" />
+                                            <label asp-for="HasAdvancedAnalytics" class="form-check-label">Advanced Analytics</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input asp-for="HasPromotionalTools" class="form-check-input" />
+                                            <label asp-for="HasPromotionalTools" class="form-check-label">Promotional Tools</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input asp-for="IsActive" class="form-check-input" />
+                                            <label asp-for="IsActive" class="form-check-label">Active (Available for subscription)</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input asp-for="IsFeatured" class="form-check-input" />
+                                            <label asp-for="IsFeatured" class="form-check-label">Featured (Show as Recommended)</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Save Changes
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-info me-2"></i>Plan Info</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted">Created:</td>
+                            <td>@Model.CreatedAt.ToString("dd MMM yyyy")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Last Updated:</td>
+                            <td>@Model.UpdatedAt.ToString("dd MMM yyyy HH:mm")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Status:</td>
+                            <td>
+                                @if (Model.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactive</span>
+                                }
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Tips</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li class="mb-2">Changes to commission rates will apply to new subscriptions only.</li>
+                        <li class="mb-2">Existing subscribers will keep their current rates until renewal.</li>
+                        <li>Disabling a plan will prevent new subscriptions but won't affect existing ones.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+
+@section Styles {
+    <style>
+        [data-theme="dark"] .card { background-color: var(--bs-dark); border-color: var(--bs-gray-700); }
+        [data-theme="dark"] .card-header.bg-light { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] .table { color: var(--bs-light); }
+    </style>
+}

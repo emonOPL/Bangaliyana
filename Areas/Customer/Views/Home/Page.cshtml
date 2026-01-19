@@ -1,0 +1,64 @@
+@model Bangaliyana.Models.PageContent
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-12">
+            @if (!string.IsNullOrEmpty(Model.FeaturedImageUrl))
+            {
+                <div class="mb-4">
+                    <img src="~/@Model.FeaturedImageUrl" alt="@Model.Title" class="img-fluid rounded-3 w-100" style="max-height: 400px; object-fit: cover;" />
+                </div>
+            }
+
+            <article class="page-content">
+                <header class="mb-4">
+                    <h1 class="display-5 fw-bold">@Model.Title</h1>
+                    <hr class="my-4" />
+                </header>
+
+                <div class="page-body">
+                    @Html.Raw(Model.Content)
+                </div>
+
+                <footer class="mt-5 pt-4 border-top text-muted small">
+                    <p>@Localizer["LastUpdated"]: @Model.UpdatedAt.ToBangladeshDateString()</p>
+                </footer>
+            </article>
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-content {
+        line-height: 1.8;
+    }
+
+    .page-body h2, .page-body h3, .page-body h4 {
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .page-body p {
+        margin-bottom: 1rem;
+    }
+
+    .page-body ul, .page-body ol {
+        margin-bottom: 1rem;
+        padding-left: 2rem;
+    }
+
+    .page-body li {
+        margin-bottom: 0.5rem;
+    }
+
+    .page-body blockquote {
+        border-left: 4px solid var(--primary-color);
+        padding-left: 1rem;
+        margin: 1.5rem 0;
+        font-style: italic;
+    }
+</style>

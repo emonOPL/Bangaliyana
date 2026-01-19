@@ -1,0 +1,330 @@
+@model Bangaliyana.Models.MenuItem
+@using Bangaliyana.Models
+
+@{
+    ViewData["Title"] = Localizer["CreateMenuItem"].Value;
+    var parentOptions = ViewBag.ParentOptions as List<SelectListItem>;
+    var locations = ViewBag.Locations as List<SelectListItem>;
+    var roles = ViewBag.Roles as List<string>;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">@Localizer["CreateMenuItem"]</h1>
+            <p class="text-muted mb-0">@Localizer["AddMenuItemDescription"]</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> @Localizer["BackToList"]
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <form asp-action="Create" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                        <!-- Basic Information -->
+                        <h5 class="card-title border-bottom pb-2 mb-3">
+                            <i class="fas fa-info-circle me-2 text-primary"></i>@Localizer["BasicInformation"]
+                        </h5>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="Name" class="form-label">@Localizer["Name"] <span class="text-danger">*</span></label>
+                                <input asp-for="Name" class="form-control" placeholder="@Localizer["MenuNamePlaceholder"]" />
+                                <span asp-validation-for="Name" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Icon" class="form-label">@Localizer["IconClass"]</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-icons"></i></span>
+                                    <input asp-for="Icon" class="form-control" placeholder="@Localizer["IconClassPlaceholder"]" />
+                                </div>
+                                <small class="text-muted">@Localizer["IconClassHelp"]</small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="Location" class="form-label">@Localizer["MenuLocation"] <span class="text-danger">*</span></label>
+                                <select asp-for="Location" asp-items="locations" class="form-select"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="ParentId" class="form-label">@Localizer["ParentMenu"]</label>
+                                <select asp-for="ParentId" asp-items="parentOptions" class="form-select"></select>
+                                <small class="text-muted">@Localizer["ParentMenuHelp"]</small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="DisplayOrder" class="form-label">@Localizer["DisplayOrder"]</label>
+                                <input asp-for="DisplayOrder" type="number" class="form-control" min="0" />
+                                <small class="text-muted">@Localizer["DisplayOrderHelp"]</small>
+                            </div>
+                        </div>
+
+                        <!-- Navigation -->
+                        <h5 class="card-title border-bottom pb-2 mb-3 mt-4">
+                            <i class="fas fa-link me-2 text-primary"></i>@Localizer["Navigation"]
+                        </h5>
+
+                        <div class="mb-3">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="navType" id="navTypeRoute" value="route" checked onchange="toggleNavType()">
+                                <label class="form-check-label" for="navTypeRoute">@Localizer["MVCRoute"]</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="navType" id="navTypeUrl" value="url" onchange="toggleNavType()">
+                                <label class="form-check-label" for="navTypeUrl">@Localizer["DirectURL"]</label>
+                            </div>
+                        </div>
+
+                        <div id="routeFields">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label asp-for="Area" class="form-label">@Localizer["Area"]</label>
+                                    <input asp-for="Area" class="form-control" placeholder="@Localizer["AreaPlaceholder"]" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label asp-for="Controller" class="form-label">@Localizer["Controller"]</label>
+                                    <input asp-for="Controller" class="form-control" placeholder="@Localizer["ControllerPlaceholder"]" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label asp-for="Action" class="form-label">@Localizer["Action"]</label>
+                                    <input asp-for="Action" class="form-control" placeholder="@Localizer["ActionPlaceholder"]" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="urlFields" style="display: none;">
+                            <div class="mb-3">
+                                <label asp-for="Url" class="form-label">@Localizer["URL"]</label>
+                                <input asp-for="Url" class="form-control" placeholder="@Localizer["URLPlaceholder"]" />
+                                <small class="text-muted">@Localizer["URLHelp"]</small>
+                            </div>
+                        </div>
+
+                        <!-- Permissions -->
+                        <h5 class="card-title border-bottom pb-2 mb-3 mt-4">
+                            <i class="fas fa-shield-alt me-2 text-primary"></i>@Localizer["Permissions"]
+                        </h5>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mb-2">
+                                    <input asp-for="IsActive" class="form-check-input" type="checkbox" checked />
+                                    <label asp-for="IsActive" class="form-check-label">@Localizer["Active"]</label>
+                                </div>
+                                <small class="text-muted d-block">@Localizer["ActiveMenuHelp"]</small>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mb-2">
+                                    <input asp-for="IsDefault" class="form-check-input" type="checkbox" />
+                                    <label asp-for="IsDefault" class="form-check-label">@Localizer["DefaultMenuItem"]</label>
+                                </div>
+                                <small class="text-muted d-block">@Localizer["DefaultMenuHelp"]</small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mb-2">
+                                    <input asp-for="RequiresAuthentication" class="form-check-input" type="checkbox" />
+                                    <label asp-for="RequiresAuthentication" class="form-check-label">@Localizer["RequiresAuthentication"]</label>
+                                </div>
+                                <small class="text-muted d-block">@Localizer["RequiresAuthHelp"]</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">@Localizer["RoleBasedAccess"]</label>
+                            <div class="border rounded p-3">
+                                @if (roles?.Any() == true)
+                                {
+                                    <div class="row">
+                                        @foreach (var role in roles)
+                                        {
+                                            <div class="col-md-4 mb-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="selectedRoles" value="@role" id="role_@role">
+                                                    <label class="form-check-label" for="role_@role">@role</label>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="text-muted mb-0">@Localizer["NoRolesAvailable"]</p>
+                                }
+                            </div>
+                            <small class="text-muted">@Localizer["RoleBasedAccessHelp"]</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="RequiredRoles" class="form-label">@Localizer["LegacyRoles"]</label>
+                            <input asp-for="RequiredRoles" class="form-control" placeholder="@Localizer["LegacyRolesPlaceholder"]" />
+                            <small class="text-muted">@Localizer["LegacyRolesHelp"]</small>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["Cancel"]</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i> @Localizer["CreateMenuItem"]
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="col-lg-4">
+            <div class="card sticky-top" style="top: 1rem;">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-eye me-2"></i>@Localizer["Preview"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info small mb-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        @Localizer["MenuPreviewDescription"]
+                    </div>
+                    <div id="menuPreview" class="border rounded p-3">
+                        <a href="#" class="text-decoration-none">
+                            <i id="previewIcon" class="fas fa-link me-2"></i>
+                            <span id="previewName">@Localizer["MenuItem"]</span>
+                        </a>
+                    </div>
+                    <hr />
+                    <h6>@Localizer["IconReference"]</h6>
+                    <div class="row small">
+                        <div class="col-6 mb-1"><code>fas fa-home</code></div>
+                        <div class="col-6 mb-1"><code>fas fa-user</code></div>
+                        <div class="col-6 mb-1"><code>fas fa-cog</code></div>
+                        <div class="col-6 mb-1"><code>fas fa-shopping-cart</code></div>
+                        <div class="col-6 mb-1"><code>fas fa-box</code></div>
+                        <div class="col-6 mb-1"><code>fas fa-chart-bar</code></div>
+                    </div>
+                    <a href="https://fontawesome.com/icons" target="_blank" class="btn btn-sm btn-outline-secondary mt-2">
+                        <i class="fas fa-external-link-alt me-1"></i>@Localizer["BrowseAllIcons"]
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Dark mode support for Menu Management */
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-header.bg-light {
+            background-color: var(--bs-gray-800) !important;
+            border-color: var(--bs-gray-700);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .card-body {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-label {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-control:focus,
+        [data-theme="dark"] .form-select:focus {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-primary);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-control::placeholder {
+            color: var(--bs-gray-500);
+        }
+        [data-theme="dark"] .input-group-text {
+            background-color: var(--bs-gray-700);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .border {
+            border-color: var(--bs-gray-600) !important;
+        }
+        [data-theme="dark"] .border-bottom {
+            border-color: var(--bs-gray-600) !important;
+        }
+        [data-theme="dark"] .text-muted {
+            color: var(--bs-gray-400) !important;
+        }
+        [data-theme="dark"] h1,
+        [data-theme="dark"] h5,
+        [data-theme="dark"] h6,
+        [data-theme="dark"] strong,
+        [data-theme="dark"] .card-title {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-check-label {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .alert-info {
+            background-color: rgba(13, 202, 240, 0.15);
+            border-color: rgba(13, 202, 240, 0.3);
+            color: var(--bs-info);
+        }
+        [data-theme="dark"] #menuPreview {
+            background-color: var(--bs-gray-800);
+        }
+        [data-theme="dark"] #menuPreview a {
+            color: var(--bs-light);
+        }
+
+        /* Button gaps */
+        .d-flex.gap-2 {
+            gap: 0.5rem;
+        }
+    </style>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function toggleNavType() {
+            const isRoute = document.getElementById('navTypeRoute').checked;
+            document.getElementById('routeFields').style.display = isRoute ? 'block' : 'none';
+            document.getElementById('urlFields').style.display = isRoute ? 'none' : 'block';
+        }
+
+        // Live preview
+        document.getElementById('Name').addEventListener('input', function() {
+            document.getElementById('previewName').textContent = this.value || 'Menu Item';
+        });
+
+        document.getElementById('Icon').addEventListener('input', function() {
+            const icon = document.getElementById('previewIcon');
+            icon.className = this.value || 'fas fa-link';
+            icon.classList.add('me-2');
+        });
+
+        // Initialize nav type based on existing values
+        document.addEventListener('DOMContentLoaded', function() {
+            const url = document.getElementById('Url').value;
+            if (url) {
+                document.getElementById('navTypeUrl').checked = true;
+                toggleNavType();
+            }
+        });
+    </script>
+}

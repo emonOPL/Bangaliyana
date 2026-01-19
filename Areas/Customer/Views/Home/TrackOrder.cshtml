@@ -1,0 +1,1355 @@
+@model Bangaliyana.Models.Order
+@using System.Globalization
+@using Bangaliyana.Extensions
+@using Bangaliyana.Models
+
+@{
+    ViewData["Title"] = Localizer["TrackYourOrder"];
+    var currencySymbol = "৳";
+    var hasOrder = Model != null;
+
+    // Define timeline steps (only used when order exists)
+    var timelineSteps = hasOrder ? new List<(string Icon, string Title, string Status, DateTime? Date, bool IsActive, bool IsCompleted)>
+    {
+        ("fa-clipboard-check", Localizer["OrderPlaced"].Value, "Pending", Model.OrderDate, true, true),
+        ("fa-check-circle", Localizer["Confirmed"].Value, "Confirmed", Model.Status >= OrderStatus.Confirmed ? Model.OrderDate.AddMinutes(5) : null,
+            Model.Status >= OrderStatus.Confirmed, Model.Status >= OrderStatus.Confirmed),
+        ("fa-box", Localizer["Processing"].Value, "Processing", Model.Status >= OrderStatus.Processing ? Model.OrderDate.AddHours(2) : null,
+            Model.Status >= OrderStatus.Processing, Model.Status >= OrderStatus.Processing),
+        ("fa-shipping-fast", Localizer["Shipped"].Value, "Shipped", Model.ShippedAt,
+            Model.Status >= OrderStatus.Shipped, Model.Status >= OrderStatus.Shipped),
+        ("fa-truck", Localizer["OutForDelivery"].Value, "OutForDelivery", Model.Status >= OrderStatus.OutForDelivery ? Model.ShippedAt?.AddDays(1) : null,
+            Model.Status >= OrderStatus.OutForDelivery, Model.Status >= OrderStatus.OutForDelivery),
+        ("fa-home", Localizer["Delivered"].Value, "Delivered", Model.DeliveredAt,
+            Model.Status >= OrderStatus.Delivered, Model.Status >= OrderStatus.Delivered)
+    } : new List<(string Icon, string Title, string Status, DateTime? Date, bool IsActive, bool IsCompleted)>();
+
+    // Calculate current step
+    int currentStep = 0;
+    bool isCancelled = false;
+    bool isReturned = false;
+
+    if (hasOrder)
+    {
+        if (Model.Status == OrderStatus.Pending) currentStep = 0;
+        else if (Model.Status == OrderStatus.Confirmed || Model.Status == OrderStatus.Paid) currentStep = 1;
+        else if (Model.Status == OrderStatus.Processing) currentStep = 2;
+        else if (Model.Status == OrderStatus.Shipped) currentStep = 3;
+        else if (Model.Status == OrderStatus.OutForDelivery) currentStep = 4;
+        else if (Model.Status == OrderStatus.Delivered) currentStep = 5;
+
+        isCancelled = Model.Status == OrderStatus.Cancelled;
+        isReturned = Model.Status == OrderStatus.Returned || Model.Status == OrderStatus.Refunded;
+    }
+}
+
+<style>
+    /* Search Section */
+    .track-hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1.5rem;
+        padding: 2.5rem;
+        color: white;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .track-hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -30%;
+        width: 80%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+    }
+
+    .track-hero::after {
+        content: '';
+        position: absolute;
+        bottom: -50%;
+        left: -30%;
+        width: 60%;
+        height: 150%;
+        background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 50%);
+    }
+
+    .track-hero-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .track-hero h1 {
+        font-weight: 700;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .track-hero p {
+        opacity: 0.9;
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .search-card {
+        background: rgba(255,255,255,0.15);
+        backdrop-filter: blur(10px);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .search-card .row {
+        display: flex;
+        align-items: flex-end !important;
+    }
+
+    .search-card .form-control {
+        background: rgba(255,255,255,0.95);
+        border: none;
+        border-radius: 0.75rem;
+        padding: 0 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        height: 48px;
+        line-height: normal;
+        box-sizing: border-box;
+    }
+
+    .search-card .form-control:focus {
+        box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
+        background: white;
+    }
+
+    .search-card .form-control::placeholder {
+        color: #9ca3af;
+    }
+
+    .search-card label {
+        color: rgba(255,255,255,0.95);
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .btn-track {
+        background: white;
+        color: #667eea;
+        border: none;
+        border-radius: 0.75rem;
+        padding: 0 2rem;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        height: 48px;
+        line-height: 1;
+        box-sizing: border-box;
+    }
+
+    .btn-track:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        background: #f9fafb;
+        color: #764ba2;
+    }
+
+    .btn-track:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* Error Alert */
+    .search-error {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border: 1px solid #fecaca;
+        border-radius: 1rem;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .search-error i {
+        font-size: 1.5rem;
+        color: #ef4444;
+    }
+
+    .search-error-text {
+        flex: 1;
+    }
+
+    .search-error-title {
+        font-weight: 600;
+        color: #991b1b;
+        margin-bottom: 0.25rem;
+    }
+
+    .search-error-desc {
+        font-size: 0.875rem;
+        color: #b91c1c;
+    }
+
+    /* Order Header Card */
+    .order-header-card {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        color: white;
+        margin-bottom: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .order-header-card.cancelled {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+
+    .order-header-card.returned {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .order-header-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 100%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+    }
+
+    .order-number {
+        font-size: 0.875rem;
+        opacity: 0.9;
+        margin-bottom: 0.25rem;
+    }
+
+    .order-id-large {
+        font-size: 1.75rem;
+        font-weight: 700;
+        font-family: 'Courier New', monospace;
+    }
+
+    .order-date-info {
+        font-size: 0.875rem;
+        opacity: 0.9;
+    }
+
+    .status-badge-large {
+        padding: 0.5rem 1.25rem;
+        border-radius: 2rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255,255,255,0.2);
+    }
+
+    /* Real-time indicator */
+    .realtime-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.75rem;
+        color: rgba(255,255,255,0.9);
+        margin-top: 0.75rem;
+    }
+
+    .realtime-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #34d399;
+        animation: pulse-dot 2s infinite;
+    }
+
+    @@keyframes pulse-dot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.2); }
+    }
+
+    /* Timeline Section */
+    .timeline-section {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .section-title i {
+        color: #667eea;
+    }
+
+    /* Timeline */
+    .order-timeline {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+        padding: 0 1rem;
+    }
+
+    .order-timeline::before {
+        content: '';
+        position: absolute;
+        top: 24px;
+        left: 60px;
+        right: 60px;
+        height: 4px;
+        background: #e5e7eb;
+        border-radius: 2px;
+        z-index: 1;
+    }
+
+    .timeline-progress {
+        position: absolute;
+        top: 24px;
+        left: 60px;
+        height: 4px;
+        background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        border-radius: 2px;
+        z-index: 2;
+        transition: width 0.5s ease;
+    }
+
+    .timeline-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 3;
+        flex: 1;
+        max-width: 100px;
+    }
+
+    .step-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.3s ease;
+        border: 3px solid #e5e7eb;
+        background: white;
+        color: #9ca3af;
+    }
+
+    .timeline-step.completed .step-icon {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-color: #10b981;
+        color: white;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .timeline-step.active .step-icon {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+        color: white;
+        animation: pulse-step 2s infinite;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .timeline-step.cancelled .step-icon {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        border-color: #ef4444;
+        color: white;
+    }
+
+    @@keyframes pulse-step {
+        0% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(102, 126, 234, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0); }
+    }
+
+    .step-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #6b7280;
+        text-align: center;
+        margin-bottom: 0.25rem;
+    }
+
+    .timeline-step.completed .step-title,
+    .timeline-step.active .step-title {
+        color: #1f2937;
+    }
+
+    .step-date {
+        font-size: 0.65rem;
+        color: #9ca3af;
+        text-align: center;
+    }
+
+    .timeline-step.completed .step-date {
+        color: #10b981;
+    }
+
+    /* Cancelled/Returned State */
+    .cancelled-banner {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border: 1px solid #fecaca;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .cancelled-banner i {
+        font-size: 2rem;
+        color: #ef4444;
+    }
+
+    .cancelled-banner .banner-text {
+        flex: 1;
+    }
+
+    .cancelled-banner .banner-title {
+        font-weight: 600;
+        color: #991b1b;
+    }
+
+    .cancelled-banner .banner-desc {
+        font-size: 0.875rem;
+        color: #b91c1c;
+    }
+
+    /* Tracking Info */
+    .tracking-info {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #bfdbfe;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .tracking-info-title {
+        font-weight: 600;
+        color: #1e40af;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .tracking-details {
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .tracking-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tracking-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    .tracking-value {
+        font-weight: 600;
+        color: #1e40af;
+    }
+
+    /* Info Cards */
+    .info-section {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .info-header {
+        background: #f8f9fa;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .info-body {
+        padding: 1.5rem;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .info-card {
+        background: #f9fafb;
+        border-radius: 0.75rem;
+        padding: 1rem;
+    }
+
+    .info-card-title {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .info-card-title i {
+        color: #667eea;
+    }
+
+    .info-item {
+        display: flex;
+        margin-bottom: 0.5rem;
+    }
+
+    .info-label {
+        color: #6b7280;
+        width: 100px;
+        flex-shrink: 0;
+        font-size: 0.875rem;
+    }
+
+    .info-value {
+        color: #1f2937;
+        font-weight: 500;
+        font-size: 0.875rem;
+    }
+
+    /* Order Items */
+    .order-items-table {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+
+    .order-items-table th {
+        text-align: left;
+        padding: 0.75rem;
+        background: #f9fafb;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #6b7280;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .order-items-table td {
+        padding: 1rem 0.75rem;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: middle;
+    }
+
+    .order-items-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .item-image {
+        width: 60px;
+        height: 60px;
+        border-radius: 0.5rem;
+        object-fit: cover;
+        background: #f3f4f6;
+    }
+
+    .item-details {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .item-name {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+    }
+
+    .item-variant {
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+
+    .totals-section {
+        border-top: 2px solid #e5e7eb;
+        padding-top: 1rem;
+    }
+
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+    }
+
+    .total-row.grand-total {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #059669;
+        border-top: 1px solid #e5e7eb;
+        padding-top: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+
+    .empty-state-icon {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 1.5rem;
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .empty-state-icon i {
+        font-size: 3rem;
+        color: #9ca3af;
+    }
+
+    .empty-state h3 {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+        color: #6b7280;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    /* Action Buttons */
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.875rem 1.25rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        font-size: 0.9rem;
+    }
+
+    .action-btn.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .action-btn.primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .action-btn.outline {
+        background: white;
+        border-color: #e5e7eb;
+        color: #374151;
+    }
+
+    .action-btn.outline:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] .track-hero {
+        background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%);
+    }
+
+    [data-theme="dark"] .search-card {
+        background: rgba(255,255,255,0.1);
+        border-color: rgba(255,255,255,0.15);
+    }
+
+    [data-theme="dark"] .search-card .form-control {
+        background: #1f2937;
+        color: #f3f4f6;
+        border: 1px solid #374151;
+    }
+
+    [data-theme="dark"] .search-card .form-control::placeholder {
+        color: #6b7280;
+    }
+
+    [data-theme="dark"] .btn-track {
+        background: #f3f4f6;
+        color: #5b21b6;
+    }
+
+    [data-theme="dark"] .search-error {
+        background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);
+        border-color: #991b1b;
+    }
+
+    [data-theme="dark"] .search-error-title {
+        color: #fca5a5;
+    }
+
+    [data-theme="dark"] .search-error-desc {
+        color: #fecaca;
+    }
+
+    [data-theme="dark"] .timeline-section,
+    [data-theme="dark"] .info-section {
+        background: #1f2937;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    [data-theme="dark"] .section-title,
+    [data-theme="dark"] .item-name,
+    [data-theme="dark"] .info-value {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .info-header {
+        background: #111827;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .order-items-table th {
+        background: #111827;
+        color: #d1d5db;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .order-items-table td {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .info-card {
+        background: #111827;
+    }
+
+    [data-theme="dark"] .info-card-title {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .step-icon {
+        background: #374151;
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .order-timeline::before {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .action-btn.outline {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .totals-section,
+    [data-theme="dark"] .total-row.grand-total {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .tracking-info {
+        background: linear-gradient(135deg, #1e3a5f 0%, #1e3a8a 100%);
+        border-color: #3b82f6;
+    }
+
+    [data-theme="dark"] .tracking-info-title,
+    [data-theme="dark"] .tracking-value {
+        color: #93c5fd;
+    }
+
+    [data-theme="dark"] .cancelled-banner {
+        background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);
+        border-color: #991b1b;
+    }
+
+    [data-theme="dark"] .cancelled-banner .banner-title {
+        color: #fca5a5;
+    }
+
+    [data-theme="dark"] .cancelled-banner .banner-desc {
+        color: #fecaca;
+    }
+
+    [data-theme="dark"] .step-title {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .timeline-step.completed .step-title,
+    [data-theme="dark"] .timeline-step.active .step-title {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .step-date {
+        color: #6b7280;
+    }
+
+    [data-theme="dark"] .timeline-step.completed .step-date {
+        color: #34d399;
+    }
+
+    [data-theme="dark"] .timeline-step.active .step-date {
+        color: #a5b4fc;
+    }
+
+    [data-theme="dark"] .empty-state-icon {
+        background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    }
+
+    [data-theme="dark"] .empty-state h3 {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .empty-state p {
+        color: #9ca3af;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .track-hero {
+            padding: 1.5rem;
+        }
+
+        .track-hero h1 {
+            font-size: 1.5rem;
+        }
+
+        .order-timeline {
+            flex-direction: column;
+            padding: 0;
+            gap: 0;
+        }
+
+        .order-timeline::before {
+            top: 0;
+            bottom: 0;
+            left: 24px;
+            right: auto;
+            width: 4px;
+            height: auto;
+        }
+
+        .timeline-progress {
+            top: 0;
+            left: 24px;
+            width: 4px !important;
+            height: auto;
+        }
+
+        .timeline-step {
+            flex-direction: row;
+            max-width: 100%;
+            padding: 0.75rem 0;
+            gap: 1rem;
+        }
+
+        .step-icon {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+
+        .step-info {
+            text-align: left;
+        }
+
+        .step-title, .step-date {
+            text-align: left;
+        }
+
+        .action-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .search-card .form-control,
+        .btn-track {
+            height: 44px;
+        }
+
+        .search-card .form-control {
+            line-height: normal;
+        }
+
+        .btn-track {
+            line-height: 1;
+            margin-top: 0.5rem;
+        }
+    }
+</style>
+
+<div class="container mt-4">
+    <!-- Track Order Hero Section -->
+    <div class="track-hero">
+        <div class="track-hero-content">
+            <h1><i class="fas fa-truck me-2"></i>@Localizer["TrackYourOrder"]</h1>
+            <p>@Localizer["EnterOrderNumberAndPhoneToTrack"]</p>
+
+            <div class="search-card">
+                <form asp-action="TrackOrder" method="get" id="trackOrderForm">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                            <label for="orderNumber">@Localizer["OrderNumber"] <span class="text-warning">*</span></label>
+                            <input type="text" class="form-control" id="orderNumber" name="orderNumber"
+                                   placeholder="@Localizer["OrderNumberPlaceholder"]"
+                                   value="@(ViewBag.SearchedOrderNumber ?? (hasOrder ? Model.OrderNumber ?? Model.Id.ToString() : ""))"
+                                   required />
+                        </div>
+                        <div class="col-md-4">
+                            <label for="phone">@Localizer["PhoneNumber"]</label>
+                            <input type="text" class="form-control" id="phone" name="phone"
+                                   placeholder="@Localizer["PhoneNumberPlaceholder"]"
+                                   value="@(ViewBag.SearchedPhone ?? (hasOrder ? Model.Phone : ""))" />
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn-track w-100" id="trackBtn">
+                                <i class="fas fa-search"></i>
+                                <span>@Localizer["TrackOrder"]</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Error -->
+    @if (ViewBag.SearchError != null)
+    {
+        <div class="search-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <div class="search-error-text">
+                <div class="search-error-title">@Localizer["OrderNotFound"]</div>
+                <div class="search-error-desc">@ViewBag.SearchError</div>
+            </div>
+        </div>
+    }
+
+    @if (hasOrder)
+    {
+        <!-- Order Header -->
+        <div class="order-header-card @(isCancelled ? "cancelled" : isReturned ? "returned" : "")" id="orderHeader">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="order-number">@Localizer["OrderNumber"]</div>
+                    <div class="order-id-large">#@(Model.OrderNumber ?? Model.Id.ToString("D6"))</div>
+                    <div class="order-date-info">
+                        <i class="far fa-calendar-alt me-1"></i>
+                        @Localizer["PlacedOn"] @Model.OrderDate.ToBangladeshShortDateString() @Localizer["At"] @Model.OrderDate.ToBangladeshString("hh:mm tt")
+                    </div>
+                    <div class="realtime-indicator">
+                        <span class="realtime-dot"></span>
+                        <span>@Localizer["LiveTrackingEnabled"]</span>
+                    </div>
+                </div>
+                <div>
+                    @if (isCancelled)
+                    {
+                        <span class="status-badge-large">
+                            <i class="fas fa-times-circle"></i> @Localizer["Cancelled"]
+                        </span>
+                    }
+                    else if (isReturned)
+                    {
+                        <span class="status-badge-large">
+                            <i class="fas fa-undo"></i> @Model.Status.GetDisplayName()
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="status-badge-large" id="statusBadge">
+                            <i class="@GetStatusIcon(Model.Status)" id="statusIcon"></i>
+                            <span id="statusText">@Model.Status.GetDisplayName()</span>
+                        </span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Cancelled/Returned Banner -->
+        @if (isCancelled)
+        {
+            <div class="cancelled-banner">
+                <i class="fas fa-times-circle"></i>
+                <div class="banner-text">
+                    <div class="banner-title">@Localizer["OrderCancelled"]</div>
+                    <div class="banner-desc">
+                        @if (Model.CancelledAt.HasValue)
+                        {
+                            <span>@Localizer["CancelledOn"] @Model.CancelledAt.Value.ToBangladeshShortDateString() @Localizer["At"] @Model.CancelledAt.Value.ToBangladeshString("hh:mm tt")</span>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.CancellationReason))
+                        {
+                            <span> - @Model.CancellationReason.FormatAsDisplayName()</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+        else if (isReturned)
+        {
+            <div class="cancelled-banner warning-banner-gradient">
+                <i class="fas fa-undo" style="color: #d97706;"></i>
+                <div class="banner-text">
+                    <div class="banner-title" style="color: #92400e;">@Localizer["ReturnInitiated"]</div>
+                    <div class="banner-desc" style="color: #b45309;">
+                        @if (Model.ReturnedAt.HasValue)
+                        {
+                            <span>@Localizer["ReturnRequestedOn"] @Model.ReturnedAt.Value.ToBangladeshShortDateString()</span>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.ReturnReason))
+                        {
+                            <span> - @Model.ReturnReason.FormatAsDisplayName()</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Timeline Section -->
+        @if (!isCancelled && !isReturned)
+        {
+            <div class="timeline-section" id="timelineSection">
+                <h5 class="section-title">
+                    <i class="fas fa-route"></i> @Localizer["OrderProgress"]
+                </h5>
+
+                <div class="order-timeline" id="orderTimeline">
+                    <div class="timeline-progress" style="width: @(currentStep * 20)%;" id="timelineProgress"></div>
+
+                    @for (int i = 0; i < timelineSteps.Count; i++)
+                    {
+                        var step = timelineSteps[i];
+                        var stepClass = "";
+                        if (i < currentStep) stepClass = "completed";
+                        else if (i == currentStep) stepClass = "active";
+
+                        <div class="timeline-step @stepClass" data-step="@i">
+                            <div class="step-icon">
+                                <i class="fas @step.Icon"></i>
+                            </div>
+                            <div class="step-info">
+                                <div class="step-title">@step.Title</div>
+                                <div class="step-date">
+                                    @if (step.Date.HasValue && (i <= currentStep))
+                                    {
+                                        @step.Date.Value.ToBangladeshString("dd MMM")
+                                        <br />
+                                        @step.Date.Value.ToBangladeshString("hh:mm tt")
+                                    }
+                                    else
+                                    {
+                                        <span>@Localizer["Pending"]</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Tracking Info -->
+                @if (Model.Status >= OrderStatus.Shipped && (!string.IsNullOrEmpty(Model.TrackingNumber) || !string.IsNullOrEmpty(Model.CourierName)))
+                {
+                    <div class="tracking-info" id="trackingInfo">
+                        <div class="tracking-info-title">
+                            <i class="fas fa-truck"></i> @Localizer["ShipmentDetails"]
+                        </div>
+                        <div class="tracking-details">
+                            @if (!string.IsNullOrEmpty(Model.CourierName))
+                            {
+                                <div class="tracking-item">
+                                    <span class="tracking-label">@Localizer["Courier"]</span>
+                                    <span class="tracking-value" id="courierName">@Model.CourierName</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.TrackingNumber))
+                            {
+                                <div class="tracking-item">
+                                    <span class="tracking-label">@Localizer["TrackingNo"]</span>
+                                    <span class="tracking-value" id="trackingNumber">@Model.TrackingNumber</span>
+                                </div>
+                            }
+                            @if (Model.ShippedAt.HasValue)
+                            {
+                                <div class="tracking-item">
+                                    <span class="tracking-label">@Localizer["ShippedDate"]</span>
+                                    <span class="tracking-value" id="shippedDate">@Model.ShippedAt.Value.ToBangladeshShortDateString()</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+    else if (ViewBag.SearchError == null)
+    {
+        <!-- Empty State (No Search Yet) -->
+        <div class="info-section">
+            <div class="info-body">
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-shipping-fast"></i>
+                    </div>
+                    <h3>@Localizer["TrackYourOrder"]</h3>
+                    <p>@Localizer["TrackOrderEmptyStateMessage"]</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@functions {
+    private string GetStatusIcon(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Pending => "fas fa-clock",
+            OrderStatus.Confirmed => "fas fa-check",
+            OrderStatus.Paid => "fas fa-check-double",
+            OrderStatus.Processing => "fas fa-cog",
+            OrderStatus.Shipped => "fas fa-shipping-fast",
+            OrderStatus.OutForDelivery => "fas fa-truck",
+            OrderStatus.Delivered => "fas fa-check-circle",
+            OrderStatus.Cancelled => "fas fa-times-circle",
+            OrderStatus.Returned => "fas fa-undo",
+            OrderStatus.Refunded => "fas fa-money-bill-wave",
+            _ => "fas fa-info-circle"
+        };
+    }
+
+    private string MaskPhone(string? phone)
+    {
+        if (string.IsNullOrEmpty(phone) || phone.Length < 6)
+            return phone ?? "";
+
+        // Show first 3 and last 3 characters
+        return phone.Substring(0, 3) + new string('*', phone.Length - 6) + phone.Substring(phone.Length - 3);
+    }
+}
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        (function() {
+            var orderNumber = '@(hasOrder ? (Model.OrderNumber ?? Model.Id.ToString()) : "")';
+            var phone = '@(hasOrder ? Model.Phone : "")';
+            var currentStatus = '@(hasOrder ? Model.Status.ToString() : "")';
+            var connection = null;
+            var refreshInterval = null;
+
+            // Status to step mapping
+            var statusToStep = {
+                'Pending': 0,
+                'Confirmed': 1,
+                'Paid': 1,
+                'Processing': 2,
+                'Shipped': 3,
+                'OutForDelivery': 4,
+                'Delivered': 5
+            };
+
+            // Status icons mapping
+            var statusIcons = {
+                'Pending': 'fas fa-clock',
+                'Confirmed': 'fas fa-check',
+                'Paid': 'fas fa-check-double',
+                'Processing': 'fas fa-cog',
+                'Shipped': 'fas fa-shipping-fast',
+                'OutForDelivery': 'fas fa-truck',
+                'Delivered': 'fas fa-check-circle',
+                'Cancelled': 'fas fa-times-circle',
+                'Returned': 'fas fa-undo',
+                'Refunded': 'fas fa-money-bill-wave'
+            };
+
+            // Initialize SignalR connection if order exists
+            if (orderNumber) {
+                initializeSignalR();
+                startPolling();
+            }
+
+            function initializeSignalR() {
+                connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/notificationHub")
+                    .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+                    .configureLogging(signalR.LogLevel.Warning)
+                    .build();
+
+                connection.on("ReceiveNotification", function(notification) {
+                    console.log("Notification received:", notification);
+                    if (notification.OrderId && notification.OrderId.toString() === '@(hasOrder ? Model.Id : 0)') {
+                        fetchOrderStatus();
+                    }
+                });
+
+                connection.on("OrderStatusChanged", function(data) {
+                    console.log("Order status changed:", data);
+                    if (data.OrderNumber === orderNumber || data.OrderId === '@(hasOrder ? Model.Id : 0)') {
+                        updateOrderUI(data);
+                    }
+                });
+
+                connection.onclose(function() {
+                    console.log("SignalR connection closed, will reconnect...");
+                });
+
+                connection.start()
+                    .then(function() {
+                        console.log("SignalR connected for order tracking");
+                    })
+                    .catch(function(err) {
+                        console.log("SignalR connection error:", err);
+                    });
+            }
+
+            function startPolling() {
+                // Poll every 30 seconds for order status updates
+                refreshInterval = setInterval(function() {
+                    fetchOrderStatus();
+                }, 30000);
+            }
+
+            function fetchOrderStatus() {
+                if (!orderNumber) return;
+
+                fetch('@Url.Action("GetOrderStatus", "Home", new { area = "Customer" })?orderNumber=' + encodeURIComponent(orderNumber) + '&phone=' + encodeURIComponent(phone))
+                    .then(function(response) { return response.json(); })
+                    .then(function(data) {
+                        if (data.success && data.order) {
+                            if (data.order.Status !== currentStatus) {
+                                console.log("Status changed from", currentStatus, "to", data.order.Status);
+                                currentStatus = data.order.Status;
+                                updateOrderUI(data.order);
+                                showStatusNotification(data.order.StatusDisplay);
+                            }
+                        }
+                    })
+                    .catch(function(err) {
+                        console.log("Error fetching order status:", err);
+                    });
+            }
+
+            function updateOrderUI(orderData) {
+                var newStep = statusToStep[orderData.Status];
+                if (newStep === undefined) return;
+
+                // Update timeline progress
+                var progress = document.getElementById('timelineProgress');
+                if (progress) {
+                    progress.style.width = (newStep * 20) + '%';
+                }
+
+                // Update timeline steps
+                var steps = document.querySelectorAll('.timeline-step');
+                steps.forEach(function(step, index) {
+                    step.classList.remove('completed', 'active');
+                    if (index < newStep) {
+                        step.classList.add('completed');
+                    } else if (index === newStep) {
+                        step.classList.add('active');
+                    }
+                });
+
+                // Update status badge
+                var statusText = document.getElementById('statusText');
+                var statusIcon = document.getElementById('statusIcon');
+                if (statusText) {
+                    statusText.textContent = orderData.StatusDisplay || orderData.Status;
+                }
+                if (statusIcon && statusIcons[orderData.Status]) {
+                    statusIcon.className = statusIcons[orderData.Status];
+                }
+
+                // Update tracking info if shipped
+                if (orderData.TrackingNumber) {
+                    var trackingNum = document.getElementById('trackingNumber');
+                    if (trackingNum) trackingNum.textContent = orderData.TrackingNumber;
+                }
+                if (orderData.CourierName) {
+                    var courier = document.getElementById('courierName');
+                    if (courier) courier.textContent = orderData.CourierName;
+                }
+            }
+
+            function showStatusNotification(statusDisplay) {
+                // Create a toast notification for status update
+                var toast = document.createElement('div');
+                toast.className = 'position-fixed bottom-0 end-0 p-3';
+                toast.style.zIndex = '9999';
+                toast.innerHTML = `
+                    <div class="toast show success-toast-gradient" role="alert">
+                        <div class="toast-body d-flex align-items-center gap-2">
+                            <i class="fas fa-bell"></i>
+                            <div>
+                                <strong>@Localizer["OrderUpdated"]</strong><br>
+                                <small>@Localizer["StatusChangedTo"] ${statusDisplay}</small>
+                            </div>
+                            <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast"></button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+
+                // Auto remove after 5 seconds
+                setTimeout(function() {
+                    toast.remove();
+                }, 5000);
+
+                // Click to dismiss
+                toast.querySelector('.btn-close').addEventListener('click', function() {
+                    toast.remove();
+                });
+            }
+
+            // Cleanup on page unload
+            window.addEventListener('beforeunload', function() {
+                if (connection) {
+                    connection.stop();
+                }
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                }
+            });
+
+            // Form submission loading state
+            document.getElementById('trackOrderForm')?.addEventListener('submit', function() {
+                var btn = document.getElementById('trackBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>@Localizer["Searching"]</span>';
+            });
+        })();
+    </script>
+}

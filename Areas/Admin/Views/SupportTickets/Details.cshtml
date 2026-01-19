@@ -1,0 +1,469 @@
+@using Bangaliyana.Models
+@model Ticket
+
+@{
+    ViewData["Title"] = Localizer["TicketNumber", Model.TicketNumber].Value;
+}
+
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Index">@Localizer["SupportTickets"]</a></li>
+                    <li class="breadcrumb-item active">@Model.TicketNumber</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">@Model.Subject</h2>
+                    <p class="text-muted mb-0">
+                        <span class="badge @GetStatusBadgeClass(Model.Status)">@FormatEnumName(Model.Status.ToString())</span>
+                        <span class="badge @GetPriorityBadgeClass(Model.Priority)">@FormatEnumName(Model.Priority.ToString())</span>
+                        <span class="badge bg-secondary">@FormatEnumName(Model.Category.ToString())</span>
+                        <span class="ms-2">@Localizer["CreatedOn"] @Model.CreatedAt.ToBangladeshString()</span>
+                    </p>
+                </div>
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> @Localizer["BackToList"]
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content - Conversation -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-comments me-2"></i>@Localizer["Conversation"]</h5>
+                    <span class="badge bg-info">@Model.Messages.Count @Localizer["MessagesLower"]</span>
+                </div>
+                <div class="card-body">
+                    <!-- Original Ticket -->
+                    <div class="d-flex mb-4">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>@(Model.User?.FullName ?? Localizer["Customer"].Value)</strong>
+                                    <span class="badge bg-primary ms-2">@Localizer["Customer"]</span>
+                                </div>
+                                <small class="text-muted">@Model.CreatedAt.ToBangladeshString()</small>
+                            </div>
+                            <div class="card mt-2 border-primary">
+                                <div class="card-body">
+                                    <p class="mb-0" style="white-space: pre-line;">@Model.Description</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Messages -->
+                    @foreach (var message in Model.Messages)
+                    {
+                        var isStaff = message.IsStaffReply;
+                        var isInternal = message.IsInternalNote;
+                        <div class="d-flex mb-4 @(isStaff ? "flex-row-reverse" : "")">
+                            <div class="flex-shrink-0 @(isStaff ? "ms-3" : "")">
+                                <div class="rounded-circle @(isStaff ? "bg-success" : "bg-primary") text-white d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                                    <i class="fas @(isStaff ? "fa-headset" : "fa-user")"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 @(isStaff ? "me-3 text-end" : "ms-3")">
+                                <div class="d-flex @(isStaff ? "justify-content-end" : "justify-content-between") align-items-start">
+                                    <div class="@(isStaff ? "order-2 ms-3" : "")">
+                                        <strong>@(message.Sender?.FullName ?? "Unknown")</strong>
+                                        @if (isInternal)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-2"><i class="fas fa-lock"></i> @Localizer["InternalNote"]</span>
+                                        }
+                                        else if (isStaff)
+                                        {
+                                            <span class="badge bg-success ms-2">@Localizer["Staff"]</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-primary ms-2">@Localizer["Customer"]</span>
+                                        }
+                                    </div>
+                                    <small class="text-muted @(isStaff ? "order-1" : "")">@message.CreatedAt.ToBangladeshString()</small>
+                                </div>
+                                <div class="card mt-2 @(isInternal ? "border-warning bg-warning bg-opacity-10" : isStaff ? "border-success" : "border-primary")">
+                                    <div class="card-body @(isStaff ? "text-start" : "")">
+                                        <p class="mb-0" style="white-space: pre-line;">@message.Message</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <hr class="my-4">
+
+                    <!-- Reply Form -->
+                    @if (Model.Status != TicketStatus.Closed)
+                    {
+                        <div class="mt-4">
+                            <h6><i class="fas fa-reply me-2"></i>@Localizer["SendReply"]</h6>
+                            <form id="replyForm">
+                                <input type="hidden" name="ticketId" value="@Model.Id" />
+                                <div class="mb-3">
+                                    <textarea name="message" id="replyMessage" class="form-control" rows="4" placeholder="@Localizer["TypeYourReply"]" required></textarea>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="isInternalNote" id="isInternalNote" value="true">
+                                        <label class="form-check-label" for="isInternalNote">
+                                            <i class="fas fa-lock text-warning"></i> @Localizer["InternalNoteNotVisible"]
+                                        </label>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-paper-plane me-2"></i>@Localizer["SendReply"]
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-secondary text-center">
+                            <i class="fas fa-lock me-2"></i>@Localizer["TicketClosedReopen"]
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar - Ticket Info -->
+        <div class="col-lg-4">
+            <!-- Customer Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-user me-2"></i>@Localizer["Customer"]</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.User != null)
+                    {
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                                <i class="fas fa-user fa-lg"></i>
+                            </div>
+                            <div>
+                                <strong>@Model.User.FullName</strong><br>
+                                <small class="text-muted">@Model.User.Email</small>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(Model.User.PhoneNumber))
+                        {
+                            <p class="mb-2"><i class="fas fa-phone text-muted me-2"></i>@Model.User.PhoneNumber</p>
+                        }
+                        <a asp-area="Admin" asp-controller="UserManagement" asp-action="Details" asp-route-id="@Model.User.Id" class="btn btn-outline-primary btn-sm w-100">
+                            <i class="fas fa-external-link-alt me-1"></i> @Localizer["ViewCustomerProfile"]
+                        </a>
+                    }
+                    else
+                    {
+                        <p class="text-muted">@Localizer["CustomerInfoNotAvailable"]</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Related Order -->
+            @if (Model.Order != null)
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>@Localizer["RelatedOrder"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2"><strong>@Localizer["OrderNumber", Model.Order.Id]</strong></p>
+                        <p class="mb-2">
+                            <span class="badge @GetOrderStatusBadge(Model.Order.Status)">@FormatEnumName(Model.Order.Status.ToString())</span>
+                        </p>
+                        <p class="mb-2">@Localizer["Total"]: <strong>৳@((int)Math.Round(Model.Order.TotalAmount))</strong></p>
+                        <p class="mb-3 text-muted small">@Model.Order.OrderDate.ToBangladeshShortDateString()</p>
+                        <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Order.Id" class="btn btn-outline-info btn-sm w-100">
+                            <i class="fas fa-external-link-alt me-1"></i> @Localizer["ViewOrderDetails"]
+                        </a>
+                    </div>
+                </div>
+            }
+
+            <!-- Ticket Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-cog me-2"></i>@Localizer["TicketActions"]</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Status -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">@Localizer["Status"]</label>
+                        <select id="statusSelect" class="form-select" data-ticket-id="@Model.Id">
+                            @foreach (var status in ViewBag.StatusList as List<TicketStatus>)
+                            {
+                                <option value="@status" selected="@(Model.Status == status ? "selected" : null)">@FormatEnumName(status.ToString())</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Priority -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">@Localizer["Priority"]</label>
+                        <select id="prioritySelect" class="form-select" data-ticket-id="@Model.Id">
+                            @foreach (var priority in ViewBag.PriorityList as List<TicketPriority>)
+                            {
+                                <option value="@priority" selected="@(Model.Priority == priority ? "selected" : null)">@FormatEnumName(priority.ToString())</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Assign To -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">@Localizer["AssignedTo"]</label>
+                        <select id="assignSelect" class="form-select" data-ticket-id="@Model.Id">
+                            <option value="">@Localizer["Unassigned"]</option>
+                            @foreach (var admin in ViewBag.AdminUsers as List<ApplicationUser>)
+                            {
+                                <option value="@admin.Id" selected="@(Model.AssignedToId == admin.Id ? "selected" : null)">@admin.FullName</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ticket Details -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>@Localizer["TicketDetails"]</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted">@Localizer["TicketNumberLabel"]</td>
+                            <td class="text-end"><strong>@Model.TicketNumber</strong></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">@Localizer["Category"]</td>
+                            <td class="text-end"><span class="badge bg-secondary">@FormatEnumName(Model.Category.ToString())</span></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">@Localizer["Created"]</td>
+                            <td class="text-end">@Model.CreatedAt.ToBangladeshString()</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">@Localizer["LastUpdated"]</td>
+                            <td class="text-end">@Model.UpdatedAt.ToBangladeshString()</td>
+                        </tr>
+                        @if (Model.ResolvedAt.HasValue)
+                        {
+                            <tr>
+                                <td class="text-muted">@Localizer["ResolvedAt"]</td>
+                                <td class="text-end">@Model.ResolvedAt.Value.ToBangladeshString()</td>
+                            </tr>
+                        }
+                        @if (Model.ClosedAt.HasValue)
+                        {
+                            <tr>
+                                <td class="text-muted">@Localizer["ClosedAt"]</td>
+                                <td class="text-end">@Model.ClosedAt.Value.ToBangladeshString()</td>
+                            </tr>
+                        }
+                        @if (Model.AssignedTo != null)
+                        {
+                            <tr>
+                                <td class="text-muted">@Localizer["AssignedTo"]</td>
+                                <td class="text-end">@Model.AssignedTo.FullName</td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private string FormatEnumName(string enumName)
+    {
+        return System.Text.RegularExpressions.Regex.Replace(enumName, "([a-z])([A-Z])", "$1 $2");
+    }
+
+    private string GetStatusBadgeClass(TicketStatus status)
+    {
+        return status switch
+        {
+            TicketStatus.Open => "bg-primary",
+            TicketStatus.InProgress => "bg-info",
+            TicketStatus.WaitingForCustomer => "bg-warning text-dark",
+            TicketStatus.Resolved => "bg-success",
+            TicketStatus.Closed => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetPriorityBadgeClass(TicketPriority priority)
+    {
+        return priority switch
+        {
+            TicketPriority.Low => "bg-secondary",
+            TicketPriority.Medium => "bg-info",
+            TicketPriority.High => "bg-warning text-dark",
+            TicketPriority.Urgent => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetOrderStatusBadge(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Pending => "bg-warning text-dark",
+            OrderStatus.Confirmed => "bg-info",
+            OrderStatus.Paid => "bg-success",
+            OrderStatus.Shipped => "bg-primary",
+            OrderStatus.Delivered => "bg-success",
+            OrderStatus.Cancelled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Reply form submission
+            $('#replyForm').on('submit', function (e) {
+                e.preventDefault();
+
+                var ticketId = $('input[name="ticketId"]').val();
+                var message = $('#replyMessage').val();
+                var isInternalNote = $('#isInternalNote').is(':checked');
+
+                if (!message.trim()) {
+                    alertify.error('Please enter a message.');
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("Reply")',
+                    type: 'POST',
+                    data: {
+                        ticketId: ticketId,
+                        message: message,
+                        isInternalNote: isInternalNote,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            setTimeout(function () {
+                                location.reload();
+                            }, 1000);
+                        } else {
+                            alertify.error(response.message);
+                        }
+                    },
+                    error: function () {
+                        alertify.error('An error occurred while sending the reply.');
+                    }
+                });
+            });
+
+            // Status change
+            $('#statusSelect').on('change', function () {
+                var ticketId = $(this).data('ticket-id');
+                var status = $(this).val();
+
+                $.ajax({
+                    url: '@Url.Action("UpdateStatus")',
+                    type: 'POST',
+                    data: {
+                        ticketId: ticketId,
+                        status: status,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            setTimeout(function () {
+                                location.reload();
+                            }, 1000);
+                        } else {
+                            alertify.error(response.message);
+                        }
+                    },
+                    error: function () {
+                        alertify.error('An error occurred.');
+                    }
+                });
+            });
+
+            // Priority change
+            $('#prioritySelect').on('change', function () {
+                var ticketId = $(this).data('ticket-id');
+                var priority = $(this).val();
+
+                $.ajax({
+                    url: '@Url.Action("UpdatePriority")',
+                    type: 'POST',
+                    data: {
+                        ticketId: ticketId,
+                        priority: priority,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                        } else {
+                            alertify.error(response.message);
+                        }
+                    },
+                    error: function () {
+                        alertify.error('An error occurred.');
+                    }
+                });
+            });
+
+            // Assign change
+            $('#assignSelect').on('change', function () {
+                var ticketId = $(this).data('ticket-id');
+                var assignedToId = $(this).val();
+
+                $.ajax({
+                    url: '@Url.Action("AssignTicket")',
+                    type: 'POST',
+                    data: {
+                        ticketId: ticketId,
+                        assignedToId: assignedToId,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                        } else {
+                            alertify.error(response.message);
+                        }
+                    },
+                    error: function () {
+                        alertify.error('An error occurred.');
+                    }
+                });
+            });
+
+            // Show success/error messages from TempData
+            @if (TempData["success"] != null)
+            {
+                <text>alertify.success('@Html.Raw(TempData["success"])');</text>
+            }
+            @if (TempData["error"] != null)
+            {
+                <text>alertify.error('@Html.Raw(TempData["error"])');</text>
+            }
+        });
+    </script>
+}

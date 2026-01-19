@@ -1,0 +1,2633 @@
+@using Bangaliyana.Services
+@using Bangaliyana.Models
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.Extensions.Localization
+@inject ISiteSettingsService SiteSettingsService
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    // Fallback default (in case JS/localStorage not available)
+    var theme = "light";
+    var isDark = theme == "dark";
+
+    // Get dynamic site settings
+    var siteSettings = await SiteSettingsService.GetSiteSettingsAsync();
+    var socialLinks = await SiteSettingsService.GetActiveSocialLinksAsync();
+    var footerPages = await SiteSettingsService.GetFooterPagesAsync();
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="@(siteSettings.SiteDescription ?? "Modern e-commerce platform")" />
+    <meta name="keywords" content="@(siteSettings.SiteKeywords ?? "e-commerce, Bangladesh, online shopping")" />
+    <title>@ViewData["Title"] - @siteSettings.SiteName</title>
+    @if (!string.IsNullOrEmpty(siteSettings.FaviconUrl))
+    {
+        <link rel="icon" href="~/@siteSettings.FaviconUrl" type="image/x-icon" />
+    }
+
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="@(siteSettings.PrimaryColor ?? "#198754")" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="@siteSettings.SiteName" />
+    <link rel="apple-touch-icon" href="/icons/icon-152x152.png" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+    <meta name="msapplication-TileColor" content="@(siteSettings.PrimaryColor ?? "#198754")" />
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/ai-search.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/Bangaliyana.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/alertifyjs@1.14.0/build/css/alertify.min.css" />
+    
+    <!-- Theme detection script (inline for no flash) -->
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem('bangaliyana-theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+
+    <!-- Dynamic Theme Colors from SiteSettings -->
+    <style>
+        :root {
+            --site-primary-color: @siteSettings.PrimaryColor;
+            --site-secondary-color: @siteSettings.SecondaryColor;
+            --site-accent-color: @siteSettings.AccentColor;
+        }
+
+        /* Enable smooth scrolling for the entire page */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        @if (!siteSettings.EnableDarkMode)
+        {
+            <text>
+        /* Hide dark mode toggle when disabled in settings */
+        .theme-toggle, .mobile-theme-toggle {
+            display: none !important;
+        }
+            </text>
+        }
+
+        /* Logo visibility based on theme */
+        .logo-light { display: inline-block; }
+        .logo-dark { display: none; }
+        [data-theme="dark"] .logo-light { display: none; }
+        [data-theme="dark"] .logo-dark { display: inline-block; }
+    </style>
+
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="d-flex flex-column min-vh-100" style="overflow-x: hidden;">
+    <!-- Main Navigation -->
+    <header>
+        <nav class="navbar navbar-expand-lg fixed-top">
+            <div class="container">
+
+                <!-- Brand -->
+                <a class="navbar-brand" asp-area="Customer" asp-controller="Home" asp-action="Index"
+                   title="@siteSettings.SiteName - @siteSettings.SiteTagline">
+                    @if (!string.IsNullOrEmpty(siteSettings.LogoUrl) || !string.IsNullOrEmpty(siteSettings.DarkModeLogoUrl))
+                    {
+                        @if (!string.IsNullOrEmpty(siteSettings.LogoUrl))
+                        {
+                            <img src="~/@siteSettings.LogoUrl" alt="@siteSettings.SiteName" style="height: 40px;" class="logo-light" />
+                        }
+                        @if (!string.IsNullOrEmpty(siteSettings.DarkModeLogoUrl))
+                        {
+                            <img src="~/@siteSettings.DarkModeLogoUrl" alt="@siteSettings.SiteName" style="height: 40px;" class="logo-dark" />
+                        }
+                        else if (!string.IsNullOrEmpty(siteSettings.LogoUrl))
+                        {
+                            <!-- Fallback: use light logo for dark mode if no dark logo -->
+                            <img src="~/@siteSettings.LogoUrl" alt="@siteSettings.SiteName" style="height: 40px;" class="logo-dark" />
+                        }
+                    }
+                    else
+                    {
+                        <i class="fas fa-store me-2 text-primary"></i>
+                        <span class="fw-bold">@siteSettings.SiteName</span>
+                    }
+                </a>
+
+                <!-- Mobile Right Actions (visible on tablet, hidden on small mobile <450px) -->
+                <div class="mobile-header-actions d-flex d-lg-none align-items-center gap-2 ms-auto me-2">
+                    <!-- Search Icon Button (Mobile) -->
+                    <button type="button"
+                            class="search-toggle-btn btn btn-outline-secondary btn-sm border-0"
+                            title="Search products"
+                            aria-label="Open search"
+                            data-bs-toggle="modal"
+                            data-bs-target="#searchModal">
+                        <i class="fas fa-search"></i>
+                    </button>
+
+                    <!-- Theme Toggle Button (Mobile) -->
+                    <button type="button"
+                            class="theme-toggle btn btn-outline-secondary btn-sm border-0 mobile-theme-toggle"
+                            title="Toggle theme"
+                            aria-label="Toggle dark/light theme">
+                        <span class="moon-icon @(isDark ? "" : "d-none")"><i class="fas fa-moon"></i></span>
+                        <span class="sun-icon @(isDark ? "d-none" : "")"><i class="fas fa-sun"></i></span>
+                    </button>
+
+                    <!-- Cart/User (Mobile) -->
+                    <partial name="_LoginPartial" />
+                </div>
+
+                <!-- Mobile Toggle (Hamburger) -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false"
+                        aria-label="Toggle navigation">
+                    <span class="hamburger-icon">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </span>
+                </button>
+
+                <!-- Navigation Items (Collapsible) -->
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <!-- Mobile Menu Brand (visible only on mobile at top-left) -->
+                    <a class="mobile-menu-brand d-lg-none" asp-area="Customer" asp-controller="Home" asp-action="Index"
+                       title="@siteSettings.SiteName">
+                        @if (!string.IsNullOrEmpty(siteSettings.LogoUrl) || !string.IsNullOrEmpty(siteSettings.DarkModeLogoUrl))
+                        {
+                            @if (!string.IsNullOrEmpty(siteSettings.LogoUrl))
+                            {
+                                <img src="~/@siteSettings.LogoUrl" alt="@siteSettings.SiteName" class="logo-light" />
+                            }
+                            @if (!string.IsNullOrEmpty(siteSettings.DarkModeLogoUrl))
+                            {
+                                <img src="~/@siteSettings.DarkModeLogoUrl" alt="@siteSettings.SiteName" class="logo-dark" />
+                            }
+                            else if (!string.IsNullOrEmpty(siteSettings.LogoUrl))
+                            {
+                                <img src="~/@siteSettings.LogoUrl" alt="@siteSettings.SiteName" class="logo-dark" />
+                            }
+                        }
+                        else
+                        {
+                            <i class="fas fa-store me-2 text-primary"></i>
+                            <span class="fw-bold">@siteSettings.SiteName</span>
+                        }
+                    </a>
+
+                    <!-- Left side: Navigation Links -->
+                    <ul class="navbar-nav me-auto">
+                        <!-- Home Link -->
+                        <li class="nav-item">
+                            <a class="nav-link home-link" asp-area="Customer" asp-controller="Home" asp-action="Index"
+                               title="@Localizer["GoToHomepage"]">
+                                <i class="fas fa-home me-1"></i>
+                                <span>@Localizer["Home"]</span>
+                            </a>
+                        </li>
+
+                        <!-- Categories Dropdown -->
+                        <li class="nav-item">
+                            @await Component.InvokeAsync("DynamicTags")
+                        </li>
+
+                        <!-- Seller Dropdown (only Seller and SuperAdmin can see) -->
+                        @if (User.IsInRole("Seller") || User.IsInRole("SuperAdmin"))
+                        {
+                            <li class="nav-item dropdown seller-dropdown">
+                                <a class="nav-link dropdown-toggle seller-menu"
+                                   href="#" id="sellerDropdown"
+                                   role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-store me-1"></i>
+                                    <span>@Localizer["Seller"]</span>
+                                    <i class="fas fa-chevron-right ms-1 dropdown-arrow icon-right"></i>
+                                    <i class="fas fa-chevron-down ms-1 dropdown-arrow icon-down" style="display: none;"></i>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-scrollable shadow-lg border-0 rounded-3" aria-labelledby="sellerDropdown" style="min-width: 260px;">
+                                    <!-- Dashboard -->
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Seller" asp-controller="Dashboard" asp-action="Index">
+                                            <i class="fas fa-tachometer-alt me-2 text-primary"></i>@Localizer["Dashboard"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Products & Orders -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-products"><i class="fas fa-box-open me-2"></i>@Localizer["ProductsAndOrders"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Product" asp-action="Index">
+                                            <i class="fas fa-box me-2 text-info"></i>@Localizer["MyProducts"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Seller" asp-controller="Order" asp-action="Index">
+                                            <i class="fas fa-shopping-bag me-2 text-success"></i>@Localizer["Orders"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Seller" asp-controller="Inventory" asp-action="Index">
+                                            <i class="fas fa-warehouse me-2 text-warning"></i>@Localizer["Inventory"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Communication -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-communication"><i class="fas fa-comments me-2"></i>@Localizer["Communication"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Seller" asp-controller="Messages" asp-action="Index">
+                                            <i class="fas fa-comment-dots me-2 text-primary"></i>@Localizer["CustomerMessages"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Seller" asp-controller="QA" asp-action="Index">
+                                            <i class="fas fa-question-circle me-2 text-warning"></i>@Localizer["QAManagement"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Seller" asp-controller="Reviews" asp-action="Index">
+                                            <i class="fas fa-star me-2 text-warning"></i>@Localizer["MyReviews"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Payments -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-payments"><i class="fas fa-wallet me-2"></i>@Localizer["Payments"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Seller" asp-controller="Reports" asp-action="Index">
+                                            <i class="fas fa-file-invoice-dollar me-2 text-success"></i>@Localizer["MyReports"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/PaymentAccounts">
+                                            <i class="fas fa-university me-2 text-secondary"></i>@Localizer["PaymentAccounts"]
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+
+                        <!-- Moderator Dropdown (only Moderator and SuperAdmin can see) -->
+                        @if (User.IsInRole("Moderator") || User.IsInRole("SuperAdmin"))
+                        {
+                            <li class="nav-item dropdown moderator-dropdown">
+                                <a class="nav-link dropdown-toggle moderator-menu"
+                                   href="#" id="moderatorDropdown"
+                                   role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-user-tie me-1"></i>
+                                    <span>@Localizer["Moderator"]</span>
+                                    <i class="fas fa-chevron-right ms-1 dropdown-arrow icon-right"></i>
+                                    <i class="fas fa-chevron-down ms-1 dropdown-arrow icon-down" style="display: none;"></i>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-scrollable shadow-lg border-0 rounded-3" aria-labelledby="moderatorDropdown" style="min-width: 260px;">
+                                    <!-- Dashboard -->
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="Dashboard" asp-action="Index">
+                                            <i class="fas fa-tachometer-alt me-2 text-primary"></i>@Localizer["ModeratorDashboard"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Seller Management -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-seller"><i class="fas fa-store me-2"></i>@Localizer["SellerManagement"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="Seller" asp-action="Index">
+                                            <i class="fas fa-users me-2 text-info"></i>@Localizer["AllSellers"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="Seller" asp-action="Index" asp-route-status="Pending">
+                                            <i class="fas fa-user-clock me-2 text-warning"></i>@Localizer["PendingApplications"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="Seller" asp-action="BankRequests">
+                                            <i class="fas fa-university me-2 text-secondary"></i>@Localizer["BankRequests"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Orders & Payments -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-orders"><i class="fas fa-shopping-cart me-2"></i>@Localizer["OrdersAndPayments"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="Order" asp-action="Index">
+                                            <i class="fas fa-shopping-bag me-2 text-success"></i>@Localizer["AllOrders"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="Order" asp-action="Returns">
+                                            <i class="fas fa-undo-alt me-2 text-danger"></i>@Localizer["ReturnsAndRefunds"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="Payment" asp-action="SellerPayments">
+                                            <i class="fas fa-money-bill-wave me-2 text-success"></i>@Localizer["SellerPayments"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="MonthlyReport" asp-action="Index">
+                                            <i class="fas fa-file-invoice-dollar me-2 text-primary"></i>@Localizer["MonthlyReports"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="Payment" asp-action="CustomerRefunds">
+                                            <i class="fas fa-hand-holding-usd me-2 text-info"></i>@Localizer["CustomerRefunds"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Support -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-support"><i class="fas fa-headset me-2"></i>@Localizer["Support"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="Ticket" asp-action="Index">
+                                            <i class="fas fa-ticket-alt me-2 text-primary"></i>@Localizer["SupportTickets"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="Message" asp-action="Index">
+                                            <i class="fas fa-comment-dots me-2 text-info"></i>@Localizer["Messages"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="LiveChat" asp-action="Index">
+                                            <i class="fas fa-comments me-2 text-success"></i>@Localizer["LiveChatSupport"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="ContactInquiries" asp-action="Index">
+                                            <i class="fas fa-envelope me-2 text-warning"></i>@Localizer["ContactInquiries"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Reviews -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-reviews"><i class="fas fa-star me-2"></i>@Localizer["Reviews"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Reviews" asp-action="Index">
+                                            <i class="fas fa-star me-2 text-warning"></i>@Localizer["ManageReviews"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Content Management -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-content"><i class="fas fa-newspaper me-2"></i>@Localizer["Content"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Blog" asp-action="Index">
+                                            <i class="fas fa-blog me-2 text-info"></i>@Localizer["BlogPosts"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Blog" asp-action="Categories">
+                                            <i class="fas fa-folder me-2 text-warning"></i>@Localizer["BlogCategories"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="StylingGuides" asp-action="Index">
+                                            <i class="fas fa-palette me-2 text-success"></i>@Localizer["StylingGuides"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="SeasonalCollections" asp-action="Index">
+                                            <i class="fas fa-snowflake me-2 text-primary"></i>@Localizer["SeasonalCollections"]
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+
+                        <!-- Admin Dropdown (only Admin and SuperAdmin can see) -->
+                        @if (User.IsInRole("Admin") || User.IsInRole("SuperAdmin"))
+                        {
+                            <li class="nav-item dropdown admin-dropdown">
+                                <a class="nav-link dropdown-toggle admin-menu"
+                                   href="#" id="adminDropdown"
+                                   role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-cog me-1"></i>
+                                    <span>@Localizer["Admin"]</span>
+                                    <i class="fas fa-chevron-right ms-1 dropdown-arrow icon-right"></i>
+                                    <i class="fas fa-chevron-down ms-1 dropdown-arrow icon-down" style="display: none;"></i>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-scrollable shadow-lg border-0 rounded-3" aria-labelledby="adminDropdown" style="min-width: 280px;">
+                                    <!-- Dashboard -->
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
+                                            <i class="fas fa-tachometer-alt me-2 text-primary"></i>@Localizer["Dashboard"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Seller Management -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-seller"><i class="fas fa-store me-2"></i>@Localizer["SellerManagement"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="SellerManagement" asp-action="Index">
+                                            <i class="fas fa-users me-2 text-info"></i>@Localizer["AllSellers"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="SellerManagement" asp-action="Index" asp-route-status="Pending">
+                                            <i class="fas fa-user-clock me-2 text-warning"></i>@Localizer["PendingApplications"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="SellerManagement" asp-action="BankChangeRequests">
+                                            <i class="fas fa-university me-2 text-secondary"></i>@Localizer["BankRequests"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Subscription" asp-action="Index">
+                                            <i class="fas fa-crown me-2 text-warning"></i>@Localizer["SubscriptionPlans"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Orders & Payments -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-orders"><i class="fas fa-shopping-cart me-2"></i>@Localizer["OrdersAndPayments"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Orders" asp-action="Index">
+                                            <i class="fas fa-shopping-bag me-2 text-success"></i>@Localizer["AllOrders"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Orders" asp-action="Returns">
+                                            <i class="fas fa-undo-alt me-2 text-danger"></i>@Localizer["ReturnsAndRefunds"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="SellerPayment" asp-action="Index">
+                                            <i class="fas fa-money-bill-wave me-2 text-success"></i>@Localizer["SellerPayments"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Moderator" asp-controller="MonthlyReport" asp-action="Index">
+                                            <i class="fas fa-file-invoice-dollar me-2 text-primary"></i>@Localizer["MonthlyReports"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Transaction" asp-action="Index">
+                                            <i class="fas fa-exchange-alt me-2 text-info"></i>@Localizer["AllTransactions"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Transaction" asp-action="RefundRequests">
+                                            <i class="fas fa-hand-holding-usd me-2 text-danger"></i>@Localizer["RefundRequests"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Reports & Analytics -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-reports"><i class="fas fa-chart-bar me-2"></i>@Localizer["ReportsAndAnalytics"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Reports" asp-action="SalesReport">
+                                            <i class="fas fa-chart-line me-2 text-success"></i>@Localizer["SalesReport"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Reports" asp-action="UserGrowthReport">
+                                            <i class="fas fa-users me-2 text-info"></i>@Localizer["UserGrowth"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Reports" asp-action="ProductPerformance">
+                                            <i class="fas fa-box me-2 text-warning"></i>@Localizer["ProductPerformance"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Reports" asp-action="CategoryPerformance">
+                                            <i class="fas fa-tags me-2 text-danger"></i>@Localizer["CategoryPerformance"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Reports" asp-action="SellerPerformance">
+                                            <i class="fas fa-store me-2 text-purple"></i>@Localizer["SellerPerformance"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Support -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-support"><i class="fas fa-headset me-2"></i>@Localizer["Support"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="SupportTickets" asp-action="Index">
+                                            <i class="fas fa-ticket-alt me-2 text-primary"></i>@Localizer["SupportTickets"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="SellerMessages" asp-action="Index">
+                                            <i class="fas fa-comment-dots me-2 text-info"></i>@Localizer["Messages"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="QA" asp-action="Index">
+                                            <i class="fas fa-question-circle me-2 text-warning"></i>@Localizer["QAManagement"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="ContactInquiries" asp-action="Index">
+                                            <i class="fas fa-envelope-open-text me-2 text-success"></i>@Localizer["ContactInquiries"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="SupportChat" asp-action="Index">
+                                            <i class="fas fa-comments me-2 text-danger"></i>@Localizer["LiveChatSupport"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Reviews -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-reviews"><i class="fas fa-star me-2"></i>@Localizer["Reviews"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Reviews" asp-action="Index">
+                                            <i class="fas fa-star me-2 text-warning"></i>@Localizer["ManageReviews"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Catalog -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-catalog"><i class="fas fa-boxes me-2"></i>@Localizer["Catalog"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Product" asp-action="Index">
+                                            <i class="fas fa-box me-2 text-info"></i>@Localizer["Products"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Category" asp-action="Index">
+                                            <i class="fas fa-folder-tree me-2 text-warning"></i>@Localizer["Categories"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Inventory" asp-action="Index">
+                                            <i class="fas fa-warehouse me-2 text-success"></i>@Localizer["Inventory"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Administration -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-admin"><i class="fas fa-cogs me-2"></i>@Localizer["Administration"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="UserManagement" asp-action="Index">
+                                            <i class="fas fa-users-cog me-2 text-primary"></i>@Localizer["UserManagement"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="RoleManagement" asp-action="Index">
+                                            <i class="fas fa-user-shield me-2 text-success"></i>@Localizer["RoleManagement"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="AdminRoles" asp-action="Index">
+                                            <i class="fas fa-key me-2 text-warning"></i>@Localizer["AdminRolesPermissions"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Audit" asp-action="Index">
+                                            <i class="fas fa-file-alt me-2 text-info"></i>@Localizer["AuditLogs"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="BusinessType" asp-action="Index">
+                                            <i class="fas fa-briefcase me-2 text-info"></i>@Localizer["BusinessTypes"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="DeliveryCharge" asp-action="Index">
+                                            <i class="fas fa-truck me-2 text-warning"></i>@Localizer["DeliveryCharges"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Marketing -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-communication"><i class="fas fa-bullhorn me-2"></i>@Localizer["Marketing"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="PromotionalCampaigns" asp-action="Index">
+                                            <i class="fas fa-envelope-open-text me-2 text-primary"></i>@Localizer["PromotionalCampaigns"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Coupon" asp-action="Index">
+                                            <i class="fas fa-ticket-alt me-2 text-success"></i>@Localizer["Coupons"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="FlashSales" asp-action="Index">
+                                            <i class="fas fa-bolt me-2 text-warning"></i>@Localizer["FlashSales"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="CategoryPromotions" asp-action="Index">
+                                            <i class="fas fa-tags me-2 text-danger"></i>@Localizer["CategoryPromotions"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Content Management -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-content"><i class="fas fa-newspaper me-2"></i>@Localizer["Content"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Blog" asp-action="Index">
+                                            <i class="fas fa-blog me-2 text-info"></i>@Localizer["BlogPosts"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="Blog" asp-action="Categories">
+                                            <i class="fas fa-folder me-2 text-warning"></i>@Localizer["BlogCategories"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="StylingGuides" asp-action="Index">
+                                            <i class="fas fa-palette me-2 text-success"></i>@Localizer["StylingGuides"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="SeasonalCollections" asp-action="Index">
+                                            <i class="fas fa-snowflake me-2 text-primary"></i>@Localizer["SeasonalCollections"]
+                                        </a>
+                                    </li>
+
+                                    <!-- Settings -->
+                                    <li class="dropdown-header small text-uppercase menu-section-header section-settings"><i class="fas fa-sliders-h me-2"></i>@Localizer["Settings"]</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="SiteSettings" asp-action="Index">
+                                            <i class="fas fa-globe me-2 text-primary"></i>@Localizer["SiteSettings"]
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-area="Admin" asp-controller="MenuManagement" asp-action="Index">
+                                            <i class="fas fa-bars me-2 text-secondary"></i>@Localizer["MenuManagement"]
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                    </ul>
+
+                    <!-- Mobile Menu Actions (visible inside hamburger on <450px) -->
+                    <div class="mobile-menu-actions d-lg-none">
+                        <div class="mobile-menu-divider"></div>
+                        <div class="mobile-menu-section">
+                            <div class="mobile-menu-title">@Localizer["QuickActions"]</div>
+                            <div class="d-flex flex-wrap gap-3 justify-content-center p-3">
+                                <!-- Search -->
+                                <button type="button"
+                                        class="mobile-action-btn btn btn-outline-primary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#searchModal">
+                                    <i class="fas fa-search"></i>
+                                    <span>@Localizer["Search"]</span>
+                                </button>
+
+                                <!-- Theme Toggle -->
+                                <button type="button"
+                                        class="mobile-action-btn btn btn-outline-secondary mobile-theme-toggle">
+                                    <span class="moon-icon @(isDark ? "" : "d-none")"><i class="fas fa-moon"></i></span>
+                                    <span class="sun-icon @(isDark ? "d-none" : "")"><i class="fas fa-sun"></i></span>
+                                    <span>@Localizer["Theme"]</span>
+                                </button>
+
+                                <!-- Language Toggle (Mobile) -->
+                                @{
+                                    var mobileCulture = System.Globalization.CultureInfo.CurrentUICulture.Name;
+                                    var mobileIsEnglish = mobileCulture.StartsWith("en");
+                                }
+                                <div class="dropdown">
+                                    <button class="mobile-action-btn btn btn-outline-info dropdown-toggle" type="button"
+                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-globe"></i>
+                                        <span>@(mobileIsEnglish ? "EN" : "বাংলা")</span>
+                                    </button>
+                                    <ul class="dropdown-menu shadow-sm">
+                                        <li>
+                                            <form asp-area="Customer" asp-controller="Home" asp-action="SetLanguage" method="post">
+                                                <input type="hidden" name="culture" value="en" />
+                                                <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                                <button type="submit" class="dropdown-item @(mobileIsEnglish ? "active" : "")">
+                                                    🇺🇸 English
+                                                </button>
+                                            </form>
+                                        </li>
+                                        <li>
+                                            <form asp-area="Customer" asp-controller="Home" asp-action="SetLanguage" method="post">
+                                                <input type="hidden" name="culture" value="bn" />
+                                                <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                                <button type="submit" class="dropdown-item @(!mobileIsEnglish ? "active" : "")">
+                                                    🇧🇩 বাংলা
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <!-- Cart -->
+                                <a class="mobile-action-btn btn btn-outline-success"
+                                   asp-area="Customer" asp-controller="Home" asp-action="Cart">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    <span>@Localizer["Cart"]</span>
+                                </a>
+
+                                @if (SignInManager.IsSignedIn(User))
+                                {
+                                    <!-- Notifications -->
+                                    <a class="mobile-action-btn btn btn-outline-warning"
+                                       asp-area="Identity" asp-page="/Account/Manage/Notifications">
+                                        <i class="fas fa-bell"></i>
+                                        <span>@Localizer["Notifications"]</span>
+                                    </a>
+                                    <!-- Messages -->
+                                    <a class="mobile-action-btn btn btn-outline-info"
+                                       asp-area="Customer" asp-controller="Messages" asp-action="Index">
+                                        <i class="fas fa-comment-dots"></i>
+                                        <span>@Localizer["Messages"]</span>
+                                    </a>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- User Authentication Links -->
+                        <div class="mobile-auth-section">
+                            @if (SignInManager.IsSignedIn(User))
+                            {
+                                <div class="d-flex flex-wrap gap-2 justify-content-center p-3">
+                                    <!-- Wishlist -->
+                                    <a class="mobile-action-btn btn btn-outline-danger"
+                                       asp-area="Customer" asp-controller="Wishlist" asp-action="Index">
+                                        <i class="fas fa-heart"></i>
+                                        <span>@Localizer["Wishlist"]</span>
+                                    </a>
+                                    <!-- Followed Shops -->
+                                    <a class="mobile-action-btn btn btn-outline-primary"
+                                       asp-area="Customer" asp-controller="Home" asp-action="FollowedShops">
+                                        <i class="fas fa-store"></i>
+                                        <span>@Localizer["FollowedShops"]</span>
+                                    </a>
+                                    <!-- Profile -->
+                                    <a class="mobile-action-btn btn btn-outline-secondary"
+                                       asp-area="Identity" asp-page="/Account/Manage/Index">
+                                        <i class="fas fa-user"></i>
+                                        <span>@Localizer["Profile"]</span>
+                                    </a>
+                                    <!-- Orders -->
+                                    <a class="mobile-action-btn btn btn-outline-success"
+                                       asp-area="Customer" asp-controller="Home" asp-action="Orders">
+                                        <i class="fas fa-receipt"></i>
+                                        <span>@Localizer["Orders"]</span>
+                                    </a>
+                                    <!-- Logout -->
+                                    <form asp-area="Identity" asp-page="/Account/Logout"
+                                          asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "Customer" })"
+                                          class="d-inline">
+                                        <button type="submit" class="mobile-action-btn btn btn-danger">
+                                            <i class="fas fa-sign-out-alt"></i>
+                                            <span>@Localizer["Logout"]</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="d-flex gap-2 justify-content-center p-3">
+                                    <a class="mobile-action-btn btn btn-primary flex-grow-1"
+                                       asp-area="Identity" asp-page="/Account/Login">
+                                        <i class="fas fa-sign-in-alt"></i>
+                                        <span>@Localizer["Login"]</span>
+                                    </a>
+                                    <a class="mobile-action-btn btn btn-success flex-grow-1"
+                                       asp-area="Identity" asp-page="/Account/Register">
+                                        <i class="fas fa-user-plus"></i>
+                                        <span>@Localizer["SignUp"]</span>
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Right side: Search + Theme Toggle + Login Partial (Desktop only) -->
+                    <div class="d-none d-lg-flex align-items-center gap-2">
+                        <!-- Search Icon Button -->
+                        <button type="button"
+                                id="searchToggleBtn"
+                                class="search-toggle-btn btn btn-outline-secondary btn-sm border-0"
+                                title="Search products (Ctrl+K)"
+                                aria-label="Open search"
+                                data-bs-toggle="modal"
+                                data-bs-target="#searchModal">
+                            <i class="fas fa-search"></i>
+                        </button>
+
+                        <!-- Theme Toggle Button -->
+                        <button type="button"
+                                id="themeToggle"
+                                class="theme-toggle btn btn-outline-secondary btn-sm border-0"
+                                title="Toggle theme"
+                                aria-label="Toggle dark/light theme"
+                                onclick="
+                                const moonIcon = document.getElementById('moon');
+                                const sunIcon = document.getElementById('sun');
+                                let theme = document.documentElement.getAttribute('data-theme');
+
+                                if (theme === 'dark') {
+                                    // Switch to light
+                                    document.documentElement.setAttribute('data-theme', 'light');
+                                    localStorage.setItem('bangaliyana-theme', 'light');
+                                    sunIcon.classList.remove('d-none');
+                                    moonIcon.classList.add('d-none');
+                                } else {
+                                    // Switch to dark
+                                    document.documentElement.setAttribute('data-theme', 'dark');
+                                    localStorage.setItem('bangaliyana-theme', 'dark');
+                                    moonIcon.classList.remove('d-none');
+                                    sunIcon.classList.add('d-none');
+                                }
+                            ">
+                            <span id="moon" class="@(isDark ? "" : "d-none")"><i class="fas fa-moon"></i></span>
+                            <span id="sun" class="@(isDark ? "d-none" : "")"><i class="fas fa-sun"></i></span>
+                        </button>
+
+                        <!-- Language Switcher Dropdown -->
+                        @{
+                            var currentCulture = System.Globalization.CultureInfo.CurrentUICulture.Name;
+                            var isEnglish = currentCulture.StartsWith("en");
+                            var isBengali = currentCulture.StartsWith("bn");
+                        }
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary btn-sm border-0 dropdown-toggle" type="button"
+                                    id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false"
+                                    title="Change Language">
+                                <i class="fas fa-globe"></i>
+                                <span class="ms-1 d-none d-xl-inline">@(isBengali ? "বাংলা" : "EN")</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="languageDropdown" style="min-width: 120px;">
+                                <li>
+                                    <form asp-area="Customer" asp-controller="Home" asp-action="SetLanguage" method="post">
+                                        <input type="hidden" name="culture" value="en" />
+                                        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                        <button type="submit" class="dropdown-item @(isEnglish ? "active" : "")">
+                                            <span class="me-2">🇺🇸</span> English
+                                        </button>
+                                    </form>
+                                </li>
+                                <li>
+                                    <form asp-area="Customer" asp-controller="Home" asp-action="SetLanguage" method="post">
+                                        <input type="hidden" name="culture" value="bn" />
+                                        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                        <button type="submit" class="dropdown-item @(isBengali ? "active" : "")">
+                                            <span class="me-2">🇧🇩</span> বাংলা
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Login/User Menu -->
+                        <partial name="_LoginPartial" />
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Page Content -->
+    <main class="main-content">
+        <div>
+            <!-- Toast Messages from TempData (will be shown via alertify) -->
+            @if (TempData["success"] != null)
+            {
+                var successMsg = TempData["success"]?.ToString()?.Replace("'", "\\'") ?? "";
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        alertify.success('@Html.Raw(successMsg)');
+                    });
+                </script>
+            }
+            @if (TempData["error"] != null)
+            {
+                var errorMsg = TempData["error"]?.ToString()?.Replace("'", "\\'") ?? "";
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        alertify.error('@Html.Raw(errorMsg)');
+                    });
+                </script>
+            }
+            @if (TempData["warning"] != null)
+            {
+                var warningMsg = TempData["warning"]?.ToString()?.Replace("'", "\\'") ?? "";
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        alertify.warning('@Html.Raw(warningMsg)');
+                    });
+                </script>
+            }
+            @if (TempData["info"] != null)
+            {
+                var infoMsg = TempData["info"]?.ToString()?.Replace("'", "\\'") ?? "";
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        alertify.message('@Html.Raw(infoMsg)');
+                    });
+                </script>
+            }
+
+            <!-- Main Content Area -->
+            <div class="content-wrapper">
+                @RenderBody()
+            </div>
+        </div>
+    </main>
+
+    <!-- Scroll to Top Button -->
+    <button id="scrollToTopBtn" class="scroll-to-top-btn" title="Go to top" aria-label="Scroll to top">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <!-- Quick View Modal -->
+    <div class="modal fade" id="quickViewModal" tabindex="-1" aria-labelledby="quickViewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title" id="quickViewModalLabel">@Localizer["QuickView"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="quickViewContent">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-success" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Search Modal -->
+    <div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg search-modal-dialog">
+            <div class="modal-content search-modal-content">
+                <!-- Modal Header with Search Input -->
+                <div class="search-modal-header">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search search-input-icon"></i>
+                        <input type="text"
+                               id="modalSearchInput"
+                               class="search-modal-input"
+                               placeholder="@Localizer["SearchPlaceholder"]"
+                               autocomplete="off"
+                               spellcheck="false" />
+                        <div class="search-shortcuts">
+                            <kbd>ESC</kbd>
+                        </div>
+                        <button type="button" id="modalClearSearchBtn" class="search-modal-clear" aria-label="Clear search">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <button type="button" class="search-modal-close" data-bs-dismiss="modal" aria-label="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Body with Search Results -->
+                <div class="search-modal-body" id="searchModalBody">
+                    <!-- Default content will be loaded here -->
+                    <div class="search-modal-loading">
+                        <div class="search-welcome">
+                            <div class="search-welcome-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <h5>@Localizer["WhatAreYouLookingFor"]</h5>
+                            <p class="text-muted">@Localizer["SearchForProductsDescription"]</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer with Quick Actions -->
+                <div class="search-modal-footer">
+                    <div class="search-tips">
+                        <span class="search-tip">
+                            <kbd><i class="fas fa-arrow-up"></i></kbd>
+                            <kbd><i class="fas fa-arrow-down"></i></kbd>
+                            @Localizer["ToNavigate"]
+                        </span>
+                        <span class="search-tip">
+                            <kbd>Enter</kbd>
+                            @Localizer["ToSelect"]
+                        </span>
+                        <span class="search-tip">
+                            <kbd>ESC</kbd>
+                            @Localizer["ToClose"]
+                        </span>
+                    </div>
+                    <div class="search-powered">
+                        <i class="fas fa-magic text-primary me-1"></i>
+                        @Localizer["AIPoweredSearch"]
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto">
+        <div class="container">
+            <div class="row gy-4">
+                <!-- About Us Section -->
+                <div class="col-12 col-lg-6 col-xl-3">
+                    <h6 class="fw-bold mb-3">@Localizer["AboutUs"]</h6>
+                    <div class="d-flex align-items-center mb-3">
+                        @{
+                            var hasFooterLogo = !string.IsNullOrEmpty(siteSettings.FooterLogoUrl) || !string.IsNullOrEmpty(siteSettings.DarkModeFooterLogoUrl);
+                            var hasMainLogo = !string.IsNullOrEmpty(siteSettings.LogoUrl) || !string.IsNullOrEmpty(siteSettings.DarkModeLogoUrl);
+                        }
+                        @if (hasFooterLogo || hasMainLogo)
+                        {
+                            <!-- Light Mode Footer Logo -->
+                            @if (!string.IsNullOrEmpty(siteSettings.FooterLogoUrl))
+                            {
+                                <img src="~/@siteSettings.FooterLogoUrl" alt="@siteSettings.SiteName" style="height: 40px;" class="me-2 logo-light" />
+                            }
+                            else if (!string.IsNullOrEmpty(siteSettings.LogoUrl))
+                            {
+                                <img src="~/@siteSettings.LogoUrl" alt="@siteSettings.SiteName" style="height: 40px;" class="me-2 logo-light" />
+                            }
+                            <!-- Dark Mode Footer Logo -->
+                            @if (!string.IsNullOrEmpty(siteSettings.DarkModeFooterLogoUrl))
+                            {
+                                <img src="~/@siteSettings.DarkModeFooterLogoUrl" alt="@siteSettings.SiteName" style="height: 40px;" class="me-2 logo-dark" />
+                            }
+                            else if (!string.IsNullOrEmpty(siteSettings.DarkModeLogoUrl))
+                            {
+                                <img src="~/@siteSettings.DarkModeLogoUrl" alt="@siteSettings.SiteName" style="height: 40px;" class="me-2 logo-dark" />
+                            }
+                            else if (!string.IsNullOrEmpty(siteSettings.FooterLogoUrl))
+                            {
+                                <img src="~/@siteSettings.FooterLogoUrl" alt="@siteSettings.SiteName" style="height: 40px;" class="me-2 logo-dark" />
+                            }
+                            else if (!string.IsNullOrEmpty(siteSettings.LogoUrl))
+                            {
+                                <img src="~/@siteSettings.LogoUrl" alt="@siteSettings.SiteName" style="height: 40px;" class="me-2 logo-dark" />
+                            }
+                        }
+                        else
+                        {
+                            <i class="fas fa-store me-2 text-success fs-4"></i>
+                        }
+                        <h5 class="mb-0 fw-bold">@siteSettings.SiteName</h5>
+                    </div>
+                    <p class="footer-tagline text-muted small mb-3">
+                        @(siteSettings.FooterAboutText ?? siteSettings.SiteTagline)
+                    </p>
+                    @if (!string.IsNullOrEmpty(siteSettings.ContactEmail) || !string.IsNullOrEmpty(siteSettings.ContactPhone) || !string.IsNullOrEmpty(siteSettings.ContactAddress))
+                    {
+                        <div class="text-muted small">
+                            @if (!string.IsNullOrEmpty(siteSettings.ContactAddress))
+                            {
+                                <div class="mb-1"><i class="fas fa-map-marker-alt me-2 text-success"></i>@siteSettings.ContactAddress</div>
+                            }
+                            @if (!string.IsNullOrEmpty(siteSettings.ContactEmail))
+                            {
+                                <div class="mb-1"><i class="fas fa-envelope me-2 text-success"></i>@siteSettings.ContactEmail</div>
+                            }
+                            @if (!string.IsNullOrEmpty(siteSettings.ContactPhone))
+                            {
+                                <div><i class="fas fa-phone me-2 text-success"></i>@siteSettings.ContactPhone</div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <!-- Customer Service Section -->
+                <div class="col-12 col-lg-6 col-xl-3">
+                    <h6 class="fw-bold mb-3">@Localizer["CustomerService"]</h6>
+                    <ul class="list-unstyled small">
+                        <li class="mb-2">
+                            <a asp-area="Customer" asp-controller="HelpCenter" asp-action="FAQ"
+                               class="text-muted text-decoration-none"><i class="fas fa-angle-right me-1 text-success"></i>@Localizer["FAQs"]</a>
+                        </li>
+                        <li class="mb-2">
+                            <a asp-area="Customer" asp-controller="HelpCenter" asp-action="Contact"
+                               class="text-muted text-decoration-none"><i class="fas fa-angle-right me-1 text-success"></i>@Localizer["ContactUs"]</a>
+                        </li>
+                        <li class="mb-2">
+                            <a asp-area="Customer" asp-controller="HelpCenter" asp-action="LiveChat"
+                               class="text-muted text-decoration-none"><i class="fas fa-angle-right me-1 text-success"></i>@Localizer["LiveChat"]</a>
+                        </li>
+                        <li class="mb-2">
+                            <a asp-area="Customer" asp-controller="Home" asp-action="TrackOrder"
+                               class="text-muted text-decoration-none"><i class="fas fa-angle-right me-1 text-success"></i>@Localizer["TrackOrder"]</a>
+                        </li>
+                        <li class="mb-2">
+                            <a asp-area="Customer" asp-controller="Blog" asp-action="Landing"
+                               class="text-muted text-decoration-none"><i class="fas fa-angle-right me-1 text-success"></i>@Localizer["Blog"]</a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Pages Section -->
+                <div class="col-12 col-lg-6 col-xl-3">
+                    @if (footerPages.Any())
+                    {
+                        <h6 class="fw-bold mb-3">@Localizer["Information"]</h6>
+                        <ul class="list-unstyled small">
+                            @foreach (var pg in footerPages)
+                            {
+                                <li class="mb-2">
+                                    <a asp-area="Customer" asp-controller="Home" asp-action="Page" asp-route-slug="@pg.Slug"
+                                       class="text-muted text-decoration-none"><i class="fas fa-angle-right me-1 text-success"></i>@pg.Title</a>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+
+                <!-- Follow Us Section -->
+                <div class="col-12 col-lg-6 col-xl-3">
+                    @if (socialLinks.Any())
+                    {
+                        <h6 class="fw-bold mb-3">@Localizer["FollowUs"]</h6>
+                        <div class="mb-3">
+                            @foreach (var link in socialLinks)
+                            {
+                                <a href="@link.Url" class="text-muted me-3 text-decoration-none fs-5"
+                                   title="@link.PlatformName" @(link.OpenInNewTab ? "target=_blank rel=noopener" : "")>
+                                    <i class="@link.IconClass" style="color: @(link.IconColor ?? "inherit")"></i>
+                                </a>
+                            }
+                        </div>
+                    }
+                    <p class="text-muted small mb-0">
+                        &copy; @DateTime.Now.Year @siteSettings.SiteName. @(siteSettings.CopyrightText ?? "All rights reserved.")
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    @{
+        var currentPath = Context.Request.Path.Value?.ToLower() ?? "";
+        var isAuthPage = currentPath.Contains("/identity/account/login") ||
+                         currentPath.Contains("/identity/account/register") ||
+                         currentPath.Contains("/identity/account/forgotpassword") ||
+                         currentPath.Contains("/identity/account/resetpassword") ||
+                         currentPath.Contains("/identity/account/confirmemail") ||
+                         currentPath.Contains("/identity/account/resendconfirmationemail") ||
+                         currentPath.Contains("/identity/account/lockout") ||
+                         currentPath.Contains("/identity/account/accessdenied") ||
+                         currentPath.Contains("/identity/account/externallogin");
+    }
+
+    @if (!isAuthPage)
+    {
+        <div class="footer-bottom-bar d-print-none">
+            <div class="container">
+                <div class="footer-bottom-content">
+                    <div class="footer-bottom-left">
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <a asp-area="Identity" asp-page="/Account/BecomeSeller" class="become-seller-link">
+                                <i class="fas fa-store me-1"></i>@Localizer["BecomeASeller"]
+                            </a>
+                        }
+                    </div>
+                    <div class="footer-bottom-center">
+                        <span>Developed by <a href="https://github.com/jfemon8" target="_blank" rel="noopener" class="developer-link">Emon</a></span>
+                    </div>
+                    <div class="footer-bottom-right">
+                        <span>Powered by <a href="https://claude.ai/" target="_blank" rel="noopener" class="powered-link">Claude</a></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Scripts -->
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/js/all.min.js" integrity="sha512-b+nQTCdtTBIRIbraqNEwsjB6UvL3UEMkXnhzd8awtCYh0Kcsjl9uEgwVFVbhoj3uu1DO1ZMacNvLoyJJiNfcvg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="//cdn.jsdelivr.net/npm/alertifyjs@1.14.0/build/alertify.min.js"></script>
+
+    <!-- Alertify Configuration -->
+    <script>
+        // Configure alertify defaults
+        alertify.defaults.transition = 'slide';
+        alertify.defaults.theme.ok = 'btn btn-primary';
+        alertify.defaults.theme.cancel = 'btn btn-secondary';
+        alertify.defaults.notifier.delay = 5;
+        alertify.defaults.notifier.position = 'top-right';
+        alertify.defaults.notifier.closeButton = true;
+    </script>
+
+    <!-- Custom Theme and UI Scripts -->
+    <script src="~/js/theme.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/ai-search.js" asp-append-version="true"></script>
+    <!-- Localized Validation Messages -->
+    <script>
+        window.ValidationMessages = {
+            phoneRequired: '@Localizer["PhoneNumberRequired"].Value',
+            phoneMustBe11Digits: '@Localizer["PhoneMustBe11Digits"].Value',
+            phoneInvalidPrefix: '@Localizer["PhoneMustStartWithValidPrefix"].Value',
+            passwordRequired: '@Localizer["PasswordRequired"].Value',
+            passwordMustContain: '@Localizer["PasswordMustContain"].Value',
+            uppercase: '@Localizer["OneUppercaseLetter"].Value',
+            lowercase: '@Localizer["OneLowercaseLetter"].Value',
+            digit: '@Localizer["OneDigit"].Value',
+            specialChar: '@Localizer["OneSpecialCharacter"].Value'
+        };
+    </script>
+    <script src="~/js/phone-validation.js" asp-append-version="true"></script>
+
+    <!-- SignalR for Real-Time Notifications -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="~/js/notification-realtime.js" asp-append-version="true"></script>
+
+    <!-- Register Service Worker for Push Notifications -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw-notifications.js')
+                .then(function(reg) { console.log('Notification SW registered'); })
+                .catch(function(err) { console.log('SW registration failed:', err); });
+        }
+    </script>
+
+    <!-- Global Toast Notification Function (defined before page scripts for availability) -->
+    <script>
+        window.showToast = function(message, type) {
+            var toastContainer = document.getElementById('toastContainer');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toastContainer';
+                toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+                toastContainer.style.zIndex = '1100';
+                document.body.appendChild(toastContainer);
+            }
+
+            var bgClass = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning' : 'bg-danger';
+            var textClass = type === 'warning' ? 'text-dark' : 'text-white';
+            var iconClass = type === 'success' ? 'fa-check-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-times-circle';
+
+            var toastHtml = '<div class="toast align-items-center ' + bgClass + ' ' + textClass + ' border-0" role="alert" aria-live="assertive" aria-atomic="true">' +
+                '<div class="d-flex">' +
+                '<div class="toast-body"><i class="fas ' + iconClass + ' me-2"></i>' + message + '</div>' +
+                '<button type="button" class="btn-close ' + (type !== 'warning' ? 'btn-close-white' : '') + ' me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
+                '</div></div>';
+
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = toastHtml;
+            var toastEl = tempDiv.firstChild;
+            toastContainer.appendChild(toastEl);
+
+            var toast = new bootstrap.Toast(toastEl, { autohide: true, delay: 3000 });
+            toast.show();
+
+            toastEl.addEventListener('hidden.bs.toast', function() {
+                toastEl.remove();
+            });
+        };
+    </script>
+
+    <!-- Service Worker Registration for PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registered with scope:', registration.scope);
+
+                        // Check for updates periodically
+                        setInterval(() => {
+                            registration.update();
+                        }, 60 * 60 * 1000); // Check every hour
+                    })
+                    .catch(function(error) {
+                        console.log('ServiceWorker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+
+    <!-- Shop Conflict Modal (Single-Shop-Per-Order) -->
+    <div class="modal fade" id="shopConflictModal" tabindex="-1" aria-labelledby="shopConflictModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content confirm-modal-content border-0 shadow-lg">
+                <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close" onclick="cancelShopChange()"></button>
+                <div class="modal-body text-center p-4">
+                    <div class="confirm-icon-wrapper mb-3">
+                        <div class="confirm-icon-circle confirm-icon-warning">
+                            <i class="fas fa-store"></i>
+                        </div>
+                    </div>
+                    <h4 class="modal-title fw-bold mb-2" id="shopConflictModalLabel">@Localizer["DifferentShop"]</h4>
+                    <p class="text-muted mb-1" id="shopConflictMessage">@Localizer["YourCartHasItemsFromAnotherSource"]</p>
+                    <p class="text-muted small mb-0">
+                        <span id="shopConflictShopName" class="d-none"></span>
+                        @Localizer["DoYouWantToReplaceYourCart"]
+                    </p>
+                </div>
+                <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                    <button type="button" class="btn btn-secondary px-4" id="cancelShopChange" data-bs-dismiss="modal">
+                        <i class="fas fa-shopping-cart me-1"></i> @Localizer["KeepCurrentCart"]
+                    </button>
+                    <button type="button" class="btn btn-danger px-4" id="confirmShopChange">
+                        <i class="fas fa-sync-alt me-1"></i> @Localizer["ReplaceCart"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance and Error Monitoring -->
+    <script>
+        // Performance monitoring
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                if ('performance' in window && performance.timing) {
+                    const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart;
+                    if (loadTime > 3000) {
+                        console.warn('Page load time is slow:', loadTime + 'ms');
+                    }
+                }
+            }, 100);
+        });
+
+        // document.getElementById("themeToggle").addEventListener("click", function () {
+        //     const moonIcon = document.getElementById("moon");
+        //     const sunIcon = document.getElementById("sun");
+        //     const theme = document.documentElement.getAttribute('data-theme');
+
+        //     if (theme === "dark") {
+        //         moonIcon.classList.remove("d-none");
+        //         sunIcon.classList.add("d-none");
+        //     } else {
+        //         sunIcon.classList.remove("d-none");
+        //         moonIcon.classList.add("d-none");
+        //     }
+        // });
+            (function () {
+            const moonIcon = document.getElementById('moon');
+            const sunIcon = document.getElementById('sun');
+            const theme = document.documentElement.getAttribute('data-theme');
+
+            if (theme === 'dark') {
+                moonIcon.classList.remove('d-none');
+                sunIcon.classList.add('d-none');
+            } else {
+                sunIcon.classList.remove('d-none');
+                moonIcon.classList.add('d-none');
+            }
+
+            // Update all mobile theme toggle icons
+            document.querySelectorAll('.mobile-theme-toggle').forEach(function(btn) {
+                const moonEl = btn.querySelector('.moon-icon');
+                const sunEl = btn.querySelector('.sun-icon');
+                if (theme === 'dark') {
+                    moonEl && moonEl.classList.remove('d-none');
+                    sunEl && sunEl.classList.add('d-none');
+                } else {
+                    sunEl && sunEl.classList.remove('d-none');
+                    moonEl && moonEl.classList.add('d-none');
+                }
+            });
+        })();
+
+        // Mobile Theme Toggle Handler
+        document.querySelectorAll('.mobile-theme-toggle').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const moonIcon = document.getElementById('moon');
+                const sunIcon = document.getElementById('sun');
+                let theme = document.documentElement.getAttribute('data-theme');
+
+                if (theme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                    localStorage.setItem('bangaliyana-theme', 'light');
+                    sunIcon && sunIcon.classList.remove('d-none');
+                    moonIcon && moonIcon.classList.add('d-none');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                    localStorage.setItem('bangaliyana-theme', 'dark');
+                    moonIcon && moonIcon.classList.remove('d-none');
+                    sunIcon && sunIcon.classList.add('d-none');
+                }
+
+                // Update mobile toggle icons
+                document.querySelectorAll('.mobile-theme-toggle').forEach(function(b) {
+                    const moonEl = b.querySelector('.moon-icon');
+                    const sunEl = b.querySelector('.sun-icon');
+                    const newTheme = document.documentElement.getAttribute('data-theme');
+                    if (newTheme === 'dark') {
+                        moonEl && moonEl.classList.remove('d-none');
+                        sunEl && sunEl.classList.add('d-none');
+                    } else {
+                        sunEl && sunEl.classList.remove('d-none');
+                        moonEl && moonEl.classList.add('d-none');
+                    }
+                });
+            });
+        });
+
+        // Scroll to Top Button with enhanced smooth scroll support
+        (function() {
+            var scrollBtn = document.getElementById('scrollToTopBtn');
+            if (scrollBtn) {
+                // Throttle function for performance
+                function throttle(func, limit) {
+                    var inThrottle;
+                    return function() {
+                        var args = arguments;
+                        var context = this;
+                        if (!inThrottle) {
+                            func.apply(context, args);
+                            inThrottle = true;
+                            setTimeout(function() { inThrottle = false; }, limit);
+                        }
+                    };
+                }
+
+                // Show/hide button based on scroll position (throttled for performance)
+                window.addEventListener('scroll', throttle(function() {
+                    if (window.pageYOffset > 300) {
+                        scrollBtn.classList.add('show');
+                    } else {
+                        scrollBtn.classList.remove('show');
+                    }
+                }, 100));
+
+                // Enhanced smooth scroll function - uses custom animation for consistent behavior
+                function smoothScrollToTop() {
+                    // Always use manual animation for consistent, visually smooth scrolling
+                    // Native scroll-behavior can be too fast and inconsistent across browsers
+                    manualSmoothScroll();
+                }
+
+                // Manual smooth scroll animation fallback
+                function manualSmoothScroll() {
+                    var currentPosition = window.pageYOffset || document.documentElement.scrollTop;
+                    if (currentPosition <= 0) return;
+
+                    var startTime = performance.now();
+                    var duration = 600; // Animation duration in ms
+
+                    // Temporarily disable CSS smooth scroll to prevent conflicts
+                    var htmlElement = document.documentElement;
+                    var originalScrollBehavior = htmlElement.style.scrollBehavior;
+                    htmlElement.style.scrollBehavior = 'auto';
+
+                    function animateScroll(currentTime) {
+                        var elapsed = currentTime - startTime;
+                        var progress = Math.min(elapsed / duration, 1);
+
+                        // Easing function (easeOutQuart for smoother feel)
+                        var easeOut = 1 - Math.pow(1 - progress, 4);
+
+                        var newPosition = currentPosition * (1 - easeOut);
+                        window.scrollTo(0, newPosition);
+
+                        if (progress < 1) {
+                            requestAnimationFrame(animateScroll);
+                        } else {
+                            // Ensure we end at exactly 0
+                            window.scrollTo(0, 0);
+                            // Restore original scroll behavior
+                            htmlElement.style.scrollBehavior = originalScrollBehavior || '';
+                        }
+                    }
+
+                    requestAnimationFrame(animateScroll);
+                }
+
+                // Click handler
+                scrollBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    smoothScrollToTop();
+                });
+
+                // Also support touch events for mobile
+                scrollBtn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    smoothScrollToTop();
+                }, { passive: false });
+            }
+        })();
+
+        // Quick View Functionality
+        (function() {
+            document.addEventListener('click', function(e) {
+                var btn = e.target.closest('.quick-view-btn');
+                if (btn) {
+                    e.preventDefault();
+                    var productId = btn.getAttribute('data-product-id');
+                    if (productId) {
+                        var modal = new bootstrap.Modal(document.getElementById('quickViewModal'));
+                        var contentDiv = document.getElementById('quickViewContent');
+
+                        // Show loading spinner
+                        contentDiv.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+                        modal.show();
+
+                        // Fetch product details
+                        fetch('/Customer/Home/QuickView/' + productId)
+                            .then(function(response) {
+                                if (!response.ok) throw new Error('Product not found');
+                                return response.text();
+                            })
+                            .then(function(html) {
+                                contentDiv.innerHTML = html;
+                            })
+                            .catch(function(error) {
+                                contentDiv.innerHTML = '<div class="text-center py-5 text-danger"><i class="fas fa-exclamation-circle fa-3x mb-3"></i><p>Failed to load product details</p></div>';
+                            });
+                    }
+                }
+            });
+        })();
+
+        // Wishlist Functionality
+        (function() {
+            console.log('Wishlist handler registered');
+            document.addEventListener('click', function(e) {
+                var btn = e.target.closest('.wishlist-btn');
+                if (btn) {
+                    console.log('Wishlist button clicked, data-product-id:', btn.getAttribute('data-product-id'));
+                    var productId = btn.getAttribute('data-product-id');
+                    // Only handle if button has data-product-id (skip Details page which uses onclick)
+                    if (productId) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var icon = btn.querySelector('i') || btn.querySelector('svg') || btn.querySelector('.fa-heart');
+                        if (!icon) {
+                            console.error('Wishlist icon not found in button:', btn.innerHTML);
+                            return;
+                        }
+                        var originalClass = icon.className;
+
+                        // Show loading state
+                        icon.className = 'fas fa-spinner fa-spin';
+                        btn.disabled = true;
+
+                        fetch('/Customer/Wishlist/Toggle', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                            },
+                            body: 'productId=' + productId
+                        })
+                        .then(function(response) {
+                            return response.json();
+                        })
+                        .then(function(data) {
+                            btn.disabled = false;
+                            if (data.success) {
+                                if (data.isInWishlist) {
+                                    icon.classList.remove('far', 'fa-spinner', 'fa-spin');
+                                    icon.classList.add('fas', 'fa-heart', 'text-danger');
+                                    btn.classList.add('active');
+                                } else {
+                                    icon.classList.remove('fas', 'text-danger', 'fa-spinner', 'fa-spin');
+                                    icon.classList.add('far', 'fa-heart');
+                                    btn.classList.remove('active');
+                                }
+                                // Show toast notification
+                                showToast(data.message, 'success');
+                            } else if (data.requireLogin) {
+                                icon.className = originalClass;
+                                showToast('Please login to add items to wishlist', 'warning');
+                                setTimeout(function() {
+                                    window.location.href = '/Identity/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
+                                }, 1500);
+                            } else {
+                                icon.className = originalClass;
+                                showToast(data.message || 'Error occurred', 'error');
+                            }
+                        })
+                        .catch(function(error) {
+                            btn.disabled = false;
+                            icon.className = originalClass;
+                            showToast('Error adding to wishlist', 'error');
+                        });
+                    }
+                }
+            });
+        })();
+
+        // Mobile Menu Body Scroll Lock (cross-browser support with iOS fix)
+        (function() {
+            var navbarCollapse = document.querySelector('.navbar-collapse');
+            var scrollPosition = 0;
+
+            if (navbarCollapse) {
+                // Lock body scroll when menu opens
+                navbarCollapse.addEventListener('show.bs.collapse', function() {
+                    scrollPosition = window.pageYOffset;
+                    document.body.style.overflow = 'hidden';
+                    document.body.style.position = 'fixed';
+                    document.body.style.top = '-' + scrollPosition + 'px';
+                    document.body.style.width = '100%';
+                    document.body.classList.add('menu-open');
+
+                    // Reset menu scroll to top when opening
+                    navbarCollapse.scrollTop = 0;
+                });
+
+                // Unlock body scroll when menu closes
+                navbarCollapse.addEventListener('hide.bs.collapse', function() {
+                    document.body.style.overflow = '';
+                    document.body.style.position = '';
+                    document.body.style.top = '';
+                    document.body.style.width = '';
+                    document.body.classList.remove('menu-open');
+                    window.scrollTo(0, scrollPosition);
+                });
+
+                // iOS Safari touch scroll fix
+                var startY = 0;
+
+                navbarCollapse.addEventListener('touchstart', function(e) {
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+
+                navbarCollapse.addEventListener('touchmove', function(e) {
+                    var scrollTop = navbarCollapse.scrollTop;
+                    var scrollHeight = navbarCollapse.scrollHeight;
+                    var clientHeight = navbarCollapse.clientHeight;
+                    var currentY = e.touches[0].clientY;
+                    var isScrollingUp = currentY > startY;
+                    var isScrollingDown = currentY < startY;
+
+                    // Prevent overscroll at boundaries on iOS
+                    if ((scrollTop <= 0 && isScrollingUp) ||
+                        (scrollTop + clientHeight >= scrollHeight && isScrollingDown)) {
+                        // At boundaries - overscroll-behavior CSS handles bounce prevention
+                    }
+                }, { passive: true });
+
+                // Prevent body touchmove when menu is open (iOS fix)
+                document.body.addEventListener('touchmove', function(e) {
+                    if (document.body.classList.contains('menu-open')) {
+                        // Allow scrolling only inside the navbar collapse
+                        if (navbarCollapse.contains(e.target)) {
+                            return; // Allow scroll inside menu
+                        }
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+            }
+        })();
+
+        // Dropdown Arrow Toggle for Seller and Admin menus
+        (function() {
+            // Helper function to toggle dropdown arrow icons
+            function setupDropdownArrowToggle(dropdownSelector) {
+                var dropdown = document.querySelector(dropdownSelector);
+                if (dropdown) {
+                    dropdown.addEventListener('shown.bs.dropdown', function() {
+                        var iconRight = dropdown.querySelector('.dropdown-toggle .icon-right');
+                        var iconDown = dropdown.querySelector('.dropdown-toggle .icon-down');
+                        if (iconRight) iconRight.style.display = 'none';
+                        if (iconDown) iconDown.style.display = 'inline';
+                    });
+
+                    dropdown.addEventListener('hidden.bs.dropdown', function() {
+                        var iconRight = dropdown.querySelector('.dropdown-toggle .icon-right');
+                        var iconDown = dropdown.querySelector('.dropdown-toggle .icon-down');
+                        if (iconRight) iconRight.style.display = 'inline';
+                        if (iconDown) iconDown.style.display = 'none';
+                    });
+                }
+            }
+
+            // Setup for Seller, Admin, and Moderator dropdowns
+            setupDropdownArrowToggle('.seller-dropdown');
+            setupDropdownArrowToggle('.admin-dropdown');
+            setupDropdownArrowToggle('.moderator-dropdown');
+        })();
+    </script>
+</body>
+</html>
+
+<style>
+/* Layout-specific styles */
+.navbar {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all var(--transition-normal);
+    background-color: var(--bg-color);
+    box-shadow: var(--card-shadow);
+}
+
+.navbar.navbar-scrolled {
+    background-color: rgba(var(--bg-color), 0.95) !important;
+    box-shadow: var(--card-shadow-lg);
+}
+
+/* Footer Bottom Bar - Navbar-like styling */
+.footer-bottom-bar {
+    background-color: var(--bg-color);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    padding: 0.75rem 0;
+    font-size: 0.875rem;
+}
+
+.footer-bottom-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.footer-bottom-left,
+.footer-bottom-center,
+.footer-bottom-right {
+    display: flex;
+    align-items: center;
+}
+
+.footer-bottom-center {
+    color: var(--text-muted);
+}
+
+.footer-bottom-right {
+    color: var(--text-muted);
+}
+
+.become-seller-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius);
+    background-color: rgba(var(--primary-rgb, 99, 102, 241), 0.1);
+}
+
+.become-seller-link:hover {
+    color: var(--primary-hover);
+    background-color: rgba(var(--primary-rgb, 99, 102, 241), 0.2);
+    text-decoration: none;
+}
+
+.developer-link,
+.powered-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color var(--transition-fast);
+}
+
+.developer-link:hover,
+.powered-link:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+/* Responsive footer bottom bar */
+@@media (max-width: 576px) {
+    .footer-bottom-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+
+    .footer-bottom-left,
+    .footer-bottom-center,
+    .footer-bottom-right {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+.main-content {
+    flex: 1 0 auto;
+    margin-top: 76px; /* Account for fixed navbar */
+}
+
+.content-wrapper {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.home-link {
+    text-decoration: none !important;
+    font-weight: 600;
+    border-radius: var(--border-radius);
+    transition: all var(--transition-fast);
+}
+
+.admin-menu {
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
+}
+
+.seller-menu {
+    background: linear-gradient(45deg, #10b981, #059669);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
+}
+
+.moderator-menu {
+    background: linear-gradient(45deg, #8b5cf6, #7c3aed);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
+}
+
+/* Hide Bootstrap default dropdown caret for custom arrow icons */
+.seller-dropdown .dropdown-toggle::after,
+.admin-dropdown .dropdown-toggle::after,
+.moderator-dropdown .dropdown-toggle::after {
+    display: none;
+}
+
+/* Custom dropdown arrow styling */
+.seller-dropdown .dropdown-arrow,
+.admin-dropdown .dropdown-arrow,
+.moderator-dropdown .dropdown-arrow {
+    font-size: 0.7rem;
+    opacity: 0.8;
+    -webkit-text-fill-color: currentColor;
+}
+
+.dropdown-menu {
+    margin-top: 0.5rem;
+    border: none;
+    background-color: var(--bg-color);
+    padding: 0.5rem;
+}
+
+/* Scrollable dropdown for long menus */
+.dropdown-menu-scrollable {
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) transparent;
+}
+
+.dropdown-menu-scrollable::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dropdown-menu-scrollable::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 3px;
+}
+
+.dropdown-menu-scrollable::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+    border-radius: 3px;
+}
+
+.dropdown-menu-scrollable::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
+}
+
+/* Dropdown header styling */
+.dropdown-header {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 0.5rem 1rem;
+    margin-top: 0.25rem;
+    color: var(--text-muted) !important;
+}
+
+.dropdown-header i {
+    opacity: 0.7;
+}
+
+/* Menu section header styling with background colors */
+.menu-section-header {
+    margin: 0.5rem 0.25rem 0.25rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--border-radius);
+    color: #fff !important;
+}
+
+.menu-section-header i {
+    opacity: 1;
+}
+
+/* Section-specific colors */
+.section-products {
+    background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+}
+
+.section-communication {
+    background: linear-gradient(135deg, #ec4899, #f472b6);
+}
+
+.section-payments {
+    background: linear-gradient(135deg, #10b981, #34d399);
+}
+
+.section-seller {
+    background: linear-gradient(135deg, #14b8a6, #2dd4bf);
+}
+
+.section-orders {
+    background: linear-gradient(135deg, #22c55e, #4ade80);
+}
+
+.section-support {
+    background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+}
+
+.section-catalog {
+    background: linear-gradient(135deg, #f97316, #fb923c);
+}
+
+.section-admin {
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+}
+
+.section-settings {
+    background: linear-gradient(135deg, #64748b, #94a3b8);
+}
+
+.section-content {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+}
+
+.section-reviews {
+    background: linear-gradient(135deg, #eab308, #facc15);
+}
+
+.section-reports {
+    background: linear-gradient(135deg, #06b6d4, #22d3ee);
+}
+
+/* Dark theme adjustments for menu section headers */
+[data-theme="dark"] .menu-section-header {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Dropdown divider */
+.dropdown-menu .dropdown-divider {
+    margin: 0.35rem 0.5rem;
+    border-color: var(--border-color);
+    opacity: 0.5;
+}
+
+.dropdown-item {
+    color: var(--text-color);
+    transition: all var(--transition-fast);
+    border-radius: var(--border-radius);
+    margin: 2px 0.25rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.dropdown-item:hover {
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+    transform: translateX(3px);
+}
+
+.dropdown-item i {
+    width: 20px;
+    text-align: center;
+}
+
+[data-theme="dark"] .dropdown-item:hover {
+    background-color: rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="dark"] .dropdown-menu {
+    background-color: var(--bg-secondary);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .dropdown-header {
+    color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .dropdown-header.menu-section-header {
+    color: #fff !important;
+}
+
+[data-theme="dark"] .dropdown-header.menu-section-header i {
+    color: #fff !important;
+}
+
+[data-theme="dark"] .dropdown-menu-scrollable::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #6366f1, #8b5cf6);
+}
+
+.footer {
+    flex-shrink: 0;
+    padding: 2.5rem 0 1.5rem;
+    background-color: var(--bg-secondary) !important;
+    border-top: 1px solid var(--border-color) !important;
+}
+
+.footer .row > [class*="col-"] {
+    overflow: hidden;
+}
+
+.footer-tagline {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    white-space: normal;
+    max-width: 100%;
+}
+
+.footer p, .footer .text-muted {
+    line-height: 1.6;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.alert {
+    border: none;
+    border-left: 4px solid;
+    animation: slideInDown 0.3s ease;
+}
+
+.alert-success {
+    border-left-color: var(--success-color);
+}
+
+.alert-danger {
+    border-left-color: var(--danger-color);
+}
+
+.alert-warning {
+    border-left-color: var(--warning-color);
+}
+
+.alert-info {
+    border-left-color: var(--primary-color);
+}
+
+@@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   MODERN HAMBURGER MENU STYLES
+   ============================================ */
+
+/* Custom Hamburger Icon */
+.navbar-toggler {
+    border: none;
+    padding: 0.5rem;
+    background: transparent;
+    position: relative;
+    z-index: 10000;
+}
+
+.navbar-toggler:focus {
+    box-shadow: none;
+    outline: none;
+}
+
+.hamburger-icon {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 24px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.hamburger-icon span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background-color: var(--text-color);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+/* Hamburger to X animation */
+.navbar-toggler[aria-expanded="true"] .hamburger-icon span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+
+.navbar-toggler[aria-expanded="true"] .hamburger-icon span:nth-child(2) {
+    opacity: 0;
+    transform: translateX(-10px);
+}
+
+.navbar-toggler[aria-expanded="true"] .hamburger-icon span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+}
+
+/* Remove Bootstrap container default padding - use custom padding where needed */
+.container, .container-fluid, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
+    --bs-gutter-x: 0;
+    padding-right: 0;
+    padding-left: 0;
+}
+
+/* Add back padding for main content and footer containers */
+.main-content .container,
+.footer .container,
+.content-wrapper .container {
+    padding-right: 1rem;
+    padding-left: 1rem;
+}
+
+/* Mobile Navigation Collapse */
+@@media (max-width: 991.98px) {
+    /* Navbar container flex layout */
+    .navbar > .container {
+        flex-wrap: nowrap !important;
+        gap: 0.5rem;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    /* Keep brand compact */
+    .navbar-brand {
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .navbar-brand img {
+        max-height: 35px !important;
+    }
+
+    /* Override Bootstrap's collapse behavior for fullscreen mobile menu */
+    .navbar-collapse {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important; /* Dynamic viewport height for mobile browsers */
+        min-height: 100vh !important;
+        max-height: none !important;
+        background-color: var(--bg-color) !important;
+        z-index: 9999 !important;
+        padding-top: 70px;
+        padding-bottom: env(safe-area-inset-bottom, 20px);
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain !important;
+        -webkit-overflow-scrolling: touch;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    /* iOS Safari scroll fix */
+    @@supports (-webkit-touch-callout: none) {
+        .navbar-collapse {
+            padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 40px);
+        }
+    }
+
+    /* When menu is open (has .show class) */
+    .navbar-collapse.show {
+        transform: translateX(0) !important;
+    }
+
+    /* Ensure menu is not hidden by Bootstrap when not showing */
+    .navbar-collapse:not(.show):not(.collapsing) {
+        transform: translateX(-100%) !important;
+    }
+
+    /* Prevent body scroll when menu is open - CSS :has() selector */
+    body:has(.navbar-collapse.show) {
+        overflow: hidden !important;
+        position: fixed;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Fallback for browsers without :has() support - uses JS class */
+    body.menu-open {
+        overflow: hidden !important;
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+    }
+
+    /* During transition */
+    .navbar-collapse.collapsing {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        min-height: 100vh !important;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        display: block !important;
+        z-index: 9999 !important;
+        background-color: var(--bg-color) !important;
+    }
+
+    /* Mobile menu header background */
+    .navbar-collapse::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 70px;
+        background-color: var(--bg-color);
+        border-bottom: 1px solid var(--border-color);
+        z-index: 1;
+    }
+
+    /* Mobile Menu Brand - positioned at top-left */
+    .mobile-menu-brand {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 70px;
+        display: flex;
+        align-items: center;
+        padding: 0 1rem;
+        text-decoration: none;
+        color: var(--text-color);
+        font-weight: 600;
+        font-size: 1.125rem;
+        z-index: 2;
+    }
+
+    .mobile-menu-brand img {
+        max-height: 36px;
+        width: auto;
+    }
+
+    .mobile-menu-brand:hover {
+        color: var(--primary-color);
+    }
+
+    .navbar-collapse .navbar-nav {
+        padding: 1rem;
+    }
+
+    .navbar-collapse .nav-item {
+        margin-bottom: 0.5rem;
+    }
+
+    .navbar-collapse .nav-link {
+        display: flex;
+        align-items: center;
+        padding: 0.875rem 1rem;
+        border-radius: var(--border-radius-lg);
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--text-color);
+        transition: all 0.2s ease;
+    }
+
+    .navbar-collapse .nav-link:hover,
+    .navbar-collapse .nav-link:focus {
+        background-color: var(--primary-light);
+        color: var(--primary-color);
+    }
+
+    [data-theme="dark"] .navbar-collapse .nav-link:hover,
+    [data-theme="dark"] .navbar-collapse .nav-link:focus {
+        background-color: rgba(99, 102, 241, 0.15);
+    }
+
+    .navbar-collapse .nav-link i {
+        margin-right: 0.75rem;
+        width: 20px;
+        text-align: center;
+    }
+
+    .navbar-collapse .dropdown-menu {
+        position: static !important;
+        float: none;
+        width: 100%;
+        margin: 0;
+        padding: 0.5rem;
+        background-color: var(--bg-secondary);
+        box-shadow: none;
+        border-radius: var(--border-radius-lg);
+        display: none;
+    }
+
+    .navbar-collapse .dropdown-menu.show {
+        display: block;
+    }
+
+    .navbar-collapse .dropdown-item {
+        padding: 0.75rem 1rem;
+        border-radius: var(--border-radius);
+        color: var(--text-color);
+    }
+
+    .navbar-collapse .dropdown-item:hover {
+        background-color: var(--primary-light);
+        color: var(--primary-color);
+    }
+
+    /* Hide mobile menu actions on screens > 450px by default */
+    .mobile-menu-actions {
+        display: none;
+    }
+}
+
+/* Small mobile screens (<450px) - show menu actions inside hamburger */
+@@media (max-width: 449.98px) {
+    /* Hide header actions on very small screens */
+    .mobile-header-actions {
+        display: none !important;
+    }
+
+    /* Show menu actions inside hamburger */
+    .mobile-menu-actions {
+        display: block !important;
+        padding: 0 1rem;
+    }
+
+    .mobile-menu-divider {
+        height: 1px;
+        background-color: var(--border-color);
+        margin: 1rem 0;
+    }
+
+    .mobile-menu-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        padding: 0 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .mobile-action-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1rem;
+        min-width: 70px;
+        font-size: 0.75rem;
+        gap: 0.25rem;
+    }
+
+    .mobile-action-btn i {
+        font-size: 1.25rem;
+    }
+
+    .mobile-auth-section {
+        border-top: 1px solid var(--border-color);
+        margin-top: 0.5rem;
+        padding-bottom: env(safe-area-inset-bottom, 10px);
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+        margin-bottom: 20px; /* Extra space to ensure scrollability */
+    }
+
+    /* Make navbar more compact */
+    .navbar-brand {
+        font-size: 1rem !important;
+    }
+
+    .navbar-brand img {
+        max-height: 30px !important;
+    }
+}
+
+/* Hide mobile menu brand on desktop */
+@@media (min-width: 992px) {
+    .mobile-menu-brand {
+        display: none !important;
+    }
+}
+
+/* Mobile Theme Toggle */
+.mobile-theme-toggle {
+    padding: 0.375rem 0.5rem;
+}
+
+/* ============================================
+   FOOTER RESPONSIVE STYLES
+   ============================================ */
+
+.footer {
+    padding: 2rem 0 1.5rem;
+    background-color: var(--bg-secondary) !important;
+    border-top: 1px solid var(--border-color) !important;
+}
+
+.footer h6 {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem !important;
+}
+
+.footer p,
+.footer .text-muted {
+    line-height: 2rem !important;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.footer {
+    white-space: normal !important;
+    line-height: 2rem !important;
+}
+
+.footer .row {
+    row-gap: 0.75rem !important;
+}
+
+.footer .col-lg-4,
+.footer .col-lg-2,
+.footer .col-md-6,
+.footer .col-md-12 {
+    padding-bottom: 0.5rem;
+}
+
+/* Footer social icons spacing */
+.footer .fs-5 {
+    font-size: 1.125rem !important;
+}
+
+.footer a.me-3 {
+    margin-right: 1rem !important;
+}
+
+/* Mobile optimizations */
+@@media (max-width: 991.98px) {
+    .main-content {
+        margin-top: 60px;
+    }
+
+    .content-wrapper {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    .navbar-brand {
+        font-size: 1.25rem;
+    }
+
+    .footer {
+        padding: 1.5rem 0 1rem;
+    }
+
+    .footer .row {
+        row-gap: 0.5rem !important;
+    }
+
+    .footer h6 {
+        margin-bottom: 0.5rem !important;
+    }
+
+    .footer .text-lg-end {
+        text-align: left !important;
+    }
+}
+
+@@media (max-width: 768px) {
+    .footer .row > div {
+        text-align: center;
+    }
+
+    .footer .text-lg-end {
+        text-align: center !important;
+    }
+
+    .footer .d-flex.align-items-center {
+        justify-content: center;
+    }
+
+    .footer .mb-3 {
+        margin-bottom: 0.75rem !important;
+    }
+}
+
+@@media (max-width: 576px) {
+    .container-fluid {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .footer {
+        padding: 1.25rem 0 1rem;
+    }
+
+    .footer .row {
+        row-gap: 0.25rem !important;
+    }
+
+    .footer h6 {
+        font-size: 0.85rem;
+    }
+
+    .footer p,
+    .footer .small {
+        font-size: 0.8rem;
+    }
+}
+
+/* Scroll to Top Button */
+.scroll-to-top-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 50px;
+    height: 50px;
+    background-color: var(--success-color, #198754);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    visibility: hidden;
+    z-index: 1000;
+    transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+}
+
+.scroll-to-top-btn.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.scroll-to-top-btn:hover {
+    background-color: #157347;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.scroll-to-top-btn:active {
+    transform: translateY(-1px);
+}
+
+[data-theme="dark"] .scroll-to-top-btn {
+    background-color: #198754;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .scroll-to-top-btn:hover {
+    background-color: #157347;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+@@media (max-width: 576px) {
+    .scroll-to-top-btn {
+        bottom: 20px;
+        right: 20px;
+        width: 44px;
+        height: 44px;
+        font-size: 1rem;
+    }
+}
+
+/* Quick View Modal */
+#quickViewModal .modal-content {
+    background-color: var(--bg-color, #fff);
+    border: none;
+    border-radius: 1rem;
+}
+
+#quickViewModal .modal-header {
+    padding: 1rem 1.5rem;
+}
+
+#quickViewModal .modal-title {
+    color: var(--text-color, #212529);
+    font-weight: 600;
+}
+
+#quickViewModal .modal-body {
+    padding: 0 1.5rem 1.5rem;
+}
+
+[data-theme="dark"] #quickViewModal .modal-content {
+    background-color: #1e1e2d;
+}
+
+[data-theme="dark"] #quickViewModal .modal-title {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] #quickViewModal .btn-close {
+    filter: invert(1);
+}
+</style>

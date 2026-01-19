@@ -1,0 +1,510 @@
+@using Bangaliyana.Models
+
+@{
+    ViewData["Title"] = Localizer["UserMenuPermissions"];
+    var user = ViewBag.User as ApplicationUser;
+    var userRoles = ViewBag.UserRoles as List<string> ?? new List<string>();
+    var userPermissions = ViewBag.UserPermissions as List<UserMenuPermission> ?? new List<UserMenuPermission>();
+    var menuItems = ViewBag.MenuItems as List<MenuItem> ?? new List<MenuItem>();
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">@Localizer["UserMenuPermissions"]</h1>
+            <p class="text-muted mb-0">
+                @Localizer["ConfigureMenuAccessFor"]: <strong>@user?.FullName</strong>
+                @foreach (var role in userRoles)
+                {
+                    var badgeClass = role == "Admin" ? "bg-danger" :
+                                    role == "Seller" ? "bg-primary" : "bg-success";
+                    <span class="badge @badgeClass ms-1">@role</span>
+                }
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Details" asp-route-id="@user?.Id" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> @Localizer["BackToDetails"]
+            </a>
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="fas fa-users me-1"></i> @Localizer["AllUsers"]
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>@Localizer["IndividualMenuAccessControl"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>@Localizer["HowIndividualPermissionsWork"]:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>@Localizer["Default"]</strong>: @Localizer["UserInheritsAccessBasedOnRole"]</li>
+                            <li><strong>@Localizer["Grant"]</strong>: @Localizer["ForceAllowAccess"]</li>
+                            <li><strong>@Localizer["Revoke"]</strong>: @Localizer["ForceDenyAccess"]</li>
+                        </ul>
+                    </div>
+
+                    <form asp-action="Permissions" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="userId" value="@user?.Id" />
+
+                        @foreach (MenuLocation location in Enum.GetValues(typeof(MenuLocation)))
+                        {
+                            var locationItems = menuItems.Where(m => m.Location == location).ToList();
+                            if (locationItems.Any())
+                            {
+                                <div class="mb-4">
+                                    <h6 class="border-bottom pb-2 mb-3">
+                                        <i class="fas fa-bars me-2 text-primary"></i>@location.ToString() Menu
+                                    </h6>
+
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>@Localizer["MenuItem"]</th>
+                                                    <th style="width: 200px;">@Localizer["Access"]</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var item in locationItems.OrderBy(m => m.DisplayOrder))
+                                                {
+                                                    var existingPermission = userPermissions.FirstOrDefault(p => p.MenuItemId == item.Id);
+                                                    var permissionState = existingPermission == null ? "default" :
+                                                                         existingPermission.CanAccess ? "grant" : "revoke";
+
+                                                    <tr>
+                                                        <td>
+                                                            @if (!string.IsNullOrEmpty(item.Icon))
+                                                            {
+                                                                <i class="@item.Icon me-2 text-muted"></i>
+                                                            }
+                                                            <strong>@item.Name</strong>
+                                                            @if (!string.IsNullOrEmpty(item.RequiredRoles))
+                                                            {
+                                                                <br />
+                                                                <small class="text-muted">
+                                                                    Required: @item.RequiredRoles
+                                                                </small>
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            <div class="btn-group btn-group-sm w-100" role="group">
+                                                                <input type="radio" class="btn-check" name="permission_@item.Id"
+                                                                       id="default_@item.Id" value="default"
+                                                                       @(permissionState == "default" ? "checked" : "")
+                                                                       onchange="updatePermission(@item.Id, 'default')">
+                                                                <label class="btn @(permissionState == "default" ? "btn-secondary active" : "btn-outline-secondary")" for="default_@item.Id" title="@Localizer["InheritFromRole"]">
+                                                                    <i class="fas fa-minus"></i>
+                                                                </label>
+
+                                                                <input type="radio" class="btn-check" name="permission_@item.Id"
+                                                                       id="grant_@item.Id" value="grant"
+                                                                       @(permissionState == "grant" ? "checked" : "")
+                                                                       onchange="updatePermission(@item.Id, 'grant')">
+                                                                <label class="btn @(permissionState == "grant" ? "btn-success active" : "btn-outline-success")" for="grant_@item.Id" title="@Localizer["GrantAccess"]">
+                                                                    <i class="fas fa-check"></i>
+                                                                </label>
+
+                                                                <input type="radio" class="btn-check" name="permission_@item.Id"
+                                                                       id="revoke_@item.Id" value="revoke"
+                                                                       @(permissionState == "revoke" ? "checked" : "")
+                                                                       onchange="updatePermission(@item.Id, 'revoke')">
+                                                                <label class="btn @(permissionState == "revoke" ? "btn-danger active" : "btn-outline-danger")" for="revoke_@item.Id" title="@Localizer["RevokeAccess"]">
+                                                                    <i class="fas fa-times"></i>
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+
+                                                    @if (item.Children?.Any() == true)
+                                                    {
+                                                        @foreach (var child in item.Children.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder))
+                                                        {
+                                                            var childPermission = userPermissions.FirstOrDefault(p => p.MenuItemId == child.Id);
+                                                            var childState = childPermission == null ? "default" :
+                                                                            childPermission.CanAccess ? "grant" : "revoke";
+
+                                                            <tr class="table-secondary">
+                                                                <td class="ps-5">
+                                                                    <i class="fas fa-level-up-alt fa-rotate-90 me-2 text-muted"></i>
+                                                                    @if (!string.IsNullOrEmpty(child.Icon))
+                                                                    {
+                                                                        <i class="@child.Icon me-1 text-muted"></i>
+                                                                    }
+                                                                    @child.Name
+                                                                </td>
+                                                                <td>
+                                                                    <div class="btn-group btn-group-sm w-100" role="group">
+                                                                        <input type="radio" class="btn-check" name="permission_@child.Id"
+                                                                               id="default_@child.Id" value="default"
+                                                                               @(childState == "default" ? "checked" : "")
+                                                                               onchange="updatePermission(@child.Id, 'default')">
+                                                                        <label class="btn @(childState == "default" ? "btn-secondary active" : "btn-outline-secondary")" for="default_@child.Id">
+                                                                            <i class="fas fa-minus"></i>
+                                                                        </label>
+
+                                                                        <input type="radio" class="btn-check" name="permission_@child.Id"
+                                                                               id="grant_@child.Id" value="grant"
+                                                                               @(childState == "grant" ? "checked" : "")
+                                                                               onchange="updatePermission(@child.Id, 'grant')">
+                                                                        <label class="btn @(childState == "grant" ? "btn-success active" : "btn-outline-success")" for="grant_@child.Id">
+                                                                            <i class="fas fa-check"></i>
+                                                                        </label>
+
+                                                                        <input type="radio" class="btn-check" name="permission_@child.Id"
+                                                                               id="revoke_@child.Id" value="revoke"
+                                                                               @(childState == "revoke" ? "checked" : "")
+                                                                               onchange="updatePermission(@child.Id, 'revoke')">
+                                                                        <label class="btn @(childState == "revoke" ? "btn-danger active" : "btn-outline-danger")" for="revoke_@child.Id">
+                                                                            <i class="fas fa-times"></i>
+                                                                        </label>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        }
+                                                    }
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            }
+                        }
+
+                        <!-- Hidden inputs for granted and revoked menus -->
+                        <div id="permissionInputs"></div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary" onclick="resetAllToDefault()">
+                                <i class="fas fa-undo me-1"></i> @Localizer["ResetAllToDefault"]
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> @Localizer["SavePermissions"]
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Panel -->
+        <div class="col-lg-4">
+            <div class="card sticky-top" style="top: 1rem;">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>@Localizer["Help"]</h5>
+                </div>
+                <div class="card-body">
+                    <h6>@Localizer["PermissionStates"]</h6>
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-secondary me-2"><i class="fas fa-minus"></i></span>
+                            <div>
+                                <strong>@Localizer["Default"]</strong>
+                                <p class="small text-muted mb-0">@Localizer["AccessBasedOnRole"]</p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-success me-2"><i class="fas fa-check"></i></span>
+                            <div>
+                                <strong>@Localizer["Grant"]</strong>
+                                <p class="small text-muted mb-0">@Localizer["AlwaysAllowAccess"]</p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-danger me-2"><i class="fas fa-times"></i></span>
+                            <div>
+                                <strong>@Localizer["Revoke"]</strong>
+                                <p class="small text-muted mb-0">@Localizer["AlwaysDenyAccess"]</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <h6>@Localizer["UserInfo"]</h6>
+                    <table class="table table-sm small">
+                        <tr>
+                            <th>@Localizer["Name"]:</th>
+                            <td>@user?.FullName</td>
+                        </tr>
+                        <tr>
+                            <th>@Localizer["Email"]:</th>
+                            <td>@user?.Email</td>
+                        </tr>
+                        <tr>
+                            <th>@Localizer["Roles"]:</th>
+                            <td>
+                                @foreach (var role in userRoles)
+                                {
+                                    <span class="badge bg-secondary">@role</span>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>@Localizer["CustomPermissions"]:</th>
+                            <td>@userPermissions.Count</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Permissions Confirmation Modal -->
+<div class="modal fade" id="resetPermissionsModal" tabindex="-1" aria-labelledby="resetPermissionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="reset-icon-wrapper mb-3">
+                    <div class="reset-icon-circle">
+                        <i class="fas fa-undo text-warning"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="resetPermissionsModalLabel">@Localizer["ResetPermissionsQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["AreYouSureResetPermissions"]</p>
+                <p class="text-muted small">@Localizer["AllCustomPermissionsRemoved"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-warning px-4" id="confirmResetBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesReset"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Dark mode support */
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-header.bg-light {
+            background-color: var(--bs-gray-800) !important;
+            border-color: var(--bs-gray-700);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .card-body {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table-light {
+            background-color: var(--bs-gray-800) !important;
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table-light th {
+            background-color: var(--bs-gray-800) !important;
+            color: var(--bs-light);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .table-secondary {
+            background-color: var(--bs-gray-900) !important;
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table td,
+        [data-theme="dark"] .table th {
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .text-muted {
+            color: var(--bs-gray-400) !important;
+        }
+        [data-theme="dark"] h1,
+        [data-theme="dark"] h5,
+        [data-theme="dark"] h6,
+        [data-theme="dark"] strong {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .border-bottom {
+            border-color: var(--bs-gray-600) !important;
+        }
+        [data-theme="dark"] .alert-info {
+            background-color: rgba(13, 202, 240, 0.15);
+            border-color: rgba(13, 202, 240, 0.3);
+            color: var(--bs-info);
+        }
+        [data-theme="dark"] hr {
+            border-color: var(--bs-gray-600);
+        }
+
+        .gap-2 {
+            gap: 0.5rem;
+        }
+
+        /* Reset modal styles */
+        .reset-icon-wrapper {
+            display: flex;
+            justify-content: center;
+        }
+        .reset-icon-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse-warning 2s infinite;
+        }
+        .reset-icon-circle i {
+            font-size: 2.5rem;
+        }
+        @@keyframes pulse-warning {
+            0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 193, 7, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+        }
+        #resetPermissionsModal .modal-content {
+            border-radius: 1rem;
+        }
+        #resetPermissionsModal .btn {
+            border-radius: 0.5rem;
+            font-weight: 500;
+        }
+        [data-theme="dark"] #resetPermissionsModal .modal-content {
+            background-color: #252538;
+        }
+        [data-theme="dark"] #resetPermissionsModal .modal-title {
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] #resetPermissionsModal .text-muted {
+            color: #a0a0a0 !important;
+        }
+        [data-theme="dark"] .reset-icon-circle {
+            background: linear-gradient(135deg, #3d3a20 0%, #4a4520 100%);
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        // Store permissions state
+        const permissions = {};
+
+        function updatePermission(menuId, state) {
+            console.log('Updating permission:', menuId, state);
+            permissions[menuId] = state;
+            updateHiddenInputs();
+
+            // Visual feedback - update button active states
+            updateButtonStyles(menuId, state);
+        }
+
+        function updateButtonStyles(menuId, state) {
+            const defaultBtn = document.querySelector(`label[for="default_${menuId}"]`);
+            const grantBtn = document.querySelector(`label[for="grant_${menuId}"]`);
+            const revokeBtn = document.querySelector(`label[for="revoke_${menuId}"]`);
+
+            // Reset all button styles first
+            if (defaultBtn) {
+                defaultBtn.classList.remove('active', 'btn-secondary');
+                defaultBtn.classList.add('btn-outline-secondary');
+            }
+            if (grantBtn) {
+                grantBtn.classList.remove('active', 'btn-success');
+                grantBtn.classList.add('btn-outline-success');
+            }
+            if (revokeBtn) {
+                revokeBtn.classList.remove('active', 'btn-danger');
+                revokeBtn.classList.add('btn-outline-danger');
+            }
+
+            // Add active class to selected button
+            if (state === 'default' && defaultBtn) {
+                defaultBtn.classList.remove('btn-outline-secondary');
+                defaultBtn.classList.add('active', 'btn-secondary');
+            } else if (state === 'grant' && grantBtn) {
+                grantBtn.classList.remove('btn-outline-success');
+                grantBtn.classList.add('active', 'btn-success');
+            } else if (state === 'revoke' && revokeBtn) {
+                revokeBtn.classList.remove('btn-outline-danger');
+                revokeBtn.classList.add('active', 'btn-danger');
+            }
+        }
+
+        function updateHiddenInputs() {
+            const container = document.getElementById('permissionInputs');
+            container.innerHTML = '';
+
+            for (const [menuId, state] of Object.entries(permissions)) {
+                if (state === 'grant') {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'grantedMenus';
+                    input.value = menuId;
+                    container.appendChild(input);
+                } else if (state === 'revoke') {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'revokedMenus';
+                    input.value = menuId;
+                    container.appendChild(input);
+                }
+            }
+
+            console.log('Current permissions:', permissions);
+        }
+
+        // Reset permissions modal
+        const resetPermissionsModal = new bootstrap.Modal(document.getElementById('resetPermissionsModal'));
+
+        function resetAllToDefault() {
+            resetPermissionsModal.show();
+        }
+
+        function performReset() {
+            document.querySelectorAll('input[type="radio"][value="default"]').forEach(radio => {
+                radio.checked = true;
+                // Extract menu ID from the id attribute (format: default_123)
+                const menuId = radio.id.substring(8); // Remove 'default_' prefix
+                permissions[menuId] = 'default';
+                updateButtonStyles(menuId, 'default');
+            });
+            updateHiddenInputs();
+            resetPermissionsModal.hide();
+        }
+
+        document.getElementById('confirmResetBtn')?.addEventListener('click', performReset);
+
+        // Initialize permissions from current state
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing permissions...');
+            document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+                // Extract menu ID properly - format is like "grant_123" or "default_45"
+                const idParts = radio.id.split('_');
+                const state = idParts[0]; // 'grant', 'revoke', or 'default'
+                const menuId = idParts.slice(1).join('_'); // Get everything after the first underscore
+
+                permissions[menuId] = state;
+                updateButtonStyles(menuId, state);
+            });
+            updateHiddenInputs();
+            console.log('Initialization complete. Permissions:', permissions);
+        });
+    </script>
+}

@@ -1,0 +1,102 @@
+@using System.Globalization
+@using Bangaliyana.Models
+@using X.PagedList.Mvc.Core
+@using X.PagedList
+@model IPagedList<Products>
+
+@{
+    ViewData["Title"] = $"{ViewBag.TagName} Products";
+}
+
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="display-4">@Localizer["TagProducts", ViewBag.TagName]</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Home">@Localizer["Home"]</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">@ViewBag.TagName</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    @if (Model.Any())
+    {
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+        @foreach (var product in Model)
+        {
+            <div class="col">
+                    <div class="card p-0 h-100 shadow">
+                    <img src="/@product.ImageUrl" class="card-img-top" style="height:16rem; width:auto; object-fit:cover;" alt="@product.Name">
+                    <div class="card-body">
+                        <h5 class="card-title">@product.Name</h5>
+                        @{
+                            var words = product.Description?
+                            .Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                            ?? Array.Empty<string>();
+
+                            var shortDescription = words.Length > 20
+                            ? string.Join(" ", words.Take(20)) + " ..."
+                            : product.Description;
+                        }
+                        <p class="card-text">@shortDescription</p>
+                    </div>
+                     <div class="card-footer d-flex justify-content-between align-items-center">
+                            <p class="mb-0">@Localizer["Price"]: <b>@product.Price.ToString("C", new CultureInfo("bn-BD"))</b></p>
+                        <a asp-action="Details" asp-controller="Home" asp-route-id="@product.Id" class="btn btn-outline-info">@Localizer["Details"]</a>
+                     </div>
+                </div>
+            </div>
+        }
+        </div>
+
+        <div class="mt-5" aria-label="Page navigation">
+            @Html.PagedListPager(
+            Model,
+            page => Url.Action("Tag", new { id = ViewBag.TagId, page }),
+                new PagedListRenderOptions
+                {
+                    UlElementClasses = new[] { "pagination", "justify-content-center" },
+                    LiElementClasses = new[] { "page-item" },
+                    PageClasses = new[] { "page-link" },
+                    LinkToPreviousPageFormat = "<i class=\"fa-solid fa-circle-chevron-left\"></i>",
+                    LinkToNextPageFormat = "<i class=\"fa-solid fa-circle-chevron-right\"></i>",
+                    DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                    DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                    DisplayLinkToFirstPage = PagedListDisplayMode.Never,
+                    DisplayLinkToLastPage = PagedListDisplayMode.Never
+                }
+                )
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col text-center">
+                <div class="alert alert-info" role="alert">
+                    <h4 class="alert-heading">@Localizer["NoProductsFound"]</h4>
+                    <p>@Localizer["NoProductsForTag", ViewBag.TagName]</p>
+                    <hr>
+                    <p class="mb-0"><a asp-action="Index" asp-controller="Home" class="btn btn-primary">@Localizer["BrowseAllProducts"]</a></p>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        $(document).ready(function () {
+            $(function(){
+                var saveMessage = '@TempData["error"]'
+                if(saveMessage != null && saveMessage != ""){
+                    alertify.error(saveMessage);
+                }
+            })
+        });
+    </script>
+}

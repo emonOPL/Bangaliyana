@@ -1,0 +1,85 @@
+@model Bangaliyana.Models.PageContent
+@{ ViewData["Title"] = "Edit Page"; }
+
+<div class="container px-4">
+    <h1 class="mt-4"><i class="fas fa-edit me-2"></i>Edit Page</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a asp-action="Index">Site Settings</a></li>
+        <li class="breadcrumb-item"><a asp-action="Pages">Pages</a></li>
+        <li class="breadcrumb-item active">Edit</li>
+    </ol>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="EditPage" method="post" enctype="multipart/form-data">
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="CreatedAt" />
+                <input type="hidden" asp-for="FeaturedImageUrl" />
+                <div class="row">
+                    <div class="col-md-8 mb-3">
+                        <label asp-for="Title" class="form-label"></label>
+                        <input asp-for="Title" class="form-control" />
+                        <span asp-validation-for="Title" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="Slug" class="form-label"></label>
+                        <input asp-for="Slug" class="form-control" />
+                        <span asp-validation-for="Slug" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Content" class="form-label"></label>
+                    <textarea asp-for="Content" class="form-control" rows="12"></textarea>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="MetaDescription" class="form-label"></label>
+                        <textarea asp-for="MetaDescription" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="MetaKeywords" class="form-label"></label>
+                        <input asp-for="MetaKeywords" class="form-control" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Featured Image</label>
+                        @if (!string.IsNullOrEmpty(Model.FeaturedImageUrl))
+                        {
+                            <div class="mb-2"><img src="~/@Model.FeaturedImageUrl" alt="Current" class="img-thumbnail" style="max-height: 80px;" /></div>
+                        }
+                        <input type="file" name="featuredImage" class="form-control" accept="image/*" />
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label asp-for="DisplayOrder" class="form-label"></label>
+                        <input asp-for="DisplayOrder" class="form-control" type="number" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Display Options</label>
+                        <div class="d-flex gap-4 mt-2">
+                            <div class="form-check">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                                <label asp-for="IsActive" class="form-check-label"></label>
+                            </div>
+                            <div class="form-check">
+                                <input asp-for="ShowInHeader" class="form-check-input" type="checkbox" />
+                                <label asp-for="ShowInHeader" class="form-check-label"></label>
+                            </div>
+                            <div class="form-check">
+                                <input asp-for="ShowInFooter" class="form-check-input" type="checkbox" />
+                                <label asp-for="ShowInFooter" class="form-check-label"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr />
+                <div class="d-flex justify-content-between">
+                    <a asp-action="Pages" class="btn btn-secondary"><i class="fas fa-arrow-left me-1"></i> Back</a>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Update Page</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

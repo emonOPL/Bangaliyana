@@ -1,0 +1,371 @@
+@model List<Bangaliyana.Models.MenuItem>
+@using Bangaliyana.Models
+
+@{
+    ViewData["Title"] = Localizer["MenuManagement"].Value;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">@Localizer["MenuManagement"]</h1>
+            <p class="text-muted mb-0">@Localizer["MenuManagementDescription"]</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> @Localizer["AddMenuItem"]
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Menu Items by Location -->
+    @foreach (MenuLocation location in Enum.GetValues(typeof(MenuLocation)))
+    {
+        var locationItems = Model.Where(m => m.Location == location && m.ParentId == null).OrderBy(m => m.DisplayOrder).ToList();
+        <div class="card mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-bars me-2"></i>
+                    @location.ToString() Menu
+                    <span class="badge bg-primary ms-2">@locationItems.Count</span>
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                @if (locationItems.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 50px;">@Localizer["Order"]</th>
+                                    <th>@Localizer["MenuItem"]</th>
+                                    <th>@Localizer["URLRoute"]</th>
+                                    <th>@Localizer["RequiredRoles"]</th>
+                                    <th style="width: 100px;">@Localizer["Status"]</th>
+                                    <th style="width: 150px;">@Localizer["Actions"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in locationItems)
+                                {
+                                    <tr>
+                                        <td class="text-center">@item.DisplayOrder</td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(item.Icon))
+                                            {
+                                                <i class="@item.Icon me-2 text-muted"></i>
+                                            }
+                                            <strong>@item.Name</strong>
+                                            @if (item.IsDefault)
+                                            {
+                                                <span class="badge bg-info ms-1">@Localizer["Default"]</span>
+                                            }
+                                            @if (item.RequiresAuthentication)
+                                            {
+                                                <span class="badge bg-warning ms-1">Auth</span>
+                                            }
+                                        </td>
+                                        <td class="text-muted small">
+                                            @if (!string.IsNullOrEmpty(item.Url))
+                                            {
+                                                @item.Url
+                                            }
+                                            else if (!string.IsNullOrEmpty(item.Controller))
+                                            {
+                                                <span>@(item.Area ?? "")/@item.Controller/@item.Action</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(item.RequiredRoles))
+                                            {
+                                                @foreach (var role in item.RequiredRoles.Split(','))
+                                                {
+                                                    <span class="badge bg-secondary me-1">@role.Trim()</span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small">@Localizer["AllUsers"]</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input toggle-active" type="checkbox" role="switch"
+                                                       data-id="@item.Id" @(item.IsActive ? "checked" : "")>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex btn-group-gap">
+                                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a asp-action="Permissions" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info" title="Permissions">
+                                                    <i class="fas fa-shield-alt"></i>
+                                                </a>
+                                                <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline delete-menu-form">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="button" class="btn btn-sm btn-outline-danger delete-menu-btn" title="Delete">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @if (item.Children?.Any() == true)
+                                    {
+                                        @foreach (var child in item.Children.OrderBy(c => c.DisplayOrder))
+                                        {
+                                            <tr class="table-secondary">
+                                                <td class="text-center small ps-4">@child.DisplayOrder</td>
+                                                <td class="ps-5">
+                                                    <i class="fas fa-level-up-alt fa-rotate-90 me-2 text-muted"></i>
+                                                    @if (!string.IsNullOrEmpty(child.Icon))
+                                                    {
+                                                        <i class="@child.Icon me-1 text-muted"></i>
+                                                    }
+                                                    @child.Name
+                                                </td>
+                                                <td class="text-muted small">
+                                                    @if (!string.IsNullOrEmpty(child.Url))
+                                                    {
+                                                        @child.Url
+                                                    }
+                                                    else if (!string.IsNullOrEmpty(child.Controller))
+                                                    {
+                                                        <span>@(child.Area ?? "")/@child.Controller/@child.Action</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(child.RequiredRoles))
+                                                    {
+                                                        @foreach (var role in child.RequiredRoles.Split(','))
+                                                        {
+                                                            <span class="badge bg-secondary me-1">@role.Trim()</span>
+                                                        }
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input toggle-active" type="checkbox" role="switch"
+                                                               data-id="@child.Id" @(child.IsActive ? "checked" : "")>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex btn-group-gap">
+                                                        <a asp-action="Edit" asp-route-id="@child.Id" class="btn btn-sm btn-outline-primary" title="Edit">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <form asp-action="Delete" asp-route-id="@child.Id" method="post" class="d-inline delete-menu-form">
+                                                            @Html.AntiForgeryToken()
+                                                            <button type="button" class="btn btn-sm btn-outline-danger delete-menu-btn" title="Delete">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-folder-open fa-2x mb-2"></i>
+                        <p class="mb-0">@Localizer["NoMenuItemsInLocation"]</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Delete Menu Item Confirmation Modal -->
+<div class="modal fade" id="deleteMenuModal" tabindex="-1" aria-labelledby="deleteMenuModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="delete-icon-wrapper mb-3">
+                    <div class="delete-icon-circle">
+                        <i class="fas fa-trash-alt text-danger"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="deleteMenuModalLabel">@Localizer["DeleteMenuItem"]</h4>
+                <p class="text-muted mb-0">@Localizer["DeleteMenuItemConfirm"]</p>
+                <p class="text-muted small">@Localizer["ActionCannotBeUndone"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmDeleteMenuBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesDelete"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Dark mode support for Menu Management */
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-header.bg-light {
+            background-color: var(--bs-gray-800) !important;
+            border-color: var(--bs-gray-700);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table-light {
+            background-color: var(--bs-gray-800) !important;
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table-light th {
+            background-color: var(--bs-gray-800) !important;
+            color: var(--bs-light);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .table-secondary {
+            background-color: var(--bs-gray-900) !important;
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table-hover tbody tr:hover {
+            background-color: var(--bs-gray-700) !important;
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table td,
+        [data-theme="dark"] .table th {
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .text-muted {
+            color: var(--bs-gray-400) !important;
+        }
+        [data-theme="dark"] h1,
+        [data-theme="dark"] h5,
+        [data-theme="dark"] strong {
+            color: var(--bs-light);
+        }
+
+        /* Button gaps */
+        .btn-group-gap {
+            gap: 0.5rem;
+        }
+        .btn-group-gap .btn {
+            border-radius: 0.375rem !important;
+        }
+
+        /* Delete modal styles */
+        .delete-icon-wrapper {
+            display: flex;
+            justify-content: center;
+        }
+        .delete-icon-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse-danger 2s infinite;
+        }
+        .delete-icon-circle i {
+            font-size: 2.5rem;
+        }
+        @@keyframes pulse-danger {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        #deleteMenuModal .modal-content {
+            border-radius: 1rem;
+        }
+        #deleteMenuModal .btn {
+            border-radius: 0.5rem;
+            font-weight: 500;
+        }
+        [data-theme="dark"] #deleteMenuModal .modal-content {
+            background-color: #252538;
+        }
+        [data-theme="dark"] #deleteMenuModal .modal-title {
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] #deleteMenuModal .text-muted {
+            color: #a0a0a0 !important;
+        }
+        [data-theme="dark"] .delete-icon-circle {
+            background: linear-gradient(135deg, #3d2020 0%, #4a2525 100%);
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.toggle-active').forEach(toggle => {
+            toggle.addEventListener('change', async function() {
+                const id = this.dataset.id;
+                try {
+                    const response = await fetch(`/Admin/MenuManagement/ToggleActive/${id}`, {
+                        method: 'POST',
+                        headers: {
+                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                        }
+                    });
+                    if (!response.ok) {
+                        this.checked = !this.checked;
+                        alert('Failed to update status');
+                    }
+                } catch {
+                    this.checked = !this.checked;
+                    alert('Failed to update status');
+                }
+            });
+        });
+
+        // Delete menu item modal handling
+        let currentDeleteForm = null;
+        const deleteMenuModal = new bootstrap.Modal(document.getElementById('deleteMenuModal'));
+
+        document.querySelectorAll('.delete-menu-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                currentDeleteForm = this.closest('.delete-menu-form');
+                deleteMenuModal.show();
+            });
+        });
+
+        document.getElementById('confirmDeleteMenuBtn')?.addEventListener('click', function() {
+            if (currentDeleteForm) {
+                deleteMenuModal.hide();
+                currentDeleteForm.submit();
+            }
+        });
+    </script>
+}

@@ -1,0 +1,269 @@
+@using Bangaliyana.Models
+@model IEnumerable<Transaction>
+@{
+    ViewData["Title"] = "All Transactions";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-exchange-alt text-primary me-2"></i>All Transactions</h1>
+            <p class="text-muted mb-0">View and manage all platform transactions</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="CreateRefund" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i>Create Refund
+            </a>
+            <a asp-action="RefundRequests" class="btn btn-warning">
+                <i class="fas fa-undo me-1"></i>Refund Requests
+            </a>
+            <a asp-action="Export" asp-route-type="@ViewBag.CurrentType" asp-route-status="@ViewBag.CurrentStatus"
+               asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" class="btn btn-outline-secondary">
+                <i class="fas fa-download me-1"></i>Export CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-primary bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-money-bill-wave text-primary fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@(((decimal)ViewBag.TotalPayments).ToString("N0"))</h5>
+                    <small class="text-muted">Total Payments</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-danger bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-undo text-danger fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@(((decimal)ViewBag.TotalRefunds).ToString("N0"))</h5>
+                    <small class="text-muted">Total Refunds</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-success bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-store text-success fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@(((decimal)ViewBag.TotalSellerPayouts).ToString("N0"))</h5>
+                    <small class="text-muted">Seller Payouts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-warning bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-percentage text-warning fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@(((decimal)ViewBag.TotalCommissions).ToString("N0"))</h5>
+                    <small class="text-muted">Commissions</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-info bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-check-circle text-info fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.CompletedCount</h5>
+                    <small class="text-muted">Completed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-secondary bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-list text-secondary fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.TotalTransactions</h5>
+                    <small class="text-muted">Total</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">Type</label>
+                    <select name="type" class="form-select">
+                        <option value="">All Types</option>
+                        @foreach (var t in (List<TransactionType>)ViewBag.TransactionTypes)
+                        {
+                            <option value="@t" selected="@(ViewBag.CurrentType == t.ToString())">@t</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        @foreach (var s in (List<TransactionStatus>)ViewBag.TransactionStatuses)
+                        {
+                            <option value="@s" selected="@(ViewBag.CurrentStatus == s.ToString())">@s</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">From Date</label>
+                    <input type="date" name="fromDate" class="form-control" value="@ViewBag.FromDate">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">To Date</label>
+                    <input type="date" name="toDate" class="form-control" value="@ViewBag.ToDate">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Search</label>
+                    <input type="text" name="search" class="form-control" placeholder="Transaction ID, Order #, Notes..." value="@ViewBag.CurrentSearch">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100" style="padding: 0.75rem 1rem;">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Order</th>
+                                <th class="text-end">Amount</th>
+                                <th>Payment Method</th>
+                                <th>Transaction ID</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var transaction in Model)
+                            {
+                                var typeClass = transaction.Type switch
+                                {
+                                    TransactionType.Payment => "bg-primary",
+                                    TransactionType.Refund => "bg-danger",
+                                    TransactionType.SellerPayout => "bg-success",
+                                    TransactionType.Commission => "bg-warning",
+                                    _ => "bg-secondary"
+                                };
+                                var statusClass = transaction.Status switch
+                                {
+                                    TransactionStatus.Completed => "bg-success",
+                                    TransactionStatus.Pending => "bg-warning text-dark",
+                                    TransactionStatus.Processing => "bg-info",
+                                    TransactionStatus.Failed => "bg-danger",
+                                    TransactionStatus.Cancelled => "bg-secondary",
+                                    _ => "bg-secondary"
+                                };
+                                <tr>
+                                    <td>
+                                        <div>@transaction.CreatedAt.ToString("dd MMM yyyy")</div>
+                                        <small class="text-muted">@transaction.CreatedAt.ToString("hh:mm tt")</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge @typeClass">@transaction.Type</span>
+                                    </td>
+                                    <td>
+                                        @if (transaction.Order != null)
+                                        {
+                                            <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@transaction.OrderId" class="text-decoration-none">
+                                                #@transaction.Order.OrderNumber
+                                            </a>
+                                            <br>
+                                            <small class="text-muted">@(transaction.Order.User?.FirstName ?? "") @(transaction.Order.User?.LastName ?? "")</small>
+                                        }
+                                        else if (transaction.Seller != null)
+                                        {
+                                            <span class="text-muted">@transaction.Seller.ShopName</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="@(transaction.Type == TransactionType.Refund ? "text-danger" : "text-success") fw-bold">
+                                            @(transaction.Type == TransactionType.Refund ? "-" : "")৳@transaction.Amount.ToString("N0")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>@transaction.PaymentMethod</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted font-monospace">@(transaction.GatewayTransactionId ?? "-")</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge @statusClass">@transaction.Status</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <a asp-action="Details" asp-route-id="@transaction.Id" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if ((int)ViewBag.TotalPages > 1)
+                {
+                    <div class="card-footer bg-white">
+                        <nav aria-label="Transaction pagination">
+                            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                                <li class="page-item @((int)ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                                    <a class="page-link" asp-action="Index" asp-route-page="@((int)ViewBag.CurrentPage - 1)"
+                                       asp-route-type="@ViewBag.CurrentType" asp-route-status="@ViewBag.CurrentStatus"
+                                       asp-route-search="@ViewBag.CurrentSearch" asp-route-fromDate="@ViewBag.FromDate"
+                                       asp-route-toDate="@ViewBag.ToDate">Previous</a>
+                                </li>
+                                @for (int i = 1; i <= (int)ViewBag.TotalPages; i++)
+                                {
+                                    if (i == 1 || i == (int)ViewBag.TotalPages || (i >= (int)ViewBag.CurrentPage - 2 && i <= (int)ViewBag.CurrentPage + 2))
+                                    {
+                                        <li class="page-item @(i == (int)ViewBag.CurrentPage ? "active" : "")">
+                                            <a class="page-link" asp-action="Index" asp-route-page="@i"
+                                               asp-route-type="@ViewBag.CurrentType" asp-route-status="@ViewBag.CurrentStatus"
+                                               asp-route-search="@ViewBag.CurrentSearch" asp-route-fromDate="@ViewBag.FromDate"
+                                               asp-route-toDate="@ViewBag.ToDate">@i</a>
+                                        </li>
+                                    }
+                                    else if (i == 2 || i == (int)ViewBag.TotalPages - 1)
+                                    {
+                                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                                    }
+                                }
+                                <li class="page-item @((int)ViewBag.CurrentPage == (int)ViewBag.TotalPages ? "disabled" : "")">
+                                    <a class="page-link" asp-action="Index" asp-route-page="@((int)ViewBag.CurrentPage + 1)"
+                                       asp-route-type="@ViewBag.CurrentType" asp-route-status="@ViewBag.CurrentStatus"
+                                       asp-route-search="@ViewBag.CurrentSearch" asp-route-fromDate="@ViewBag.FromDate"
+                                       asp-route-toDate="@ViewBag.ToDate">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-exchange-alt fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No transactions found</h5>
+                    <p class="text-muted mb-0">Try adjusting your filters or date range</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>

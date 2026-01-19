@@ -1,0 +1,165 @@
+@model IEnumerable<Bangaliyana.Models.AuditLog>
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+
+@{
+    ViewData["Title"] = "Entity History";
+    var entityType = ViewBag.EntityType as string;
+    var entityId = ViewBag.EntityId as string;
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Audit Logs</a></li>
+            <li class="breadcrumb-item active">Entity History</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-history text-info me-2"></i>Entity History</h1>
+            <p class="text-muted mb-0">
+                Change history for <span class="badge bg-primary">@entityType</span>
+                with ID <code>@entityId</code>
+            </p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Logs
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Timeline (@Model.Count() changes)</h5>
+        </div>
+        <div class="card-body">
+            @if (Model.Any())
+            {
+                <div class="timeline">
+                    @foreach (var log in Model)
+                    {
+                        var actionClass = log.ActionType switch
+                        {
+                            AuditActionType.Create => "bg-success",
+                            AuditActionType.Update => "bg-warning text-dark",
+                            AuditActionType.Delete => "bg-danger",
+                            AuditActionType.Approve => "bg-success",
+                            AuditActionType.Reject => "bg-danger",
+                            AuditActionType.StatusChange => "bg-info",
+                            _ => "bg-primary"
+                        };
+                        var borderClass = log.ActionType switch
+                        {
+                            AuditActionType.Create => "border-success",
+                            AuditActionType.Update => "border-warning",
+                            AuditActionType.Delete => "border-danger",
+                            AuditActionType.Approve => "border-success",
+                            AuditActionType.Reject => "border-danger",
+                            AuditActionType.StatusChange => "border-info",
+                            _ => "border-primary"
+                        };
+                        <div class="timeline-item mb-4">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="text-muted small">
+                                        <i class="fas fa-clock me-1"></i>@log.CreatedAt.ToString("dd MMM yyyy HH:mm:ss")
+                                    </div>
+                                    <div class="mt-1">
+                                        <a asp-action="UserActivity" asp-route-id="@log.UserId" class="text-decoration-none small">
+                                            <i class="fas fa-user me-1"></i>@log.UserEmail
+                                        </a>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(log.IpAddress))
+                                    {
+                                        <div class="text-muted small mt-1">
+                                            <i class="fas fa-globe me-1"></i>@log.IpAddress
+                                        </div>
+                                    }
+                                </div>
+                                <div class="col-md-9">
+                                    <div class="card border-start border-4 @borderClass">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <span class="badge @actionClass me-2">@log.ActionType.GetDisplayName()</span>
+                                                    @if (log.IsSuccess)
+                                                    {
+                                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>Success</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Failed</span>
+                                                    }
+                                                </div>
+                                                <a asp-action="Details" asp-route-id="@log.Id" class="btn btn-sm btn-outline-info">
+                                                    <i class="fas fa-eye me-1"></i>Details
+                                                </a>
+                                            </div>
+                                            <p class="mb-2">@log.Description</p>
+
+                                            @if (!string.IsNullOrEmpty(log.OldValues) || !string.IsNullOrEmpty(log.NewValues))
+                                            {
+                                                <div class="row mt-3">
+                                                    @if (!string.IsNullOrEmpty(log.OldValues))
+                                                    {
+                                                        <div class="col-md-6">
+                                                            <label class="form-label text-muted small"><i class="fas fa-minus-circle text-danger me-1"></i>Old Values</label>
+                                                            <pre class="bg-light p-2 rounded small" style="max-height: 150px; overflow-y: auto;">@log.OldValues</pre>
+                                                        </div>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(log.NewValues))
+                                                    {
+                                                        <div class="col-md-6">
+                                                            <label class="form-label text-muted small"><i class="fas fa-plus-circle text-success me-1"></i>New Values</label>
+                                                            <pre class="bg-light p-2 rounded small" style="max-height: 150px; overflow-y: auto;">@log.NewValues</pre>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+
+                                            @if (!log.IsSuccess && !string.IsNullOrEmpty(log.ErrorMessage))
+                                            {
+                                                <div class="alert alert-danger mt-2 mb-0 small">
+                                                    <strong>Error:</strong> @log.ErrorMessage
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted mb-0">No history found for this entity</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .timeline-item {
+            position: relative;
+        }
+        .timeline-item:not(:last-child)::before {
+            content: '';
+            position: absolute;
+            left: 25%;
+            top: 50px;
+            bottom: -20px;
+            width: 2px;
+            background-color: var(--bs-gray-300);
+        }
+        [data-theme="dark"] .card { background-color: var(--bs-dark); border-color: var(--bs-gray-700); }
+        [data-theme="dark"] .card-header.bg-light { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] pre.bg-light { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] .timeline-item::before { background-color: var(--bs-gray-600); }
+    </style>
+}

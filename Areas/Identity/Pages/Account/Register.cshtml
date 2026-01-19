@@ -1,0 +1,752 @@
+@page
+@model RegisterModel
+@using Bangaliyana.Services
+@using Bangaliyana.Models
+@inject ISiteSettingsService SiteSettingsService
+
+@{
+    ViewData["Title"] = Localizer["CreateAccount"].Value;
+    var siteSettings = await SiteSettingsService.GetSiteSettingsAsync();
+    var registerFeatures = await SiteSettingsService.GetActiveFeaturesBySectionAsync(FeatureSection.RegisterPage);
+    var termsPage = await SiteSettingsService.GetPageContentBySlugAsync("terms-and-conditions");
+}
+
+<div class="auth-wrapper">
+    <div class="container">
+        <div class="row min-vh-100 align-items-center justify-content-center">
+            <div class="col-xl-10 col-xxl-9 mx-auto">
+                <div class="row g-0 auth-card shadow-lg">
+                    <!-- Left Panel - Info (hidden on mobile) -->
+                    <div class="col-lg-5 d-none d-lg-block">
+                        <div class="auth-info-panel h-100">
+                            <div class="auth-info-content">
+                                <!-- Features with fixed height -->
+                                <div class="features-list mb-5" style="min-height: 200px;">
+                                    <h3 class="text-white mb-4">@Localizer["JoinToday", siteSettings.SiteName]</h3>
+                                    @if (registerFeatures.Any())
+                                    {
+                                        @foreach (var feature in registerFeatures.Take(3))
+                                        {
+                                            <div class="feature-item mb-3">
+                                                <i class="@feature.IconClass text-warning me-3"></i>
+                                                <div>
+                                                    <h5 class="text-white mb-1">@feature.Title</h5>
+                                                    <p class="text-white-50 mb-0 small">@feature.Description</p>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="feature-item mb-3">
+                                            <i class="fas fa-user-plus text-warning me-3"></i>
+                                            <div>
+                                                <h5 class="text-white mb-1">@Localizer["EasyRegistration"]</h5>
+                                                <p class="text-white-50 mb-0 small">@Localizer["EasyRegistrationDesc"]</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item mb-3">
+                                            <i class="fas fa-gift text-warning me-3"></i>
+                                            <div>
+                                                <h5 class="text-white mb-1">@Localizer["ExclusiveOffers"]</h5>
+                                                <p class="text-white-50 mb-0 small">@Localizer["ExclusiveOffersDesc"]</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item mb-3">
+                                            <i class="fas fa-history text-warning me-3"></i>
+                                            <div>
+                                                <h5 class="text-white mb-1">@Localizer["OrderTracking"]</h5>
+                                                <p class="text-white-50 mb-0 small">@Localizer["OrderTrackingDesc"]</p>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Password Requirements -->
+                                <div class="password-requirements">
+                                    <h5 class="text-white mb-3"><i class="fas fa-shield-alt me-2"></i>@Localizer["PasswordRequirements"]</h5>
+                                    <ul class="text-white-50 small mb-0 ps-3">
+                                        <li class="mb-1">@Localizer["PasswordReq6Chars"]</li>
+                                        <li class="mb-1">@Localizer["PasswordReqDigit"]</li>
+                                        <li class="mb-1">@Localizer["PasswordReqLowercase"]</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel - Form -->
+                    <div class="col-lg-7">
+                        <div class="auth-form-panel">
+                            <div class="auth-header text-center mb-4">
+                                <div class="auth-logo mb-3">
+                                    @if (!string.IsNullOrEmpty(siteSettings.LogoUrl) || !string.IsNullOrEmpty(siteSettings.DarkModeLogoUrl))
+                                    {
+                                        @if (!string.IsNullOrEmpty(siteSettings.LogoUrl))
+                                        {
+                                            <img src="~/@siteSettings.LogoUrl" alt="@siteSettings.SiteName" style="max-height: 60px;" class="logo-light" />
+                                        }
+                                        @if (!string.IsNullOrEmpty(siteSettings.DarkModeLogoUrl))
+                                        {
+                                            <img src="~/@siteSettings.DarkModeLogoUrl" alt="@siteSettings.SiteName" style="max-height: 60px;" class="logo-dark" />
+                                        }
+                                        else if (!string.IsNullOrEmpty(siteSettings.LogoUrl))
+                                        {
+                                            <!-- Fallback: use light logo for dark mode if no dark logo -->
+                                            <img src="~/@siteSettings.LogoUrl" alt="@siteSettings.SiteName" style="max-height: 60px;" class="logo-dark" />
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-store fa-3x text-primary"></i>
+                                    }
+                                </div>
+                                <h1 class="auth-title">@Localizer["CreateAccount"]</h1>
+                                <p class="auth-subtitle text-muted">@Localizer["JoinAndStartShopping", siteSettings.SiteName]</p>
+                            </div>
+
+                            <!-- Validation Summary -->
+                            <div asp-validation-summary="ModelOnly" class="alert alert-danger fade show" role="alert">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                @Localizer["PleaseCorrectErrors"]
+                            </div>
+
+                            <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="auth-form">
+                                <!-- Name Fields -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label asp-for="Input.FirstName" class="form-label">@Localizer["FirstName"]</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                                <input asp-for="Input.FirstName" class="form-control" placeholder="@Localizer["EnterFirstName"]" />
+                                            </div>
+                                            <span asp-validation-for="Input.FirstName" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label asp-for="Input.LastName" class="form-label">@Localizer["LastName"]</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                                <input asp-for="Input.LastName" class="form-control" placeholder="@Localizer["EnterLastName"]" />
+                                            </div>
+                                            <span asp-validation-for="Input.LastName" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Email -->
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.Email" class="form-label">@Localizer["EmailAddress"]</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                        <input asp-for="Input.Email" class="form-control" autocomplete="email" placeholder="@Localizer["EnterYourEmail"]" />
+                                    </div>
+                                    <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                                </div>
+
+                                <!-- Phone -->
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.PhoneNumber" class="form-label">@Localizer["PhoneNumber"] <span class="text-muted small">(@Localizer["Optional"])</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                        <input asp-for="Input.PhoneNumber" class="form-control" autocomplete="tel" placeholder="@Localizer["EnterPhoneNumber"]" />
+                                    </div>
+                                    <span asp-validation-for="Input.PhoneNumber" class="text-danger small"></span>
+                                </div>
+
+                                <!-- Referral Code -->
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.ReferralCode" class="form-label">@Localizer["ReferralCode"] <span class="text-muted small">(@Localizer["Optional"])</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-gift"></i></span>
+                                        <input asp-for="Input.ReferralCode" class="form-control" maxlength="8" placeholder="@Localizer["Enter8DigitCode"]" />
+                                    </div>
+                                    <small class="text-muted">@Localizer["ReferralCodeBonus"]</small>
+                                    <span asp-validation-for="Input.ReferralCode" class="text-danger small"></span>
+                                </div>
+
+                                <!-- Password Fields -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label asp-for="Input.Password" class="form-label">@Localizer["Password"]</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                                <input asp-for="Input.Password" class="form-control" type="password" autocomplete="new-password" placeholder="@Localizer["CreatePassword"]" />
+                                                <button class="btn btn-outline-secondary password-toggle" type="button">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                            <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label asp-for="Input.ConfirmPassword" class="form-label">@Localizer["ConfirmPassword"]</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                                <input asp-for="Input.ConfirmPassword" class="form-control" type="password" autocomplete="new-password" placeholder="@Localizer["ConfirmPasswordPlaceholder"]" />
+                                                <button class="btn btn-outline-secondary password-toggle" type="button">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                            <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Terms -->
+                                <div class="form-group mb-4">
+                                    <div class="form-check">
+                                        <input asp-for="Input.AgreeToTerms" class="form-check-input" />
+                                        <label asp-for="Input.AgreeToTerms" class="form-check-label">
+                                            @Localizer["IAgreeToThe"]
+                                            @if (termsPage != null)
+                                            {
+                                                <a asp-area="Customer" asp-controller="Home" asp-action="Page" asp-route-slug="terms-and-conditions" target="_blank" class="text-decoration-none">@Localizer["TermsAndConditions"]</a>
+                                            }
+                                            else
+                                            {
+                                                <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal" class="text-decoration-none">@Localizer["TermsAndConditions"]</a>
+                                            }
+                                        </label>
+                                    </div>
+                                    <span asp-validation-for="Input.AgreeToTerms" class="text-danger small"></span>
+                                </div>
+
+                                <button id="registerSubmit" type="submit" class="btn btn-primary w-100 btn-lg mb-3">
+                                    <i class="fas fa-user-plus me-2"></i>
+                                    <span class="btn-text">@Localizer["CreateAccount"]</span>
+                                </button>
+
+                                <div class="text-center">
+                                    <p class="mb-0 text-muted">
+                                        @Localizer["AlreadyHaveAccount"]
+                                        <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl" class="text-decoration-none fw-semibold">
+                                            @Localizer["SignIn"]
+                                        </a>
+                                    </p>
+                                </div>
+
+                                <!-- External Logins -->
+                                @if ((Model.ExternalLogins?.Count ?? 0) > 0)
+                                {
+                                    <hr class="my-4" />
+                                    <div class="text-center mb-3">
+                                        <span class="text-muted">@Localizer["OrRegisterWith"]</span>
+                                    </div>
+                                    <form id="external-account" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+                                        <div class="d-grid gap-2">
+                                            @foreach (var provider in Model.ExternalLogins!)
+                                            {
+                                                <button type="submit" class="btn btn-outline-secondary btn-external" name="provider" value="@provider.Name">
+                                                    <i class="fab fa-@provider.Name.ToLower() me-2"></i>
+                                                    @provider.DisplayName
+                                                </button>
+                                            }
+                                        </div>
+                                    </form>
+                                }
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Terms and Conditions Modal -->
+<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="termsModalLabel"><i class="fas fa-file-contract me-2"></i>@Localizer["TermsAndConditions"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Localizer["Close"]"></button>
+            </div>
+            <div class="modal-body">
+                <h6>@Localizer["TermsAcceptanceTitle"]</h6>
+                <p>@Localizer["TermsAcceptanceText"]</p>
+
+                <h6>@Localizer["TermsAccountSecurityTitle"]</h6>
+                <p>@Localizer["TermsAccountSecurityText"]</p>
+
+                <h6>@Localizer["TermsPrivacyTitle"]</h6>
+                <p>@Localizer["TermsPrivacyText"]</p>
+
+                <h6>@Localizer["TermsUserConductTitle"]</h6>
+                <p>@Localizer["TermsUserConductText"]</p>
+
+                <h6>@Localizer["TermsModificationsTitle"]</h6>
+                <p>@Localizer["TermsModificationsText"]</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Close"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Password toggle functionality
+            const passwordToggles = document.querySelectorAll('.password-toggle');
+            passwordToggles.forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    const input = this.parentElement.querySelector('input');
+                    const icon = this.querySelector('i');
+
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    } else {
+                        input.type = 'password';
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    }
+                });
+            });
+
+            // Form submission loading state
+            const form = document.getElementById('registerForm');
+            const submitBtn = document.getElementById('registerSubmit');
+
+            form.addEventListener('submit', function() {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i><span class="btn-text">@Localizer["CreatingAccount"]</span>';
+
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-user-plus me-2"></i><span class="btn-text">@Localizer["CreateAccount"]</span>';
+                }, 5000);
+            });
+        });
+    </script>
+}
+
+@section Styles {
+<style>
+/* Logo visibility based on theme */
+.logo-light { display: inline-block; }
+.logo-dark { display: none; }
+[data-theme="dark"] .logo-light { display: none; }
+[data-theme="dark"] .logo-dark { display: inline-block; }
+
+/* Modern Authentication Styles */
+.auth-wrapper {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="auth-pattern" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23auth-pattern)"/></svg>');
+    pointer-events: none;
+    animation: patternMove 20s linear infinite;
+}
+
+@@keyframes patternMove {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(20px, 20px); }
+}
+
+.auth-card {
+    background: var(--bg-color);
+    border-radius: var(--border-radius-xl);
+    overflow: hidden;
+    box-shadow: var(--card-shadow-lg);
+}
+
+.auth-form-panel {
+    padding: 3rem 2.5rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.auth-info-panel {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(245, 158, 11, 0.9) 100%);
+    padding: 3rem 2.5rem;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-info-panel::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: float 6s ease-in-out infinite;
+}
+
+.auth-header {
+    margin-bottom: 2rem;
+}
+
+.auth-logo {
+    margin-bottom: 1rem;
+}
+
+.auth-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+.auth-subtitle {
+    font-size: 1rem;
+    margin-bottom: 0;
+}
+
+.auth-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.auth-form .form-label {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+.auth-form .input-group {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    transition: all var(--transition-fast);
+}
+
+.auth-form .input-group:focus-within {
+    box-shadow: 0 0 0 0.125rem rgba(99, 102, 241, 0.25);
+    transform: translateY(-1px);
+}
+
+.auth-form .input-group-text {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-right: none;
+    color: var(--text-muted);
+    width: 3rem;
+    justify-content: center;
+}
+
+.auth-form .form-control {
+    border: 1px solid var(--border-color);
+    border-left: none;
+    padding: 0.75rem 1rem;
+    background: var(--bg-color);
+    color: var(--text-color);
+    transition: all var(--transition-fast);
+}
+
+.auth-form .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: none;
+    background: var(--bg-color);
+}
+
+.password-toggle {
+    border-left: none !important;
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    transition: all var(--transition-fast);
+}
+
+.password-toggle:hover {
+    background: var(--primary-light);
+    color: var(--primary-color);
+}
+
+[data-theme="dark"] .password-toggle:hover {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-lg {
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.btn-external {
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.btn-external:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.auth-links .btn {
+    font-size: 0.875rem;
+}
+
+/* Info Panel Styles */
+.auth-info-content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+}
+
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+}
+
+.feature-item i {
+    font-size: 1.5rem;
+    margin-top: 0.25rem;
+}
+
+/* Remove extra space from main content */
+.auth-wrapper .container {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.auth-wrapper .row.min-vh-100 {
+    margin: 0;
+    padding: 1rem 0;
+}
+
+/* Password requirements styling */
+.password-requirements ul {
+    list-style-type: disc;
+}
+
+/* Loading states */
+.btn[disabled] {
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.btn .fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* Validation styles */
+.text-danger {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.alert {
+    border-radius: var(--border-radius);
+    border: none;
+    font-size: 0.875rem;
+}
+
+/* Responsive Design */
+@@media (max-width: 992px) {
+    .auth-card {
+        margin: 1rem;
+    }
+
+    .auth-form-panel,
+    .auth-info-panel {
+        padding: 2rem 1.5rem;
+    }
+
+    .auth-title {
+        font-size: 1.75rem;
+    }
+}
+
+@@media (max-width: 768px) {
+    .auth-wrapper {
+        padding: 1rem 0;
+    }
+
+    .auth-form-panel,
+    .auth-info-panel {
+        padding: 1.5rem;
+    }
+
+    .auth-title {
+        font-size: 1.5rem;
+    }
+
+    .feature-item {
+        text-align: center;
+        flex-direction: column;
+    }
+
+    .feature-item i {
+        margin-bottom: 0.5rem;
+        margin-right: 0;
+    }
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .auth-card {
+    background: var(--bg-color);
+}
+
+[data-theme="dark"] .auth-form .input-group-text {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .auth-form .form-control {
+    background: var(--bg-color);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+/* Animation improvements */
+.auth-card {
+    animation: slideInUp 0.6s ease-out;
+}
+
+@@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Accessibility improvements */
+@@media (prefers-reduced-motion: reduce) {
+    .auth-wrapper::before,
+    .auth-info-panel::before,
+    .auth-card {
+        animation: none;
+    }
+
+    .auth-form .input-group,
+    .btn-external {
+        transition: none;
+    }
+}
+
+@@media (prefers-contrast: high) {
+    .auth-form .form-control,
+    .auth-form .input-group-text {
+        border-width: 2px;
+    }
+}
+
+/* Terms Modal Styles - Light Mode */
+#termsModal .modal-content {
+    background-color: var(--bg-color, #ffffff);
+    color: var(--text-color, #212529);
+    border: 1px solid var(--border-color, #dee2e6);
+}
+
+#termsModal .modal-header {
+    background-color: var(--bg-secondary, #f8f9fa);
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    color: var(--text-color, #212529);
+}
+
+#termsModal .modal-footer {
+    background-color: var(--bg-secondary, #f8f9fa);
+    border-top: 1px solid var(--border-color, #dee2e6);
+}
+
+#termsModal .modal-body {
+    color: var(--text-color, #212529);
+}
+
+#termsModal .modal-body h6 {
+    color: var(--text-color, #212529);
+    font-weight: 600;
+}
+
+#termsModal .modal-body p {
+    color: var(--text-muted, #6c757d);
+}
+
+/* Terms Modal Styles - Dark Mode */
+[data-theme="dark"] #termsModal .modal-content {
+    background-color: #121416;
+    color: #ffffff;
+    border-color: #2d3238;
+}
+
+[data-theme="dark"] #termsModal .modal-header {
+    background-color: #1a1d21;
+    border-bottom-color: #2d3238;
+    color: #ffffff;
+}
+
+[data-theme="dark"] #termsModal .modal-header .modal-title {
+    color: #ffffff;
+}
+
+[data-theme="dark"] #termsModal .modal-header .modal-title i {
+    color: #ffffff;
+}
+
+[data-theme="dark"] #termsModal .modal-header .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-theme="dark"] #termsModal .modal-footer {
+    background-color: #1a1d21;
+    border-top-color: #2d3238;
+}
+
+[data-theme="dark"] #termsModal .modal-body {
+    background-color: #121416;
+    color: #ffffff;
+}
+
+[data-theme="dark"] #termsModal .modal-body h6 {
+    color: #ffffff;
+}
+
+[data-theme="dark"] #termsModal .modal-body p {
+    color: #e0e0e0;
+}
+
+/* Fix for empty space at top/bottom - Override layout container padding */
+.content-wrapper:has(.auth-wrapper) {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* Fallback for browsers without :has() support */
+.auth-wrapper {
+    @* margin-top: -1.5rem;
+    margin-bottom: -2rem; *@
+    min-height: calc(100vh - 76px);
+}
+
+@@media (max-width: 991.98px) {
+    .auth-wrapper {
+        min-height: calc(100vh - 60px);
+    }
+}
+</style>
+}

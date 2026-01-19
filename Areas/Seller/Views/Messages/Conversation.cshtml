@@ -1,0 +1,1327 @@
+@model Bangaliyana.Models.SellerConversation
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = "Conversation with " + (Model.Buyer?.FullName ?? "Customer");
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <!-- Main Chat Area -->
+        <div class="col-lg-8">
+            <!-- Back Button and Header -->
+            <div class="chat-header d-flex align-items-center mb-3 p-3 rounded shadow-sm">
+                <a asp-action="Index" class="btn btn-outline-secondary btn-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="d-flex align-items-center flex-grow-1">
+                    @if (!string.IsNullOrEmpty(Model.Buyer?.AvatarUrl))
+                    {
+                        <img src="@Model.Buyer.AvatarUrl" alt="@Model.Buyer.FullName" class="avatar-circle me-3">
+                    }
+                    else
+                    {
+                        <div class="avatar-circle bg-primary text-white me-3">
+                            @(Model.Buyer?.FullName?.Substring(0, 1).ToUpper() ?? "?")
+                        </div>
+                    }
+                    <div>
+                        <h6 class="mb-0 fw-bold">@(Model.Buyer?.FullName ?? "Customer")</h6>
+                        <small class="text-muted">@Model.Buyer?.Email</small>
+                    </div>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    @if (!Model.IsClosedBySeller)
+                    {
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#closeConversationModal">
+                            <i class="fas fa-times me-1"></i>Close
+                        </button>
+                    }
+                    @if (Model.IsArchived)
+                    {
+                        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#unarchiveConversationModal">
+                            <i class="fas fa-inbox me-1"></i>Unarchive
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#archiveConversationModal">
+                            <i class="fas fa-archive me-1"></i>Archive
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            <!-- Context Info -->
+            @if (!string.IsNullOrEmpty(Model.Subject) || Model.Order != null || Model.Product != null)
+            {
+                <div class="context-card p-3 mb-3 rounded shadow-sm">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        @if (!string.IsNullOrEmpty(Model.Subject))
+                        {
+                            <span class="badge bg-primary-subtle text-primary">
+                                <i class="fas fa-tag me-1"></i>@Model.Subject
+                            </span>
+                        }
+                        @if (Model.Order != null)
+                        {
+                            <a asp-area="Seller" asp-controller="Order" asp-action="Details" asp-route-id="@Model.Order.Id"
+                               class="badge bg-info-subtle text-info text-decoration-none">
+                                <i class="fas fa-shopping-bag me-1"></i>Order #@Model.Order.OrderNumber
+                            </a>
+                        }
+                        @if (Model.Product != null)
+                        {
+                            <a href="/Customer/Home/Details/@Model.Product.Id" target="_blank"
+                               class="badge bg-secondary text-decoration-none">
+                                <i class="fas fa-box me-1"></i>@Model.Product.Name
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Unified Chatbox Container -->
+            <div class="card border-0 shadow-sm chatbox-unified">
+                <!-- Search Within Conversation -->
+                <div class="chatbox-search-bar">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-transparent border-0">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text" id="messageSearch" class="form-control border-0"
+                               placeholder="Search in this conversation... (Ctrl+F)" />
+                        <span id="searchResults" class="input-group-text bg-transparent text-muted d-none border-0">
+                            <span id="currentMatch">0</span>/<span id="totalMatches">0</span>
+                        </span>
+                        <button type="button" id="prevMatch" class="btn btn-sm btn-link text-muted d-none" title="Previous match">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                        <button type="button" id="nextMatch" class="btn btn-sm btn-link text-muted d-none" title="Next match">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <button type="button" id="clearSearch" class="btn btn-sm btn-link text-muted d-none" title="Clear search">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Messages Container -->
+                <div class="chat-container" id="chatContainer">
+                    @if (Model.Messages.Any())
+                    {
+                        var lastDate = DateTime.MinValue;
+                        @foreach (var message in Model.Messages.OrderBy(m => m.CreatedAt))
+                        {
+                            var bdMessageTime = message.CreatedAt.ToBangladeshTime();
+                            // Date separator
+                            if (bdMessageTime.Date != lastDate.Date)
+                            {
+                                lastDate = bdMessageTime;
+                                <div class="date-separator my-3">
+                                    <span>@message.CreatedAt.ToBangladeshString("MMMM dd, yyyy")</span>
+                                </div>
+                            }
+
+                            var isMe = message.IsSentBySeller;
+                            var canEditDelete = isMe && !message.IsRead && !message.IsDeleted && (DateTime.UtcNow - message.CreatedAt).TotalMinutes <= 15;
+                            <div class="d-flex @(isMe ? "justify-content-end" : "justify-content-start") mb-3 message-row" data-message-id="@message.Id">
+                                @if (!isMe)
+                                {
+                                    <div class="message-avatar me-2">
+                                        @if (!string.IsNullOrEmpty(Model.Buyer?.AvatarUrl))
+                                        {
+                                            <img src="@Model.Buyer.AvatarUrl" alt="@Model.Buyer.FullName" class="avatar-sm rounded-circle" style="object-fit: cover;">
+                                        }
+                                        else
+                                        {
+                                            <div class="avatar-sm bg-primary text-white">
+                                                @(Model.Buyer?.FullName?.Substring(0, 1).ToUpper() ?? "?")
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                @if (isMe && canEditDelete)
+                                {
+                                    <div class="message-actions me-2 d-flex align-items-start dropdown">
+                                        <button type="button" class="btn btn-sm btn-link text-muted p-1 message-menu-btn"
+                                                data-bs-toggle="dropdown" aria-expanded="false" title="Message options">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end message-dropdown shadow-sm">
+                                            <li>
+                                                <button type="button" class="dropdown-item"
+                                                        onclick="openEditModal(@message.Id, '@Html.Raw(message.Message.Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", ""))')">
+                                                    <i class="fas fa-pencil-alt me-2 text-primary"></i>Edit
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button type="button" class="dropdown-item text-danger"
+                                                        onclick="openDeleteModal(@message.Id)">
+                                                    <i class="fas fa-trash-alt me-2"></i>Delete
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                }
+                                <div class="chat-bubble @(isMe ? "chat-bubble-me" : "chat-bubble-other") @(message.IsDeleted ? "deleted-message" : "")">
+                                    @if (message.IsDeleted)
+                                    {
+                                        <div class="message-content deleted-text">
+                                            <i class="fas fa-ban me-1"></i>This message was deleted
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <!-- Shared Content -->
+                                        @if (message.SharedOrderId.HasValue)
+                                        {
+                                            <div class="shared-content shared-order mb-2">
+                                                <i class="fas fa-shopping-bag me-1"></i>
+                                                <span>Shared Order #@message.SharedOrderId</span>
+                                                <a asp-area="Seller" asp-controller="Order" asp-action="Details" asp-route-id="@message.SharedOrderId"
+                                                   class="btn btn-sm btn-outline-light ms-2">View</a>
+                                            </div>
+                                        }
+                                        @if (message.SharedProductId.HasValue)
+                                        {
+                                            <div class="shared-content shared-product mb-2">
+                                                <i class="fas fa-box me-1"></i>
+                                                <span>Shared Product</span>
+                                                <a href="/Customer/Home/Details/@message.SharedProductId" target="_blank"
+                                                   class="btn btn-sm btn-outline-light ms-2">View</a>
+                                            </div>
+                                        }
+
+                                        <div class="message-content">@message.Message</div>
+                                        @if (message.IsEdited)
+                                        {
+                                            <small class="edited-indicator"><i class="fas fa-pencil-alt me-1"></i>edited</small>
+                                        }
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(message.AttachmentUrl))
+                                    {
+                                        <div class="attachment-preview mt-2">
+                                            @if (message.AttachmentType == "image")
+                                            {
+                                                <a href="@message.AttachmentUrl" target="_blank" data-lightbox="messages">
+                                                    <img src="@message.AttachmentUrl" alt="Attachment" class="attachment-image">
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <a href="@message.AttachmentUrl" target="_blank" class="attachment-file">
+                                                    <i class="fas fa-file me-1"></i>@(message.AttachmentName ?? "Download File")
+                                                </a>
+                                            }
+                                        </div>
+                                    }
+
+                                    <div class="message-time">
+                                        @message.CreatedAt.ToBangladeshString("hh:mm tt")
+                                        @if (isMe)
+                                        {
+                                            @if (message.IsRead)
+                                            {
+                                                <i class="fas fa-check-double text-info ms-1" title="Read"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-check ms-1" title="Sent"></i>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                                @if (isMe)
+                                {
+                                    <div class="message-avatar ms-2">
+                                        @if (!string.IsNullOrEmpty(Model.Seller?.ShopLogoUrl))
+                                        {
+                                            <img src="@Model.Seller.ShopLogoUrl" alt="@Model.Seller.ShopName" class="avatar-sm rounded-circle" style="object-fit: cover;">
+                                        }
+                                        else
+                                        {
+                                            <div class="avatar-sm bg-success text-white">
+                                                <i class="fas fa-store"></i>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-comments fa-3x mb-3"></i>
+                            <p>No messages yet. Start the conversation!</p>
+                        </div>
+                    }
+                </div>
+
+                <!-- Reply Form -->
+                @if (!Model.IsClosedBySeller && !Model.IsClosedByBuyer)
+                {
+                    <div class="chatbox-input-area">
+                        <form id="messageForm" enctype="multipart/form-data">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="conversationId" value="@Model.Id" />
+
+                            <!-- Attachment Preview -->
+                            <div id="attachmentPreview" class="attachment-preview-container d-none mb-2">
+                                <div class="d-flex align-items-center p-2 bg-light rounded">
+                                    <i class="fas fa-paperclip me-2"></i>
+                                    <span id="attachmentName" class="flex-grow-1"></span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAttachment()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="input-group">
+                                <!-- Attachment Button -->
+                                <label class="btn btn-outline-secondary" for="attachmentInput" title="Attach File">
+                                    <i class="fas fa-paperclip"></i>
+                                </label>
+                                <input type="file" name="attachment" id="attachmentInput" class="d-none"
+                                       accept="image/*,.pdf,.doc,.docx" onchange="previewAttachment(this)">
+
+                                <textarea name="content" class="form-control" rows="1" id="messageInput"
+                                          placeholder="Type your message... (Ctrl+Enter to send)"
+                                          style="min-height: 44px; max-height: 120px; resize: none;"></textarea>
+                                <button type="submit" class="btn btn-primary" id="sendBtn" title="Send Message (Ctrl+Enter)">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                }
+                else if (Model.IsClosedBySeller)
+                {
+                    <div class="chatbox-closed-notice">
+                        <i class="fas fa-lock me-2"></i>You have closed this conversation.
+                        <form asp-action="ReopenConversation" asp-route-id="@Model.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-link p-0">Reopen</button>
+                        </form>
+                    </div>
+                }
+                else if (Model.IsClosedByBuyer)
+                {
+                    <div class="chatbox-closed-notice">
+                        <i class="fas fa-lock me-2"></i>The customer has closed this conversation.
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Sidebar - Quick Info -->
+        <div class="col-lg-4 d-none d-lg-block">
+            <!-- Customer Info Card -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-transparent">
+                    <h6 class="mb-0"><i class="fas fa-user me-2"></i>Customer Info</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        @if (!string.IsNullOrEmpty(Model.Buyer?.AvatarUrl))
+                        {
+                            <img src="@Model.Buyer.AvatarUrl" alt="@Model.Buyer.FullName" class="rounded me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                        }
+                        else
+                        {
+                            <div class="avatar-circle bg-primary text-white me-3" style="width: 50px; height: 50px;">
+                                @(Model.Buyer?.FullName?.Substring(0, 1).ToUpper() ?? "?")
+                            </div>
+                        }
+                        <div>
+                            <h6 class="mb-0">@Model.Buyer?.FullName</h6>
+                            <small class="text-muted">@Model.Buyer?.Email</small>
+                        </div>
+                    </div>
+                    @if (Model.Product != null)
+                    {
+                        <hr>
+                        <h6 class="small text-muted mb-2">RELATED PRODUCT</h6>
+                        <div class="d-flex align-items-center">
+                            <img src="~/@(Model.Product.ImageUrl ?? "images/products/noimage.jpg")"
+                                 alt="@Model.Product.Name" class="rounded me-2"
+                                 style="width: 40px; height: 40px; object-fit: cover;">
+                            <div class="small">
+                                <div class="text-truncate" style="max-width: 150px;">@Model.Product.Name</div>
+                                <span class="text-primary fw-bold">৳@((Model.Product.DiscountPrice ?? Model.Product.Price).ToString("N0"))</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Close Conversation Modal -->
+<div class="modal fade" id="closeConversationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-warning">
+                        <i class="fas fa-times-circle" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">Close Conversation?</h4>
+                <p class="text-muted mb-1">Are you sure you want to close this conversation?</p>
+                <p class="text-muted small mb-0">You can reopen it later if needed.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <form asp-action="CloseConversation" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-warning px-4">
+                        <i class="fas fa-check me-1"></i> Yes, Close
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Archive Conversation Modal -->
+<div class="modal fade" id="archiveConversationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-info">
+                        <i class="fas fa-archive" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">Archive Conversation?</h4>
+                <p class="text-muted mb-1">Are you sure you want to archive this conversation?</p>
+                <p class="text-muted small mb-0">You can find it later in your archived messages.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <form asp-action="Archive" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button type="submit" class="btn btn-info px-4">
+                        <i class="fas fa-check me-1"></i> Yes, Archive
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unarchive Conversation Modal -->
+<div class="modal fade" id="unarchiveConversationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-success">
+                        <i class="fas fa-inbox" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">Unarchive Conversation?</h4>
+                <p class="text-muted mb-1">Are you sure you want to move this conversation back to inbox?</p>
+                <p class="text-muted small mb-0">It will appear in your active conversations again.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <form asp-action="Unarchive" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="fas fa-check me-1"></i> Yes, Unarchive
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Message Modal -->
+<div class="modal fade" id="editMessageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-pencil-alt me-2"></i>Edit Message</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editMessageId" />
+                <div class="mb-3">
+                    <label class="form-label">Message</label>
+                    <textarea id="editMessageText" class="form-control" rows="3" maxlength="2000"></textarea>
+                    <small class="text-muted">You can edit this message within 15 minutes of sending and before it's read.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditMessage()">
+                    <i class="fas fa-save me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Message Modal -->
+<div class="modal fade" id="deleteMessageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-danger">
+                        <i class="fas fa-trash-alt" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">Delete Message?</h4>
+                <p class="text-muted mb-1">Are you sure you want to delete this message?</p>
+                <p class="text-muted small mb-0">This action cannot be undone.</p>
+                <input type="hidden" id="deleteMessageId" />
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-danger px-4" onclick="submitDeleteMessage()">
+                    <i class="fas fa-trash-alt me-1"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Unified Chatbox Container */
+    .chatbox-unified {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 280px);
+        min-height: 500px;
+        max-height: 700px;
+        border-radius: 1rem;
+        overflow: hidden;
+        background-color: #fff;
+    }
+
+    /* Search bar at top of chatbox */
+    .chatbox-search-bar {
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 1px solid #dee2e6;
+        flex-shrink: 0;
+    }
+
+    .chatbox-search-bar .form-control {
+        background-color: transparent;
+    }
+
+    .chatbox-search-bar .form-control:focus {
+        box-shadow: none;
+        background-color: #fff;
+    }
+
+    /* Search highlight styling */
+    .search-highlight {
+        background-color: #ffc107;
+        color: #000;
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+
+    .message-row.search-match {
+        animation: highlightFade 1s ease;
+    }
+
+    .message-row.search-current .chat-bubble {
+        box-shadow: 0 0 0 2px var(--primary-color), 0 0 8px rgba(99, 102, 241, 0.4);
+    }
+
+    @@keyframes highlightFade {
+        0%, 50% { background-color: rgba(255, 193, 7, 0.2); }
+        100% { background-color: transparent; }
+    }
+
+    .chat-header {
+        background-color: var(--bg-color, #fff);
+    }
+
+    .avatar-circle {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+        object-fit: cover;
+    }
+
+    .avatar-sm {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+    }
+
+    .context-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+
+    /* Messages container */
+    .chat-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        background: linear-gradient(180deg, #dde4ed 0%, #e8ecf1 100%);
+    }
+
+    /* Input area at bottom of chatbox */
+    .chatbox-input-area {
+        padding: 0.75rem 1rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-top: 1px solid #dee2e6;
+        flex-shrink: 0;
+    }
+
+    .chatbox-input-area .input-group {
+        gap: 0.5rem;
+    }
+
+    .chatbox-input-area .input-group .btn,
+    .chatbox-input-area .input-group label.btn {
+        border-radius: 0.5rem !important;
+    }
+
+    .chatbox-input-area #messageInput {
+        border: none;
+        background-color: #fff;
+        border-radius: 0.5rem !important;
+    }
+
+    .chatbox-input-area #messageInput:focus {
+        box-shadow: none;
+        outline: none;
+    }
+
+    /* Closed conversation notice */
+    .chatbox-closed-notice {
+        padding: 1rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-top: 1px solid #dee2e6;
+        text-align: center;
+        color: #6c757d;
+        flex-shrink: 0;
+    }
+
+    .date-separator {
+        text-align: center;
+        position: relative;
+    }
+
+    .date-separator::before,
+    .date-separator::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 40%;
+        height: 1px;
+        background-color: #dee2e6;
+    }
+
+    .date-separator::before { left: 0; }
+    .date-separator::after { right: 0; }
+
+    .date-separator span {
+        background-color: #f8f9fa;
+        padding: 0 1rem;
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+
+    .chat-bubble {
+        max-width: 70%;
+        padding: 0.75rem 1rem;
+        border-radius: 1rem;
+        position: relative;
+        word-wrap: break-word;
+    }
+
+    .chat-bubble-me {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-bottom-right-radius: 0.25rem;
+    }
+
+    .chat-bubble-other {
+        background-color: white;
+        color: #333;
+        border-bottom-left-radius: 0.25rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .message-content {
+        white-space: pre-wrap;
+    }
+
+    .message-time {
+        font-size: 0.7rem;
+        opacity: 0.8;
+        margin-top: 0.5rem;
+        text-align: right;
+    }
+
+    .chat-bubble-me .message-time { color: rgba(255, 255, 255, 0.8); }
+    .chat-bubble-other .message-time { color: #6c757d; }
+
+    .shared-content {
+        background: rgba(255,255,255,0.2);
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    /* Message actions */
+    .message-actions {
+        opacity: 0.5;
+        transition: opacity 0.2s ease;
+    }
+
+    .message-row:hover .message-actions,
+    .message-actions.show {
+        opacity: 1;
+    }
+
+    .message-menu-btn {
+        width: 28px;
+        height: 28px;
+        padding: 0 !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+
+    .message-dropdown {
+        min-width: 120px;
+        border-radius: 0.5rem;
+        padding: 0.25rem 0;
+    }
+
+    .message-dropdown .dropdown-item {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    /* Edited indicator */
+    .edited-indicator {
+        display: block;
+        font-size: 0.65rem;
+        opacity: 0.7;
+        font-style: italic;
+        margin-top: 0.25rem;
+    }
+
+    .chat-bubble-me .edited-indicator {
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* Deleted message styling */
+    .deleted-message {
+        opacity: 0.7;
+    }
+
+    .deleted-text {
+        font-style: italic;
+        opacity: 0.8;
+    }
+
+    .confirm-icon-warning { color: #ffc107; }
+    .confirm-icon-danger { color: #dc3545; }
+    .confirm-icon-info { color: #0dcaf0; }
+    .confirm-icon-success { color: #198754; }
+
+    .attachment-preview-container {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+    }
+
+    .attachment-image {
+        max-width: 200px;
+        max-height: 150px;
+        border-radius: 0.5rem;
+        cursor: pointer;
+    }
+
+    .attachment-file {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        background-color: rgba(0,0,0,0.1);
+        border-radius: 0.5rem;
+        color: inherit;
+        text-decoration: none;
+    }
+
+    /* Dark mode */
+    [data-theme="dark"] .chat-header,
+    [data-theme="dark"] .card {
+        background-color: #252538;
+    }
+
+    [data-theme="dark"] .chatbox-unified {
+        background-color: #252538;
+    }
+
+    [data-theme="dark"] .chatbox-search-bar {
+        background: linear-gradient(135deg, #1e1e2d 0%, #252538 100%);
+        border-bottom-color: #3d3d5c;
+    }
+
+    [data-theme="dark"] .chatbox-search-bar .input-group-text {
+        background-color: transparent;
+        border-color: transparent;
+    }
+
+    [data-theme="dark"] .chatbox-search-bar .form-control {
+        background-color: transparent;
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .chat-container {
+        background: linear-gradient(180deg, #151525 0%, #1a1a2a 100%);
+    }
+
+    [data-theme="dark"] .chatbox-input-area {
+        background: linear-gradient(135deg, #1e1e2d 0%, #252538 100%);
+        border-top-color: #3d3d5c;
+    }
+
+    [data-theme="dark"] .chatbox-input-area #messageInput {
+        background-color: #1e1e2d;
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .chatbox-closed-notice {
+        background: linear-gradient(135deg, #1e1e2d 0%, #252538 100%);
+        border-top-color: #3d3d5c;
+        color: #a0a0a0;
+    }
+
+    [data-theme="dark"] .context-card {
+        background: linear-gradient(135deg, #1e1e2d 0%, #252538 100%);
+    }
+
+    [data-theme="dark"] .date-separator span {
+        background-color: #1e1e2d;
+        color: #a0a0a0;
+    }
+
+    [data-theme="dark"] .date-separator::before,
+    [data-theme="dark"] .date-separator::after {
+        background-color: #3d3d5c;
+    }
+
+    [data-theme="dark"] .chat-bubble-other {
+        background-color: #252538;
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .modal-content {
+        background-color: #252538;
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .message-dropdown {
+        background-color: #252538;
+        border-color: #3d3d5c;
+    }
+
+    [data-theme="dark"] .message-dropdown .dropdown-item {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .message-dropdown .dropdown-item:hover {
+        background-color: #1e1e2d;
+    }
+
+    [data-theme="dark"] .search-highlight {
+        background-color: #ffc107;
+        color: #000;
+    }
+
+    /* Modal z-index fix */
+    .modal {
+        z-index: 9999 !important;
+    }
+    .modal-backdrop {
+        z-index: 9998 !important;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Scroll to bottom of chat
+            var chatContainer = document.getElementById('chatContainer');
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            // Auto-resize textarea
+            var textarea = document.getElementById('messageInput');
+            if (textarea) {
+                textarea.addEventListener('input', function () {
+                    this.style.height = 'auto';
+                    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+                });
+
+                // Keyboard shortcut: Ctrl+Enter to send
+                textarea.addEventListener('keydown', function (e) {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        var form = document.getElementById('messageForm');
+                        if (form && this.value.trim()) {
+                            submitMessage();
+                        }
+                    }
+                });
+            }
+
+            // Escape to clear attachment and search
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    removeAttachment();
+                    clearMessageSearch();
+                }
+                // Ctrl+F to focus search
+                if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                    e.preventDefault();
+                    document.getElementById('messageSearch').focus();
+                }
+            });
+
+            // Message search
+            initMessageSearch();
+
+            // Form submission
+            document.getElementById('messageForm')?.addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitMessage();
+            });
+        });
+
+        async function submitMessage() {
+            const form = document.getElementById('messageForm');
+            const input = document.getElementById('messageInput');
+            const btn = document.getElementById('sendBtn');
+            const container = document.getElementById('chatContainer');
+
+            const content = input?.value.trim();
+            const attachmentInput = document.getElementById('attachmentInput');
+            const hasAttachment = attachmentInput?.files?.length > 0;
+
+            if (!content && !hasAttachment) return;
+
+            btn.disabled = true;
+
+            // Store attachment info before sending (for preview)
+            let attachmentPreviewUrl = null;
+            let attachmentFileName = null;
+            let isImageAttachment = false;
+            if (hasAttachment) {
+                const file = attachmentInput.files[0];
+                attachmentFileName = file.name;
+                isImageAttachment = file.type.startsWith('image/');
+                if (isImageAttachment) {
+                    attachmentPreviewUrl = URL.createObjectURL(file);
+                }
+            }
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch('@Url.Action("SendMessage")', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Build attachment HTML based on type
+                    let attachmentHtml = '';
+                    if (hasAttachment) {
+                        if (isImageAttachment && attachmentPreviewUrl) {
+                            attachmentHtml = `
+                                <div class="attachment-preview mt-2">
+                                    <img src="${attachmentPreviewUrl}" alt="Attachment" class="attachment-image">
+                                </div>
+                            `;
+                        } else {
+                            attachmentHtml = `
+                                <div class="attachment-preview mt-2">
+                                    <span class="attachment-file"><i class="fas fa-file me-1"></i>${attachmentFileName}</span>
+                                </div>
+                            `;
+                        }
+                    }
+
+                    // Build message content - only show text content if provided (no file name for attachment-only messages)
+                    const displayContent = content || '';
+                    const escapedContent = displayContent.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const messageContentHtml = escapedContent ? `<div class="message-content">${escapedContent}</div>` : '';
+
+                    // Get shop logo URL from Razor
+                    const shopLogoUrl = '@(Model.Seller?.ShopLogoUrl ?? "")';
+                    const shopName = '@(Model.Seller?.ShopName ?? "Shop")';
+                    const avatarHtml = shopLogoUrl
+                        ? `<img src="${shopLogoUrl}" alt="${shopName}" class="avatar-sm rounded-circle" style="object-fit: cover;">`
+                        : `<div class="avatar-sm bg-success text-white"><i class="fas fa-store"></i></div>`;
+
+                    const messageHtml = `
+                        <div class="d-flex mb-3 justify-content-end message-row" data-message-id="${result.messageId}">
+                            <div class="message-actions me-2 d-flex align-items-start dropdown">
+                                <button type="button" class="btn btn-sm btn-link text-muted p-1 message-menu-btn"
+                                        data-bs-toggle="dropdown" aria-expanded="false" title="Message options">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end message-dropdown shadow-sm">
+                                    <li>
+                                        <button type="button" class="dropdown-item"
+                                                onclick="openEditModal(${result.messageId}, '${escapedContent.replace(/'/g, "\\'")}')">
+                                            <i class="fas fa-pencil-alt me-2 text-primary"></i>Edit
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button type="button" class="dropdown-item text-danger"
+                                                onclick="openDeleteModal(${result.messageId})">
+                                            <i class="fas fa-trash-alt me-2"></i>Delete
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="chat-bubble chat-bubble-me">
+                                ${messageContentHtml}
+                                ${attachmentHtml}
+                                <div class="message-time">
+                                    Just now
+                                    <i class="fas fa-check ms-1" title="Sent"></i>
+                                </div>
+                            </div>
+                            <div class="message-avatar ms-2">
+                                ${avatarHtml}
+                            </div>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', messageHtml);
+                    container.scrollTop = container.scrollHeight;
+                    input.value = '';
+                    removeAttachment();
+                } else {
+                    alert(result.message || 'Failed to send message');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to send message');
+            } finally {
+                btn.disabled = false;
+                input?.focus();
+            }
+        }
+
+        function previewAttachment(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const previewContainer = document.getElementById('attachmentPreview');
+                const isImage = file.type.startsWith('image/');
+
+                if (isImage) {
+                    // Show image preview
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewContainer.innerHTML = `
+                            <div class="d-flex align-items-center p-2 bg-light rounded">
+                                <img src="${e.target.result}" alt="Preview" style="max-width: 80px; max-height: 60px; border-radius: 4px; object-fit: cover;" class="me-2">
+                                <span class="flex-grow-1 text-truncate">${file.name}</span>
+                                <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeAttachment()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        `;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    // Show file name only
+                    previewContainer.innerHTML = `
+                        <div class="d-flex align-items-center p-2 bg-light rounded">
+                            <i class="fas fa-file me-2 text-muted"></i>
+                            <span id="attachmentName" class="flex-grow-1 text-truncate">${file.name}</span>
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeAttachment()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+                previewContainer.classList.remove('d-none');
+            }
+        }
+
+        function removeAttachment() {
+            const input = document.getElementById('attachmentInput');
+            if (input) input.value = '';
+            document.getElementById('attachmentPreview')?.classList.add('d-none');
+        }
+
+        // Message Search Functions
+        let searchMatches = [];
+        let currentMatchIndex = -1;
+
+        function initMessageSearch() {
+            const searchInput = document.getElementById('messageSearch');
+            const prevBtn = document.getElementById('prevMatch');
+            const nextBtn = document.getElementById('nextMatch');
+            const clearBtn = document.getElementById('clearSearch');
+
+            if (!searchInput) return;
+
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => performMessageSearch(this.value), 200);
+            });
+
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        navigateMatch(-1);
+                    } else {
+                        navigateMatch(1);
+                    }
+                }
+            });
+
+            prevBtn?.addEventListener('click', () => navigateMatch(-1));
+            nextBtn?.addEventListener('click', () => navigateMatch(1));
+            clearBtn?.addEventListener('click', clearMessageSearch);
+        }
+
+        function performMessageSearch(query) {
+            document.querySelectorAll('.message-content').forEach(el => {
+                el.innerHTML = el.textContent;
+                el.closest('.message-row')?.classList.remove('search-match', 'search-current');
+            });
+
+            searchMatches = [];
+            currentMatchIndex = -1;
+
+            if (!query || query.length < 2) {
+                updateSearchUI(false);
+                return;
+            }
+
+            const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+            document.querySelectorAll('.message-content').forEach((el) => {
+                const text = el.textContent;
+                if (text.toLowerCase().includes(query.toLowerCase())) {
+                    searchMatches.push(el);
+                    el.innerHTML = text.replace(regex, '<mark class="search-highlight">$1</mark>');
+                    el.closest('.message-row')?.classList.add('search-match');
+                }
+            });
+
+            updateSearchUI(true);
+
+            if (searchMatches.length > 0) {
+                currentMatchIndex = 0;
+                highlightCurrentMatch();
+            }
+        }
+
+        function navigateMatch(direction) {
+            if (searchMatches.length === 0) return;
+
+            currentMatchIndex += direction;
+            if (currentMatchIndex >= searchMatches.length) currentMatchIndex = 0;
+            if (currentMatchIndex < 0) currentMatchIndex = searchMatches.length - 1;
+
+            highlightCurrentMatch();
+        }
+
+        function highlightCurrentMatch() {
+            document.querySelectorAll('.search-current').forEach(el => el.classList.remove('search-current'));
+
+            if (currentMatchIndex >= 0 && searchMatches[currentMatchIndex]) {
+                const match = searchMatches[currentMatchIndex];
+                match.closest('.message-row')?.classList.add('search-current');
+                match.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                document.getElementById('currentMatch').textContent = currentMatchIndex + 1;
+            }
+        }
+
+        function updateSearchUI(showControls) {
+            const elements = ['searchResults', 'prevMatch', 'nextMatch', 'clearSearch'];
+            elements.forEach(id => {
+                document.getElementById(id)?.classList.toggle('d-none', !showControls);
+            });
+
+            if (showControls) {
+                document.getElementById('totalMatches').textContent = searchMatches.length;
+                document.getElementById('currentMatch').textContent = searchMatches.length > 0 ? '1' : '0';
+            }
+        }
+
+        function clearMessageSearch() {
+            const searchInput = document.getElementById('messageSearch');
+            if (searchInput) searchInput.value = '';
+
+            document.querySelectorAll('.message-content').forEach(el => {
+                el.innerHTML = el.textContent;
+                el.closest('.message-row')?.classList.remove('search-match', 'search-current');
+            });
+
+            searchMatches = [];
+            currentMatchIndex = -1;
+            updateSearchUI(false);
+        }
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        // Edit/Delete Message Functions
+        function openEditModal(messageId, messageText) {
+            document.getElementById('editMessageId').value = messageId;
+            document.getElementById('editMessageText').value = messageText;
+            const modal = new bootstrap.Modal(document.getElementById('editMessageModal'));
+            modal.show();
+        }
+
+        function openDeleteModal(messageId) {
+            document.getElementById('deleteMessageId').value = messageId;
+            const modal = new bootstrap.Modal(document.getElementById('deleteMessageModal'));
+            modal.show();
+        }
+
+        async function submitEditMessage() {
+            const messageId = document.getElementById('editMessageId').value;
+            const newMessage = document.getElementById('editMessageText').value.trim();
+
+            if (!newMessage) {
+                alert('Message cannot be empty.');
+                return;
+            }
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            try {
+                const response = await fetch('/Seller/Messages/EditMessage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': token
+                    },
+                    body: `messageId=${messageId}&newMessage=${encodeURIComponent(newMessage)}&__RequestVerificationToken=${encodeURIComponent(token)}`
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const messageRow = document.querySelector(`[data-message-id="${messageId}"]`);
+                    if (messageRow) {
+                        const messageContent = messageRow.querySelector('.message-content');
+                        if (messageContent) {
+                            messageContent.textContent = newMessage;
+                        }
+                        const bubble = messageRow.querySelector('.chat-bubble');
+                        if (bubble && !bubble.querySelector('.edited-indicator')) {
+                            const indicator = document.createElement('small');
+                            indicator.className = 'edited-indicator';
+                            indicator.innerHTML = '<i class="fas fa-pencil-alt me-1"></i>edited';
+                            bubble.querySelector('.message-content').after(indicator);
+                        }
+                    }
+                    bootstrap.Modal.getInstance(document.getElementById('editMessageModal')).hide();
+                } else {
+                    alert(data.error || 'Failed to edit message.');
+                }
+            } catch (err) {
+                console.error('Edit error:', err);
+                alert('An error occurred while editing the message.');
+            }
+        }
+
+        async function submitDeleteMessage() {
+            const messageId = document.getElementById('deleteMessageId').value;
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            try {
+                const response = await fetch('/Seller/Messages/DeleteMessage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': token
+                    },
+                    body: `messageId=${messageId}&__RequestVerificationToken=${encodeURIComponent(token)}`
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const messageRow = document.querySelector(`[data-message-id="${messageId}"]`);
+                    if (messageRow) {
+                        const bubble = messageRow.querySelector('.chat-bubble');
+                        if (bubble) {
+                            bubble.classList.add('deleted-message');
+                            const timeHtml = bubble.querySelector('.message-time')?.innerHTML || '';
+                            bubble.innerHTML = '<div class="message-content deleted-text"><i class="fas fa-ban me-1"></i>This message was deleted</div>' +
+                                '<div class="message-time">' + timeHtml + '</div>';
+                        }
+                        const actions = messageRow.querySelector('.message-actions');
+                        if (actions) actions.remove();
+                    }
+                    bootstrap.Modal.getInstance(document.getElementById('deleteMessageModal')).hide();
+                } else {
+                    alert(data.error || 'Failed to delete message.');
+                }
+            } catch (err) {
+                console.error('Delete error:', err);
+                alert('An error occurred while deleting the message.');
+            }
+        }
+    </script>
+}

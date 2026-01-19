@@ -1,0 +1,281 @@
+@model Bangaliyana.Models.SellerMonthlyReport
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = $"Report Details - {Model.ReportNumber}";
+    var reportItems = ViewBag.ReportItems as IEnumerable<Bangaliyana.Models.MonthlyReportOrderItem>;
+    var linkedPayout = ViewBag.LinkedPayout as Bangaliyana.Models.ManualSellerPayout;
+}
+
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2">
+                            <li class="breadcrumb-item"><a href="@Url.Action("Index")">Monthly Reports</a></li>
+                            <li class="breadcrumb-item active">@Model.ReportNumber</li>
+                        </ol>
+                    </nav>
+                    <h4 class="mb-1">
+                        <i class="fas fa-file-invoice text-primary me-2"></i>@Model.ReportNumber
+                    </h4>
+                    <p class="text-muted mb-0">@Model.Seller?.ShopName - @(new DateTime(Model.Year, Model.Month, 1).ToString("MMMM yyyy"))</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="@Url.Action("PrintReport", new { id = Model.Id })" target="_blank" class="btn btn-outline-secondary">
+                        <i class="fas fa-print me-1"></i>Print
+                    </a>
+                    @if (Model.Status == MonthlyReportStatus.Open)
+                    {
+                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#finalizeReportModal">
+                            <i class="fas fa-lock me-1"></i>Finalize
+                        </button>
+                    }
+                    <form asp-action="RecalculateReport" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <button type="submit" class="btn btn-info">
+                            <i class="fas fa-calculator me-1"></i>Recalculate
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Report Summary -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent">
+                    <h6 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Report Summary</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tr>
+                            <td class="text-muted">Status</td>
+                            <td class="text-end">
+                                @{
+                                    var statusClass = Model.Status switch
+                                    {
+                                        MonthlyReportStatus.Open => "bg-primary",
+                                        MonthlyReportStatus.Finalized => "bg-info",
+                                        MonthlyReportStatus.PendingPayout => "bg-warning",
+                                        MonthlyReportStatus.PayoutCreated => "bg-secondary",
+                                        MonthlyReportStatus.Paid => "bg-success",
+                                        MonthlyReportStatus.CarriedForward => "bg-dark",
+                                        _ => "bg-secondary"
+                                    };
+                                }
+                                <span class="badge @statusClass">@Model.Status.GetDisplayName()</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Period</td>
+                            <td class="text-end">@Model.PeriodStart.ToString("dd MMM") - @Model.PeriodEnd.ToString("dd MMM yyyy")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Total Orders</td>
+                            <td class="text-end">@Model.TotalOrders</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Total Items</td>
+                            <td class="text-end">@Model.TotalItemsDelivered</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold">Total Sales</td>
+                            <td class="text-end fw-bold">@Model.TotalSales.ToString("N0") BDT</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Commission (@Model.CommissionRate%)</td>
+                            <td class="text-end text-danger">-@Model.CommissionAmount.ToString("N0") BDT</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Refund Deductions</td>
+                            <td class="text-end text-danger">-@Model.RefundDeductions.ToString("N0") BDT</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Return Deductions</td>
+                            <td class="text-end text-danger">-@Model.ReturnDeductions.ToString("N0") BDT</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Adjustments</td>
+                            <td class="text-end @(Model.Adjustments >= 0 ? "text-success" : "text-danger")">
+                                @(Model.Adjustments >= 0 ? "+" : "")@Model.Adjustments.ToString("N0") BDT
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Carry Forward (Previous)</td>
+                            <td class="text-end text-info">+@Model.CarryForwardFromPrevious.ToString("N0") BDT</td>
+                        </tr>
+                        <tr class="border-top border-2">
+                            <td><strong class="text-success">Net Payable</strong></td>
+                            <td class="text-end"><strong class="text-success">@Model.NetPayable.ToString("N0") BDT</strong></td>
+                        </tr>
+                        @if (Model.CarryForwardToNext > 0)
+                        {
+                            <tr>
+                                <td class="text-warning">Carry to Next Month</td>
+                                <td class="text-end text-warning">@Model.CarryForwardToNext.ToString("N0") BDT</td>
+                            </tr>
+                        }
+                        @if (Model.PayoutAmount > 0)
+                        {
+                            <tr>
+                                <td class="text-info">Payout Amount</td>
+                                <td class="text-end fw-bold text-info">@Model.PayoutAmount.ToString("N0") BDT</td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seller Info & Payout -->
+        <div class="col-lg-8 mb-4">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="mb-0"><i class="fas fa-store me-2"></i>Seller Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Shop:</strong> @Model.Seller?.ShopName</p>
+                            <p class="mb-1"><strong>Email:</strong> @Model.Seller?.User?.Email</p>
+                            <p class="mb-0"><strong>Commission Rate:</strong> @Model.CommissionRate%</p>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="@Url.Action("SellerHistory", new { sellerId = Model.SellerId })" class="btn btn-outline-primary">
+                                <i class="fas fa-history me-1"></i>View All Reports
+                            </a>
+                            <a href="@Url.Action("SellerPaymentDetails", "Payment", new { id = Model.SellerId })" class="btn btn-outline-success">
+                                <i class="fas fa-money-bill me-1"></i>Payment Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (linkedPayout != null)
+            {
+                <div class="card border-0 shadow-sm mb-4 border-start border-success border-4">
+                    <div class="card-header bg-transparent">
+                        <h6 class="mb-0"><i class="fas fa-check-circle text-success me-2"></i>Linked Payout</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Payout #:</strong> @linkedPayout.PayoutNumber</p>
+                                <p class="mb-1"><strong>Amount:</strong> @linkedPayout.Amount.ToString("N0") BDT</p>
+                                <p class="mb-0"><strong>Method:</strong> @linkedPayout.PaymentMethod.GetDisplayName()</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Date:</strong> @(linkedPayout.PaymentDate?.ToString("dd MMM yyyy") ?? "N/A")</p>
+                                <p class="mb-0"><strong>Status:</strong>
+                                    <span class="badge bg-@(linkedPayout.Status == ManualPayoutStatus.Completed ? "success" : "warning")">
+                                        @linkedPayout.Status.GetDisplayName()
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Order Items -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="fas fa-list me-2"></i>Order Items (@ViewBag.ItemsCount)</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Product</th>
+                            <th class="text-end">Amount</th>
+                            <th class="text-end">Commission</th>
+                            <th class="text-end">Net</th>
+                            <th class="text-center">Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (reportItems != null && reportItems.Any())
+                        {
+                            foreach (var item in reportItems)
+                            {
+                                <tr class="@(item.Status != ReportItemStatus.Delivered ? "text-danger" : "")">
+                                    <td>#@item.OrderId</td>
+                                    <td>@(item.OrderItem?.Product?.Name ?? "N/A")</td>
+                                    <td class="text-end">@item.ItemAmount.ToString("N0")</td>
+                                    <td class="text-end text-danger">-@item.CommissionAmount.ToString("N0")</td>
+                                    <td class="text-end text-success">@item.NetAmount.ToString("N0")</td>
+                                    <td class="text-center">
+                                        @{
+                                            var itemStatusClass = item.Status switch
+                                            {
+                                                ReportItemStatus.Delivered => "bg-success",
+                                                ReportItemStatus.Returned => "bg-danger",
+                                                ReportItemStatus.Refunded => "bg-warning",
+                                                _ => "bg-secondary"
+                                            };
+                                        }
+                                        <span class="badge @itemStatusClass">@item.Status.GetDisplayName()</span>
+                                    </td>
+                                    <td>@item.DeliveredAt?.ToString("dd MMM yyyy")</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    No order items in this report.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Finalize Report Confirmation Modal -->
+@if (Model.Status == MonthlyReportStatus.Open)
+{
+    <div class="modal fade" id="finalizeReportModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-body text-center p-4">
+                    <div class="mb-3">
+                        <div class="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                            <i class="fas fa-lock text-warning" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                    <h4 class="fw-bold mb-2">Finalize Report?</h4>
+                    <p class="text-muted mb-1">This will lock the report "<span class="fw-semibold">@Model.ReportNumber</span>" for @Model.Seller?.ShopName.</p>
+                    <p class="text-muted small mb-0">Once finalized, no more orders can be added to this report.</p>
+                </div>
+                <div class="modal-footer border-0 justify-content-center gap-2 py-4">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <form asp-action="FinalizeReport" method="post" class="m-0 d-inline-flex">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <button type="submit" class="btn btn-warning px-4">
+                            <i class="fas fa-lock me-1"></i>Finalize
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}

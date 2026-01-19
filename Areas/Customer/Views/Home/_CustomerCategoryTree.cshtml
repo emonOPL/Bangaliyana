@@ -1,0 +1,51 @@
+@model Bangaliyana.Models.Category
+
+@{
+    var hasChildren = Model.Children?.Any(c => c.IsActive) == true;
+    var productCount = Model.Products?.Count ?? 0;
+}
+
+<div class="category-tree-item">
+    <div class="d-flex align-items-center">
+        @if (hasChildren)
+        {
+            <span class="category-tree-toggle">
+                <i class="fas fa-chevron-right icon-right"></i>
+                <i class="fas fa-chevron-down icon-down" style="display: none;"></i>
+            </span>
+        }
+        else
+        {
+            <span style="width: 30px;"></span>
+        }
+        <a asp-action="Category" asp-route-id="@Model.Id" class="category-tree-link flex-grow-1">
+            <span class="category-icon">
+                <i class="@(Model.IconClass ?? "fas fa-folder")"></i>
+            </span>
+            <span>@Model.Name</span>
+            @if (productCount > 0 || hasChildren)
+            {
+                <span class="category-count">
+                    @if (hasChildren)
+                    {
+                        <span class="me-2">@Model.Children!.Count(c => c.IsActive) <i class="fas fa-sitemap"></i></span>
+                    }
+                    @if (productCount > 0)
+                    {
+                        <span>@productCount <i class="fas fa-box"></i></span>
+                    }
+                </span>
+            }
+        </a>
+    </div>
+
+    @if (hasChildren)
+    {
+        <div class="category-tree-children">
+            @foreach (var child in Model.Children!.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ThenBy(c => c.Name))
+            {
+                @await Html.PartialAsync("_CustomerCategoryTree", child)
+            }
+        </div>
+    }
+</div>

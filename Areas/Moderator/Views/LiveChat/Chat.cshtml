@@ -1,0 +1,585 @@
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = "Live Chat Console";
+    var mySessions = ViewBag.MySessions as List<SupportChatSession>;
+    var waitingSessions = ViewBag.WaitingSessions as List<SupportChatSession>;
+    var currentSession = ViewBag.CurrentSession as SupportChatSession;
+}
+
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="fas fa-headset text-primary me-2"></i>Live Chat Console
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Dashboard">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Index">Live Chat</a></li>
+                    <li class="breadcrumb-item active">Agent Console</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-success fs-6" id="agentStatus">
+                <i class="fas fa-circle me-1"></i>Online
+            </span>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Sidebar - Session Lists -->
+        <div class="col-lg-3">
+            <!-- Waiting Queue -->
+            <div class="card mb-3">
+                <div class="card-header bg-danger text-white py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-clock me-2"></i>Waiting Queue</span>
+                        <span class="badge bg-white text-danger" id="waitingBadge">@(waitingSessions?.Count ?? 0)</span>
+                    </div>
+                </div>
+                <div class="card-body p-0" style="max-height: 250px; overflow-y: auto;">
+                    <div class="list-group list-group-flush" id="waitingList">
+                        @if (waitingSessions?.Any() == true)
+                        {
+                            @foreach (var session in waitingSessions)
+                            {
+                                <div class="list-group-item waiting-item" data-session-id="@session.Id">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1 small">@session.VisitorName</h6>
+                                            <small class="text-muted">@session.Department</small>
+                                        </div>
+                                        <button class="btn btn-sm btn-success accept-chat-btn" data-session-id="@session.Id">
+                                            Accept
+                                        </button>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(session.InitialQuery))
+                                    {
+                                        <small class="text-muted d-block text-truncate mt-1">@session.InitialQuery</small>
+                                    }
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="text-center py-3 text-muted">
+                                <i class="fas fa-inbox"></i>
+                                <small class="d-block">No waiting chats</small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Active Chats -->
+            <div class="card">
+                <div class="card-header bg-success text-white py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-comments me-2"></i>My Active Chats</span>
+                        <span class="badge bg-white text-success" id="activeBadge">@(mySessions?.Count ?? 0)</span>
+                    </div>
+                </div>
+                <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                    <div class="list-group list-group-flush" id="activeList">
+                        @if (mySessions?.Any() == true)
+                        {
+                            @foreach (var session in mySessions)
+                            {
+                                <a href="@Url.Action("Chat", new { sessionId = session.Id })"
+                                   class="list-group-item list-group-item-action @(currentSession?.Id == session.Id ? "active" : "")"
+                                   data-session-id="@session.Id">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0 small">@session.VisitorName</h6>
+                                            <small class="@(currentSession?.Id == session.Id ? "" : "text-muted")">@session.VisitorEmail</small>
+                                        </div>
+                                        <span class="status-dot online"></span>
+                                    </div>
+                                </a>
+                            }
+                        }
+                        else
+                        {
+                            <div class="text-center py-3 text-muted">
+                                <i class="fas fa-comments"></i>
+                                <small class="d-block">No active chats</small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="col-lg-9">
+            @if (currentSession != null)
+            {
+                <div class="card chat-card">
+                    <!-- Chat Header -->
+                    <div class="card-header chat-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm me-3">
+                                    <div class="avatar-placeholder">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 class="mb-0">@currentSession.VisitorName</h5>
+                                    <small class="text-muted">@currentSession.VisitorEmail | @currentSession.Department</small>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-danger" id="endChatBtn" data-session-id="@currentSession.Id">
+                                    <i class="fas fa-times me-1"></i>End Chat
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Messages Area -->
+                    <div class="card-body chat-messages" id="chatMessages">
+                        @foreach (var msg in currentSession.Messages)
+                        {
+                            if (msg.IsSystemMessage)
+                            {
+                                <div class="system-message">
+                                    <p>@msg.Content</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="message @(msg.IsAgentMessage ? "agent" : "customer")">
+                                    <div class="message-bubble">@msg.Content</div>
+                                    <span class="message-time">
+                                        @(msg.IsAgentMessage ? "You" : currentSession.VisitorName) - @msg.CreatedAt.ToBangladeshTimeString()
+                                    </span>
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    <!-- Typing Indicator -->
+                    <div class="typing-indicator d-none" id="typingIndicator">
+                        <span class="typing-dots">
+                            <span></span><span></span><span></span>
+                        </span>
+                        <span class="typing-text">Customer is typing...</span>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="card-footer chat-input">
+                        <form id="messageForm">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="messageInput"
+                                       placeholder="Type your message..." autocomplete="off">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Customer Info Card -->
+                <div class="card mt-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Session Info</h6>
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="row small">
+                            <div class="col-md-3">
+                                <strong>Session:</strong> <code>@currentSession.SessionCode</code>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Started:</strong> @currentSession.CreatedAt.ToBangladeshDateString()
+                            </div>
+                            <div class="col-md-3">
+                                <strong>IP:</strong> @(currentSession.IpAddress ?? "N/A")
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Initial Query:</strong> @(currentSession.InitialQuery ?? "None")
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- No Chat Selected -->
+                <div class="card h-100">
+                    <div class="card-body d-flex align-items-center justify-content-center">
+                        <div class="text-center">
+                            <i class="fas fa-comments fa-4x text-muted mb-3"></i>
+                            <h4>No Chat Selected</h4>
+                            <p class="text-muted">
+                                Select a chat from the sidebar or accept a waiting customer to start chatting.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .chat-card {
+        height: 550px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+    }
+
+    .avatar-sm {
+        width: 40px;
+        height: 40px;
+    }
+
+    .avatar-placeholder {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        background: #f9fafb;
+        padding: 1rem;
+    }
+
+    .message {
+        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .message.customer {
+        align-items: flex-start;
+    }
+
+    .message.agent {
+        align-items: flex-end;
+    }
+
+    .message-bubble {
+        max-width: 70%;
+        padding: 0.75rem 1rem;
+        border-radius: 16px;
+    }
+
+    .message.customer .message-bubble {
+        background: #fff;
+        color: #1f2937;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .message.agent .message-bubble {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border-bottom-right-radius: 4px;
+    }
+
+    .message-time {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        margin-top: 0.25rem;
+    }
+
+    .system-message {
+        text-align: center;
+        margin: 0.75rem 0;
+    }
+
+    .system-message p {
+        display: inline-block;
+        background: #e5e7eb;
+        color: #6b7280;
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        margin: 0;
+    }
+
+    .typing-indicator {
+        padding: 0.5rem 1rem;
+        background: #f9fafb;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .typing-dots {
+        display: flex;
+        gap: 3px;
+    }
+
+    .typing-dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #9ca3af;
+        animation: typingBounce 1.4s infinite;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @@keyframes typingBounce {
+        0%, 60%, 100% { transform: translateY(0); }
+        30% { transform: translateY(-5px); }
+    }
+
+    .chat-input {
+        background: #fff;
+    }
+
+    .chat-input .form-control {
+        border-radius: 50px 0 0 50px;
+    }
+
+    .chat-input .btn {
+        border-radius: 0 50px 50px 0;
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+
+    .status-dot.online {
+        background: #10b981;
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .waiting-item {
+        border-left: 3px solid #ef4444;
+    }
+
+    /* Dark mode */
+    [data-theme="dark"] .card {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .chat-messages {
+        background: #111827;
+    }
+
+    [data-theme="dark"] .message.customer .message-bubble {
+        background: #374151;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .system-message p {
+        background: #374151;
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .list-group-item {
+        background: #1f2937;
+        border-color: #374151;
+    }
+</style>
+
+@section Scripts {
+    <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
+    <script>
+        (function() {
+            let connection = null;
+            const currentSessionId = @(currentSession?.Id ?? 0);
+
+            async function initConnection() {
+                connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/supportChatHub")
+                    .withAutomaticReconnect()
+                    .build();
+
+                connection.on("NewChatRequest", onNewChatRequest);
+                connection.on("ChatAccepted", onChatAccepted);
+                connection.on("ReceiveMessage", onReceiveMessage);
+                connection.on("ChatClosed", onChatClosed);
+                connection.on("UserTyping", onUserTyping);
+                connection.on("Error", (msg) => alert("Error: " + msg));
+
+                try {
+                    await connection.start();
+                    console.log("Connected to support chat hub");
+
+                    if (currentSessionId > 0) {
+                        await connection.invoke("JoinSession", "@(currentSession?.SessionCode ?? "")");
+                    }
+                } catch (err) {
+                    console.error("Connection error:", err);
+                }
+            }
+
+            // Accept chat button
+            document.querySelectorAll('.accept-chat-btn').forEach(btn => {
+                btn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    const sessionId = parseInt(this.dataset.sessionId);
+                    try {
+                        await connection.invoke("AcceptChat", sessionId);
+                        window.location.href = '@Url.Action("Chat")' + '?sessionId=' + sessionId;
+                    } catch (err) {
+                        console.error("Error accepting chat:", err);
+                    }
+                });
+            });
+
+            // Send message
+            document.getElementById('messageForm')?.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const input = document.getElementById('messageInput');
+                const message = input.value.trim();
+                if (!message || !currentSessionId) return;
+                input.value = '';
+                try {
+                    await connection.invoke("SendMessage", currentSessionId, message);
+                } catch (err) {
+                    console.error("Error sending message:", err);
+                }
+            });
+
+            // End chat
+            document.getElementById('endChatBtn')?.addEventListener('click', async function() {
+                if (confirm('Are you sure you want to end this chat?')) {
+                    const sessionId = parseInt(this.dataset.sessionId);
+                    try {
+                        await connection.invoke("CloseChat", sessionId);
+                        window.location.href = '@Url.Action("Chat")';
+                    } catch (err) {
+                        console.error("Error ending chat:", err);
+                    }
+                }
+            });
+
+            // Typing indicator
+            let typingTimeout;
+            document.getElementById('messageInput')?.addEventListener('input', async function() {
+                clearTimeout(typingTimeout);
+                if (currentSessionId > 0) {
+                    await connection.invoke("Typing", currentSessionId, true);
+                    typingTimeout = setTimeout(async () => {
+                        await connection.invoke("Typing", currentSessionId, false);
+                    }, 2000);
+                }
+            });
+
+            function onNewChatRequest(data) {
+                const waitingList = document.getElementById('waitingList');
+                const emptyMsg = waitingList.querySelector('.text-center');
+                if (emptyMsg) emptyMsg.remove();
+
+                const item = document.createElement('div');
+                item.className = 'list-group-item waiting-item';
+                item.dataset.sessionId = data.sessionId;
+                item.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1 small">${escapeHtml(data.visitorName)}</h6>
+                            <small class="text-muted">${data.department}</small>
+                        </div>
+                        <button class="btn btn-sm btn-success accept-chat-btn" data-session-id="${data.sessionId}">Accept</button>
+                    </div>
+                    ${data.initialQuery ? `<small class="text-muted d-block text-truncate mt-1">${escapeHtml(data.initialQuery)}</small>` : ''}
+                `;
+                waitingList.prepend(item);
+
+                const badge = document.getElementById('waitingBadge');
+                badge.textContent = parseInt(badge.textContent) + 1;
+
+                item.querySelector('.accept-chat-btn').addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    try {
+                        await connection.invoke("AcceptChat", data.sessionId);
+                        window.location.href = '@Url.Action("Chat")' + '?sessionId=' + data.sessionId;
+                    } catch (err) {
+                        console.error("Error accepting chat:", err);
+                    }
+                });
+            }
+
+            function onChatAccepted(sessionId) {
+                const item = document.querySelector(`.waiting-item[data-session-id="${sessionId}"]`);
+                if (item) item.remove();
+
+                const badge = document.getElementById('waitingBadge');
+                badge.textContent = Math.max(0, parseInt(badge.textContent) - 1);
+            }
+
+            function onReceiveMessage(message) {
+                if (message.sessionId !== currentSessionId) return;
+
+                const container = document.getElementById('chatMessages');
+                const msgDiv = document.createElement('div');
+
+                if (message.isSystemMessage) {
+                    msgDiv.className = 'system-message';
+                    msgDiv.innerHTML = `<p>${escapeHtml(message.content)}</p>`;
+                } else {
+                    msgDiv.className = `message ${message.isAgentMessage ? 'agent' : 'customer'}`;
+                    const time = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    msgDiv.innerHTML = `
+                        <div class="message-bubble">${escapeHtml(message.content)}</div>
+                        <span class="message-time">${message.senderName} - ${time}</span>
+                    `;
+                }
+
+                container.appendChild(msgDiv);
+                container.scrollTop = container.scrollHeight;
+            }
+
+            function onChatClosed(sessionId) {
+                if (sessionId === currentSessionId) {
+                    alert('This chat has been closed.');
+                    window.location.href = '@Url.Action("Chat")';
+                }
+            }
+
+            function onUserTyping(data) {
+                if (data.sessionId !== currentSessionId) return;
+                const indicator = document.getElementById('typingIndicator');
+                if (data.isTyping && !data.isAgent) {
+                    indicator.classList.remove('d-none');
+                } else {
+                    indicator.classList.add('d-none');
+                }
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                const container = document.getElementById('chatMessages');
+                if (container) container.scrollTop = container.scrollHeight;
+            });
+
+            initConnection();
+        })();
+    </script>
+}

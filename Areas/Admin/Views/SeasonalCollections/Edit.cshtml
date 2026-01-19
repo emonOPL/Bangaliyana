@@ -1,0 +1,158 @@
+@model Bangaliyana.Models.SeasonalCollection
+@{ ViewData["Title"] = Localizer["EditSeasonalCollection"].Value; }
+
+<div class="container px-4">
+    <h1 class="mt-4"><i class="fas fa-edit me-2"></i>@Localizer["EditSeasonalCollection"]</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a asp-area="Admin" asp-controller="Dashboard" asp-action="Index">@Localizer["Dashboard"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["SeasonalCollections"]</a></li>
+        <li class="breadcrumb-item active">@Localizer["Edit"]</li>
+    </ol>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="CreatedAt" />
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Name" class="form-label">@Localizer["Name"]</label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label asp-for="Slug" class="form-label">@Localizer["Slug"]</label>
+                        <input asp-for="Slug" class="form-control" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label asp-for="Year" class="form-label">@Localizer["Year"]</label>
+                        <input asp-for="Year" class="form-control" type="number" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Tagline" class="form-label">@Localizer["Tagline"]</label>
+                        <input asp-for="Tagline" class="form-control" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="SeasonType" class="form-label">@Localizer["SeasonType"]</label>
+                        <select asp-for="SeasonType" asp-items="@ViewBag.SeasonTypes" class="form-select"></select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label">@Localizer["Description"]</label>
+                    <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">@Localizer["BannerImage"]</label>
+                        @if (!string.IsNullOrEmpty(Model.BannerImageUrl))
+                        {
+                            <div class="mb-2">
+                                <img src="~/@Model.BannerImageUrl" alt="@Localizer["Banner"]" class="img-thumbnail" style="max-height: 80px;" />
+                            </div>
+                        }
+                        <input type="file" name="bannerImage" class="form-control" accept="image/*" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">@Localizer["MobileBannerImage"]</label>
+                        @if (!string.IsNullOrEmpty(Model.MobileBannerImageUrl))
+                        {
+                            <div class="mb-2">
+                                <img src="~/@Model.MobileBannerImageUrl" alt="@Localizer["MobileBanner"]" class="img-thumbnail" style="max-height: 80px;" />
+                            </div>
+                        }
+                        <input type="file" name="mobileBannerImage" class="form-control" accept="image/*" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">@Localizer["ThumbnailImage"]</label>
+                        @if (!string.IsNullOrEmpty(Model.ThumbnailImageUrl))
+                        {
+                            <div class="mb-2">
+                                <img src="~/@Model.ThumbnailImageUrl" alt="@Localizer["Thumbnail"]" class="img-thumbnail" style="max-height: 80px;" />
+                            </div>
+                        }
+                        <input type="file" name="thumbnailImage" class="form-control" accept="image/*" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="PrimaryColor" class="form-label">@Localizer["PrimaryColor"]</label>
+                        <input asp-for="PrimaryColor" class="form-control" type="color" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="SecondaryColor" class="form-label">@Localizer["SecondaryColor"]</label>
+                        <input asp-for="SecondaryColor" class="form-control" type="color" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="TextColor" class="form-label">@Localizer["TextColor"]</label>
+                        <input asp-for="TextColor" class="form-control" type="color" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="ProductIds" class="form-label">@Localizer["ProductIds"]</label>
+                        <input asp-for="ProductIds" class="form-control" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="CategoryIds" class="form-label">@Localizer["CategoryIds"]</label>
+                        <input asp-for="CategoryIds" class="form-control" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="CollectionUrl" class="form-label">@Localizer["CollectionUrl"]</label>
+                        <input asp-for="CollectionUrl" class="form-control" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label asp-for="ButtonText" class="form-label">@Localizer["ButtonText"]</label>
+                        <input asp-for="ButtonText" class="form-control" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label asp-for="DisplayOrder" class="form-label">@Localizer["DisplayOrder"]</label>
+                        <input asp-for="DisplayOrder" class="form-control" type="number" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="StartDate" class="form-label">@Localizer["StartDate"]</label>
+                        <input asp-for="StartDate" class="form-control" type="datetime-local" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="EndDate" class="form-label">@Localizer["EndDate"]</label>
+                        <input asp-for="EndDate" class="form-control" type="datetime-local" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="MetaDescription" class="form-label">@Localizer["MetaDescription"]</label>
+                        <input asp-for="MetaDescription" class="form-control" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">@Localizer["Options"]</label>
+                    <div class="d-flex gap-4">
+                        <div class="form-check">
+                            <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                            <label asp-for="IsActive" class="form-check-label">@Localizer["IsActive"]</label>
+                        </div>
+                        <div class="form-check">
+                            <input asp-for="IsFeatured" class="form-check-input" type="checkbox" />
+                            <label asp-for="IsFeatured" class="form-check-label">@Localizer["IsFeatured"]</label>
+                        </div>
+                        <div class="form-check">
+                            <input asp-for="ShowCountdown" class="form-check-input" type="checkbox" />
+                            <label asp-for="ShowCountdown" class="form-check-label">@Localizer["ShowCountdown"]</label>
+                        </div>
+                    </div>
+                </div>
+                <hr />
+                <div class="d-flex justify-content-between">
+                    <a asp-action="Index" class="btn btn-secondary"><i class="fas fa-arrow-left me-1"></i> @Localizer["Back"]</a>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> @Localizer["UpdateCollection"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

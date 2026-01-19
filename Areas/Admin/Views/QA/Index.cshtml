@@ -1,0 +1,453 @@
+@model IEnumerable<Bangaliyana.Models.ProductQuestion>
+@{
+    ViewData["Title"] = Localizer["QAManagement"];
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0"><i class="fas fa-question-circle me-2"></i>@Localizer["QAManagement"]</h2>
+            <p class="text-muted mb-0">@Localizer["ViewAnswerManageQuestions"]</p>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" name="search" class="form-control" placeholder="@Localizer["SearchQuestionsAnswersProducts"]" value="@ViewBag.Search">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="" selected="@(ViewBag.CurrentStatus == "all")">@Localizer["AllQuestions"] (@ViewBag.AllCount)</option>
+                        <option value="pending" selected="@(ViewBag.CurrentStatus == "pending")">@Localizer["Pending"] (@ViewBag.PendingCount)</option>
+                        <option value="answered" selected="@(ViewBag.CurrentStatus == "answered")">@Localizer["Answered"] (@ViewBag.AnsweredCount)</option>
+                        <option value="approved" selected="@(ViewBag.CurrentStatus == "approved")">@Localizer["VisibleOnPage"]</option>
+                        <option value="unapproved" selected="@(ViewBag.CurrentStatus == "unapproved")">@Localizer["Hidden"]</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-1"></i>@Localizer["Filter"]
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Status Tabs -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.CurrentStatus == "all" ? "active" : "")" asp-action="Index">
+                <i class="fas fa-list me-1"></i>@Localizer["All"] <span class="badge bg-secondary ms-1">@ViewBag.AllCount</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.CurrentStatus == "pending" ? "active" : "")" asp-action="Index" asp-route-status="pending">
+                <i class="fas fa-clock me-1"></i>@Localizer["Pending"] <span class="badge bg-warning text-dark ms-1">@ViewBag.PendingCount</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.CurrentStatus == "answered" ? "active" : "")" asp-action="Index" asp-route-status="answered">
+                <i class="fas fa-check-circle me-1"></i>@Localizer["Answered"] <span class="badge bg-success ms-1">@ViewBag.AnsweredCount</span>
+            </a>
+        </li>
+    </ul>
+
+    @if (!Model.Any())
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-question-circle text-muted mb-3" style="font-size: 3rem;"></i>
+                <h5 class="text-muted">@Localizer["NoQuestionsFound"]</h5>
+                <p class="text-muted">@Localizer["NoQuestionsMatchingCriteria"]</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Bulk Actions -->
+        <div class="mb-3" id="bulkActions" style="display: none;">
+            <button type="button" class="btn btn-success btn-sm me-2" onclick="bulkApprove()">
+                <i class="fas fa-check me-1"></i>@Localizer["ApproveSelected"]
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="bulkDelete()">
+                <i class="fas fa-trash me-1"></i>@Localizer["DeleteSelected"]
+            </button>
+            <span class="ms-2 text-muted" id="selectedCount">0 @Localizer["Selected"].Value.ToLower()</span>
+        </div>
+
+        <!-- Questions Table -->
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th style="width: 30px;">
+                                <input type="checkbox" class="form-check-input" id="selectAll" onchange="toggleSelectAll()">
+                            </th>
+                            <th>@Localizer["ProductSeller"]</th>
+                            <th>@Localizer["Question"]</th>
+                            <th>@Localizer["Answer"]</th>
+                            <th>@Localizer["Status"]</th>
+                            <th>@Localizer["Date"]</th>
+                            <th style="width: 150px;">@Localizer["Actions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var question in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="form-check-input question-checkbox" value="@question.Id" onchange="updateBulkActions()">
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        @if (question.Product != null)
+                                        {
+                                            var imgUrl = !string.IsNullOrEmpty(question.Product.ImageUrl)
+                                                ? (question.Product.ImageUrl.StartsWith("/") ? question.Product.ImageUrl : "/" + question.Product.ImageUrl)
+                                                : "/images/products/noimage.jpg";
+                                            <img src="@imgUrl"
+                                                 alt="@question.Product.Name"
+                                                 class="rounded me-2"
+                                                 style="width: 50px; height: 50px; object-fit: cover;"
+                                                 onerror="this.src='/images/products/noimage.jpg'">
+                                            <div>
+                                                <a href="@Url.Action("Details", "Home", new { area = "Customer", id = question.ProductId })"
+                                                   class="fw-bold text-decoration-none text-truncate d-block"
+                                                   style="max-width: 200px;" target="_blank">
+                                                    @question.Product.Name
+                                                </a>
+                                                @if (question.Product.Seller != null)
+                                                {
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-store me-1"></i>@question.Product.Seller.ShopName
+                                                    </small>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-start">
+                                        <div class="avatar-sm bg-primary text-white me-2">
+                                            @(question.User?.FirstName?.Substring(0, 1).ToUpper() ?? "C")
+                                        </div>
+                                        <div>
+                                            <small class="text-muted">@(question.User?.FirstName ?? Localizer["Customer"])</small>
+                                            <p class="mb-0 text-truncate" style="max-width: 250px;">@question.Question</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (question.IsAnswered && !string.IsNullOrEmpty(question.Answer))
+                                    {
+                                        <div class="d-flex align-items-start">
+                                            <div class="avatar-sm bg-success text-white me-2">
+                                                @(question.AnsweredBy?.FirstName?.Substring(0, 1).ToUpper() ?? "A")
+                                            </div>
+                                            <div>
+                                                <small class="text-muted">@(question.AnsweredBy?.FirstName ?? Localizer["Admin"])</small>
+                                                <p class="mb-0 text-truncate" style="max-width: 250px;">@question.Answer</p>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted fst-italic">@Localizer["NotAnsweredYet"]</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (question.IsAnswered)
+                                    {
+                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>@Localizer["Answered"]</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>@Localizer["Pending"]</span>
+                                    }
+                                    <br />
+                                    <div class="form-check form-switch mt-1">
+                                        <input class="form-check-input" type="checkbox" id="visibility_@question.Id"
+                                               @(question.IsApproved ? "checked" : "") onchange="toggleApproval(@question.Id)">
+                                        <label class="form-check-label small" for="visibility_@question.Id">
+                                            @(question.IsApproved ? Localizer["Visible"] : Localizer["Hidden"])
+                                        </label>
+                                    </div>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar me-1"></i>@question.CreatedAt.ToBangladeshShortDateString()
+                                    </small>
+                                    @if (question.AnsweredAt.HasValue)
+                                    {
+                                        <br />
+                                        <small class="text-success">
+                                            <i class="fas fa-reply me-1"></i>@question.AnsweredAt.Value.ToBangladeshShortDateString()
+                                        </small>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        @if (!question.IsAnswered)
+                                        {
+                                            <a asp-action="Answer" asp-route-id="@question.Id" class="btn btn-success" title="@Localizer["WriteAnswer"]">
+                                                <i class="fas fa-comment-dots"></i>
+                                            </a>
+                                        }
+                                        <a asp-action="Edit" asp-route-id="@question.Id" class="btn btn-primary" title="@Localizer["EditQA"]">
+                                            <i class="fas fa-pen"></i>
+                                        </a>
+                                        @if (question.IsAnswered)
+                                        {
+                                            <button type="button" class="btn btn-outline-warning" onclick="confirmDeleteAnswer(@question.Id)" title="@Localizer["DeleteAnswerOnly"]">
+                                                <i class="fas fa-eraser"></i>
+                                            </button>
+                                        }
+                                        <a asp-area="Customer" asp-controller="Home" asp-action="Details" asp-route-id="@question.ProductId"
+                                           class="btn btn-outline-secondary" target="_blank" title="@Localizer["ViewProduct"]">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-danger" onclick="confirmDelete(@question.Id)" title="@Localizer["DeleteQA"]">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-trash text-danger me-2"></i>@Localizer["DeleteQA"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>@Localizer["ConfirmDeleteQA"]</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>@Localizer["Delete"]
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Answer Confirmation Modal -->
+<div class="modal fade" id="deleteAnswerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-eraser text-warning me-2"></i>@Localizer["DeleteAnswerOnly"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>@Localizer["ConfirmDeleteAnswerOnly"]</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                <form id="deleteAnswerForm" method="post" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-eraser me-1"></i>@Localizer["DeleteAnswer"]
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Delete Confirmation Modal -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-trash-alt text-danger" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">@Localizer["DeleteSelectedQuestions"]</h4>
+                <p class="text-muted mb-1">@Localizer["ConfirmDeleteXQuestions"] <span id="bulkDeleteCount" class="fw-semibold"></span> @Localizer["QuestionsLower"]?</p>
+                <p class="text-muted small mb-0">@Localizer["ActionCannotBeUndone"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 py-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmBulkDeleteBtn">
+                    <i class="fas fa-trash me-1"></i>@Localizer["YesDeleteAll"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-sm {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        @if (TempData["success"] != null)
+        {
+            <text>alertify.success('@TempData["success"]');</text>
+        }
+        @if (TempData["error"] != null)
+        {
+            <text>alertify.error('@TempData["error"]');</text>
+        }
+
+        function confirmDelete(id) {
+            document.getElementById('deleteForm').action = '@Url.Action("Delete")/' + id;
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
+
+        function confirmDeleteAnswer(id) {
+            document.getElementById('deleteAnswerForm').action = '@Url.Action("DeleteAnswer")/' + id;
+            new bootstrap.Modal(document.getElementById('deleteAnswerModal')).show();
+        }
+
+        function toggleApproval(id) {
+            fetch('@Url.Action("ToggleApproval")/' + id, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const label = document.querySelector('label[for="visibility_' + id + '"]');
+                    label.textContent = data.isApproved ? 'Visible' : 'Hidden';
+                    alertify.success('Visibility updated!');
+                } else {
+                    alertify.error(data.error || 'Failed to update visibility');
+                }
+            })
+            .catch(() => alertify.error('An error occurred'));
+        }
+
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            document.querySelectorAll('.question-checkbox').forEach(cb => cb.checked = selectAll.checked);
+            updateBulkActions();
+        }
+
+        function updateBulkActions() {
+            const selected = document.querySelectorAll('.question-checkbox:checked').length;
+            document.getElementById('bulkActions').style.display = selected > 0 ? 'block' : 'none';
+            document.getElementById('selectedCount').textContent = selected + ' selected';
+        }
+
+        function getSelectedIds() {
+            return Array.from(document.querySelectorAll('.question-checkbox:checked')).map(cb => parseInt(cb.value));
+        }
+
+        function bulkApprove() {
+            const ids = getSelectedIds();
+            if (ids.length === 0) return;
+
+            fetch('@Url.Action("BulkApprove")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: JSON.stringify(ids)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alertify.success(data.count + ' questions approved!');
+                    location.reload();
+                } else {
+                    alertify.error(data.error);
+                }
+            });
+        }
+
+        var bulkDeleteModal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+        var pendingBulkDeleteIds = [];
+
+        function bulkDelete() {
+            const ids = getSelectedIds();
+            if (ids.length === 0) return;
+
+            pendingBulkDeleteIds = ids;
+            document.getElementById('bulkDeleteCount').textContent = ids.length;
+            bulkDeleteModal.show();
+        }
+
+        document.getElementById('confirmBulkDeleteBtn').addEventListener('click', function() {
+            if (pendingBulkDeleteIds.length === 0) return;
+
+            var btn = this;
+            var originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Deleting...';
+
+            fetch('@Url.Action("BulkDelete")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: JSON.stringify(pendingBulkDeleteIds)
+            })
+            .then(response => response.json())
+            .then(data => {
+                bulkDeleteModal.hide();
+                if (data.success) {
+                    alertify.success(data.count + ' questions deleted!');
+                    location.reload();
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    alertify.error(data.error);
+                }
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                alertify.error('An error occurred');
+            });
+        });
+
+        document.getElementById('bulkDeleteModal').addEventListener('hidden.bs.modal', function() {
+            pendingBulkDeleteIds = [];
+            var btn = document.getElementById('confirmBulkDeleteBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-trash me-1"></i>Yes, Delete All';
+        });
+    </script>
+}

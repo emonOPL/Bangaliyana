@@ -1,0 +1,268 @@
+@model Bangaliyana.Models.PromotionalCampaign
+
+@{
+    ViewData["Title"] = "Create Campaign";
+}
+
+<div class="container">
+    <!-- Header -->
+    <div class="d-flex align-items-center mb-4">
+        <a asp-action="Index" class="btn btn-outline-secondary me-3">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div>
+            <h4 class="mb-1">
+                <i class="fas fa-plus-circle text-primary me-2"></i>Create Campaign
+            </h4>
+            <p class="text-muted mb-0">Create a new promotional notification campaign</p>
+        </div>
+    </div>
+
+    <form asp-action="Create" method="post">
+        <div class="row">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0"><i class="fas fa-edit me-2"></i>Campaign Content</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label asp-for="Title" class="form-label">Title <span class="text-danger">*</span></label>
+                            <input asp-for="Title" class="form-control" placeholder="e.g., Flash Sale Alert!" />
+                            <span asp-validation-for="Title" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Message" class="form-label">Message <span class="text-danger">*</span></label>
+                            <textarea asp-for="Message" class="form-control" rows="3"
+                                      placeholder="e.g., Get up to 50% off on selected items! Limited time offer."></textarea>
+                            <span asp-validation-for="Message" class="text-danger"></span>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="ActionUrl" class="form-label">Action URL</label>
+                                <input asp-for="ActionUrl" class="form-control" placeholder="e.g., /sale" />
+                                <small class="text-muted">Deep link when user clicks notification</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="ActionText" class="form-label">Action Button Text</label>
+                                <input asp-for="ActionText" class="form-control" placeholder="e.g., Shop Now" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0"><i class="fas fa-tag me-2"></i>Promotion Details (Optional)</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="CouponId" class="form-label">Link to Coupon</label>
+                                <select asp-for="CouponId" asp-items="ViewBag.Coupons" class="form-select">
+                                    <option value="">-- Select Coupon (Optional) --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="PromoCode" class="form-label">Promo Code Display</label>
+                                <input asp-for="PromoCode" class="form-control" placeholder="e.g., FLASH50" />
+                                <small class="text-muted">Code to display in notification</small>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="DiscountDescription" class="form-label">Discount Description</label>
+                            <input asp-for="DiscountDescription" class="form-control"
+                                   placeholder="e.g., Get 50% off on all electronics!" />
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="ImageUrl" class="form-label">Banner Image URL</label>
+                            <input asp-for="ImageUrl" class="form-control"
+                                   placeholder="e.g., /images/promotions/banner.jpg" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0"><i class="fas fa-envelope me-2"></i>Email Options</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                            <input asp-for="SendEmail" class="form-check-input" type="checkbox" id="sendEmailSwitch" />
+                            <label class="form-check-label" for="sendEmailSwitch">
+                                Also send email notification
+                            </label>
+                        </div>
+                        <div class="mb-3" id="emailSubjectGroup" style="display: none;">
+                            <label asp-for="EmailSubject" class="form-label">Email Subject</label>
+                            <input asp-for="EmailSubject" class="form-control"
+                                   placeholder="Leave empty to use campaign title" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0"><i class="fas fa-users me-2"></i>Target Audience</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label asp-for="TargetAudience" class="form-label">Select Audience <span class="text-danger">*</span></label>
+                            <select asp-for="TargetAudience" asp-items="ViewBag.TargetAudiences" class="form-select" id="targetAudience"></select>
+                        </div>
+                        <div class="mb-3" id="minOrderCountGroup" style="display: none;">
+                            <label asp-for="MinOrderCount" class="form-label">Minimum Orders</label>
+                            <input asp-for="MinOrderCount" class="form-control" type="number" min="1" />
+                            <small class="text-muted">Users with at least this many orders</small>
+                        </div>
+                        <div class="mb-3" id="minTotalSpentGroup" style="display: none;">
+                            <label asp-for="MinTotalSpent" class="form-label">Minimum Total Spent (৳)</label>
+                            <input asp-for="MinTotalSpent" class="form-control" type="number" min="0" step="100" />
+                            <small class="text-muted">Users who have spent at least this amount</small>
+                        </div>
+
+                        <div class="alert alert-info mb-0" id="targetCountInfo">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <span id="targetCountText">Calculating target users...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0"><i class="fas fa-clock me-2"></i>Schedule</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                            <input asp-for="IsImmediate" class="form-check-input" type="checkbox" id="immediateSwitch" checked />
+                            <label class="form-check-label" for="immediateSwitch">
+                                Send Immediately
+                            </label>
+                        </div>
+                        <div class="mb-3" id="scheduleGroup" style="display: none;">
+                            <label asp-for="ScheduledAt" class="form-label">Scheduled Date & Time</label>
+                            <input asp-for="ScheduledAt" class="form-control" type="datetime-local" />
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="ExpiresAt" class="form-label">Expiry Date (Optional)</label>
+                            <input asp-for="ExpiresAt" class="form-control" type="datetime-local" />
+                            <small class="text-muted">Notification will auto-dismiss after this date</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0"><i class="fas fa-palette me-2"></i>Appearance</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label asp-for="IconClass" class="form-label">Icon Class</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i id="iconPreview" class="fas fa-bullhorn"></i></span>
+                                <input asp-for="IconClass" class="form-control" value="fas fa-bullhorn" id="iconClass" />
+                            </div>
+                            <small class="text-muted">Font Awesome class (e.g., fas fa-gift)</small>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="IconColor" class="form-label">Icon Color</label>
+                            <select asp-for="IconColor" class="form-select">
+                                <option value="text-primary">Primary (Blue)</option>
+                                <option value="text-success">Success (Green)</option>
+                                <option value="text-danger">Danger (Red)</option>
+                                <option value="text-warning">Warning (Yellow)</option>
+                                <option value="text-info">Info (Cyan)</option>
+                                <option value="text-secondary">Secondary (Gray)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save me-2"></i>Create Campaign
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+    [data-theme="dark"] .card {
+        background-color: #252538;
+    }
+
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+        background-color: #1e1e2d;
+        border-color: #3d3d5c;
+        color: #e0e0e0;
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const targetAudience = document.getElementById('targetAudience');
+            const minOrderCountGroup = document.getElementById('minOrderCountGroup');
+            const minTotalSpentGroup = document.getElementById('minTotalSpentGroup');
+            const immediateSwitch = document.getElementById('immediateSwitch');
+            const scheduleGroup = document.getElementById('scheduleGroup');
+            const sendEmailSwitch = document.getElementById('sendEmailSwitch');
+            const emailSubjectGroup = document.getElementById('emailSubjectGroup');
+            const iconClass = document.getElementById('iconClass');
+            const iconPreview = document.getElementById('iconPreview');
+
+            // Target audience change
+            function updateTargetOptions() {
+                const value = parseInt(targetAudience.value);
+                minOrderCountGroup.style.display = value === 2 ? 'block' : 'none'; // ReturningUsers
+                minTotalSpentGroup.style.display = value === 5 ? 'block' : 'none'; // HighSpenders
+                updateTargetCount();
+            }
+
+            // Update target count
+            function updateTargetCount() {
+                const audience = targetAudience.value;
+                const minOrders = document.querySelector('[name="MinOrderCount"]').value || null;
+                const minSpent = document.querySelector('[name="MinTotalSpent"]').value || null;
+
+                fetch(`/Admin/PromotionalCampaigns/GetTargetCount?audience=${audience}&minOrderCount=${minOrders || ''}&minTotalSpent=${minSpent || ''}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('targetCountText').textContent = `This will reach approximately ${data.count.toLocaleString()} users`;
+                    })
+                    .catch(() => {
+                        document.getElementById('targetCountText').textContent = 'Unable to calculate target users';
+                    });
+            }
+
+            targetAudience.addEventListener('change', updateTargetOptions);
+
+            // Schedule toggle
+            immediateSwitch.addEventListener('change', function () {
+                scheduleGroup.style.display = this.checked ? 'none' : 'block';
+            });
+
+            // Email toggle
+            sendEmailSwitch.addEventListener('change', function () {
+                emailSubjectGroup.style.display = this.checked ? 'block' : 'none';
+            });
+
+            // Icon preview
+            iconClass.addEventListener('input', function () {
+                iconPreview.className = this.value || 'fas fa-bullhorn';
+            });
+
+            // Initial load
+            updateTargetOptions();
+        });
+    </script>
+}

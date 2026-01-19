@@ -1,0 +1,31 @@
+@using Bangaliyana.Services
+@model List<MenuItemViewModel>
+
+@foreach (var item in Model)
+{
+    <li>
+        @if (!string.IsNullOrEmpty(item.Url))
+        {
+            <a class="dropdown-item" href="@item.Url">
+                @if (!string.IsNullOrEmpty(item.Icon))
+                {
+                    <i class="@item.Icon me-2 text-muted"></i>
+                }
+                @item.Name
+            </a>
+        }
+        else
+        {
+            <a class="dropdown-item"
+               asp-area="@item.Area"
+               asp-controller="@item.Controller"
+               asp-action="@item.Action">
+                @if (!string.IsNullOrEmpty(item.Icon))
+                {
+                    <i class="@item.Icon me-2 text-muted"></i>
+                }
+                @item.Name
+            </a>
+        }
+    </li>
+}

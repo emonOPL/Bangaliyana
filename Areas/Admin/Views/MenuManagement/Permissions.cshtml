@@ -1,0 +1,352 @@
+@using Bangaliyana.Models
+
+@{
+    ViewData["Title"] = Localizer["MenuPermissions"].Value;
+    var menuItem = ViewBag.MenuItem as MenuItem;
+    var allRoles = ViewBag.AllRoles as List<string>;
+    var currentPermissions = ViewBag.CurrentPermissions as List<string> ?? new List<string>();
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">@Localizer["MenuPermissions"]</h1>
+            <p class="text-muted mb-0">
+                @Localizer["ConfigureAccessPermissionsFor"]: <strong>@menuItem?.Name</strong>
+                <span class="badge bg-secondary ms-2">@menuItem?.Location</span>
+            </p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> @Localizer["BackToList"]
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shield-alt me-2"></i>@Localizer["RoleBasedAccessControl"]
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Permissions" asp-route-id="@menuItem?.Id" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>@Localizer["HowPermissionsWork"]:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>@Localizer["PermissionsHelpNoRoles"]</li>
+                                <li>@Localizer["PermissionsHelpRolesSelected"]</li>
+                                <li>@Localizer["PermissionsHelpAdmins"]</li>
+                            </ul>
+                        </div>
+
+                        <!-- Current Settings Summary -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">@Localizer["CurrentSettings"]</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center">
+                                            @if (menuItem?.IsDefault == true)
+                                            {
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                                <span>@Localizer["DefaultPublic"]</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-times-circle text-muted me-2"></i>
+                                                <span class="text-muted">@Localizer["NotDefault"]</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center">
+                                            @if (menuItem?.RequiresAuthentication == true)
+                                            {
+                                                <i class="fas fa-lock text-warning me-2"></i>
+                                                <span>@Localizer["RequiresLogin"]</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-unlock text-muted me-2"></i>
+                                                <span class="text-muted">@Localizer["NoLoginRequired"]</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center">
+                                            @if (menuItem?.IsActive == true)
+                                            {
+                                                <i class="fas fa-eye text-success me-2"></i>
+                                                <span>@Localizer["Active"]</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-eye-slash text-danger me-2"></i>
+                                                <span class="text-danger">@Localizer["Inactive"]</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Role Selection -->
+                        <h6 class="border-bottom pb-2 mb-3">@Localizer["SelectRolesForMenuAccess"]</h6>
+
+                        @if (allRoles?.Any() == true)
+                        {
+                            <div class="row">
+                                @foreach (var role in allRoles)
+                                {
+                                    var isChecked = currentPermissions.Contains(role);
+                                    var roleIcon = role switch
+                                    {
+                                        "Admin" => "fas fa-user-shield text-danger",
+                                        "Seller" => "fas fa-store text-primary",
+                                        "User" => "fas fa-user text-success",
+                                        _ => "fas fa-user-tag text-secondary"
+                                    };
+                                    var roleDescription = role switch
+                                    {
+                                        "Admin" => "Full system access, manage users and settings",
+                                        "Seller" => "Manage own products and view own orders",
+                                        "User" => "Browse, purchase, and view own orders",
+                                        _ => "Custom role"
+                                    };
+
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 @(isChecked ? "border-primary" : "")">
+                                            <div class="card-body">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           name="selectedRoles" value="@role"
+                                                           id="role_@role" @(isChecked ? "checked" : "")
+                                                           onchange="updateRoleCard(this)">
+                                                    <label class="form-check-label w-100" for="role_@role">
+                                                        <div class="d-flex align-items-center">
+                                                            <i class="@roleIcon fa-lg me-3"></i>
+                                                            <div>
+                                                                <strong>@role</strong>
+                                                                <small class="d-block text-muted">@roleDescription</small>
+                                                            </div>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="d-flex gap-2 mt-3">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAllRoles()">
+                                    <i class="fas fa-check-double me-1"></i>@Localizer["SelectAll"]
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllRoles()">
+                                    <i class="fas fa-times me-1"></i>@Localizer["ClearAll"]
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                @Localizer["NoRolesDefinedInSystem"]
+                            </div>
+                        }
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Edit" asp-route-id="@menuItem?.Id" class="btn btn-outline-info">
+                                <i class="fas fa-edit me-1"></i> @Localizer["EditMenuItem"]
+                            </a>
+                            <div class="d-flex gap-2">
+                                <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["Cancel"]</a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i> @Localizer["SavePermissions"]
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="col-lg-4">
+            <div class="card sticky-top" style="top: 1rem;">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>@Localizer["Help"]</h5>
+                </div>
+                <div class="card-body">
+                    <h6>@Localizer["PermissionHierarchy"]</h6>
+                    <div class="mb-3">
+                        <ol class="small mb-0">
+                            <li>@Localizer["PermissionHierarchyActive"]</li>
+                            <li>@Localizer["PermissionHierarchyRoles"]</li>
+                            <li>@Localizer["PermissionHierarchyAuth"]</li>
+                            <li>@Localizer["PermissionHierarchyDefault"]</li>
+                        </ol>
+                    </div>
+
+                    <h6>@Localizer["RoleDescriptions"]</h6>
+                    <div class="small">
+                        <div class="mb-2">
+                            <i class="fas fa-user-shield text-danger me-2"></i>
+                            <strong>Admin</strong>
+                            <p class="mb-0 ms-4 text-muted">@Localizer["AdminRoleDescription"]</p>
+                        </div>
+                        <div class="mb-2">
+                            <i class="fas fa-store text-primary me-2"></i>
+                            <strong>Seller</strong>
+                            <p class="mb-0 ms-4 text-muted">@Localizer["SellerRoleDescription"]</p>
+                        </div>
+                        <div class="mb-2">
+                            <i class="fas fa-user text-success me-2"></i>
+                            <strong>User</strong>
+                            <p class="mb-0 ms-4 text-muted">@Localizer["UserRoleDescription"]</p>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <h6>@Localizer["MenuItemDetails"]</h6>
+                    <table class="table table-sm small">
+                        <tr>
+                            <th>@Localizer["Name"]:</th>
+                            <td>@menuItem?.Name</td>
+                        </tr>
+                        <tr>
+                            <th>@Localizer["Location"]:</th>
+                            <td><span class="badge bg-secondary">@menuItem?.Location</span></td>
+                        </tr>
+                        <tr>
+                            <th>@Localizer["URLRoute"]:</th>
+                            <td>
+                                @if (!string.IsNullOrEmpty(menuItem?.Url))
+                                {
+                                    @menuItem.Url
+                                }
+                                else if (!string.IsNullOrEmpty(menuItem?.Controller))
+                                {
+                                    <span>@(menuItem.Area ?? "")/@menuItem.Controller/@menuItem.Action</span>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>@Localizer["Order"]:</th>
+                            <td>@menuItem?.DisplayOrder</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Dark mode support for Menu Management */
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-header.bg-light {
+            background-color: var(--bs-gray-800) !important;
+            border-color: var(--bs-gray-700);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .card-body {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-label {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .border {
+            border-color: var(--bs-gray-600) !important;
+        }
+        [data-theme="dark"] .border-bottom {
+            border-color: var(--bs-gray-600) !important;
+        }
+        [data-theme="dark"] .text-muted {
+            color: var(--bs-gray-400) !important;
+        }
+        [data-theme="dark"] h1,
+        [data-theme="dark"] h5,
+        [data-theme="dark"] h6,
+        [data-theme="dark"] strong,
+        [data-theme="dark"] .card-title {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-check-label {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .alert-info {
+            background-color: rgba(13, 202, 240, 0.15);
+            border-color: rgba(13, 202, 240, 0.3);
+            color: var(--bs-info);
+        }
+        [data-theme="dark"] .alert-warning {
+            background-color: rgba(255, 193, 7, 0.15);
+            border-color: rgba(255, 193, 7, 0.3);
+            color: var(--bs-warning);
+        }
+        [data-theme="dark"] .table {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table-sm {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table th,
+        [data-theme="dark"] .table td {
+            border-color: var(--bs-gray-600);
+        }
+        [data-theme="dark"] p {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] ol,
+        [data-theme="dark"] ul,
+        [data-theme="dark"] li {
+            color: var(--bs-light);
+        }
+
+        /* Button gaps */
+        .d-flex.gap-2 {
+            gap: 0.5rem;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        function updateRoleCard(checkbox) {
+            const card = checkbox.closest('.card');
+            if (checkbox.checked) {
+                card.classList.add('border-primary');
+            } else {
+                card.classList.remove('border-primary');
+            }
+        }
+
+        function selectAllRoles() {
+            document.querySelectorAll('input[name="selectedRoles"]').forEach(cb => {
+                cb.checked = true;
+                updateRoleCard(cb);
+            });
+        }
+
+        function clearAllRoles() {
+            document.querySelectorAll('input[name="selectedRoles"]').forEach(cb => {
+                cb.checked = false;
+                updateRoleCard(cb);
+            });
+        }
+    </script>
+}

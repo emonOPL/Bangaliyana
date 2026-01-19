@@ -1,0 +1,761 @@
+@model Bangaliyana.Models.ApplicationUser
+@using Bangaliyana.Models
+
+@{
+    ViewData["Title"] = Localizer["UserDetails"];
+    var user = ViewBag.User as ApplicationUser;
+    var roles = ViewBag.Roles as List<string> ?? new List<string>();
+    var allRoles = ViewBag.AllRoles as List<string> ?? new List<string>();
+    var orderCount = (int)ViewBag.OrderCount;
+    var isAdmin = roles.Contains("Admin");
+    var isModerator = roles.Contains("Moderator");
+    var isSeller = roles.Contains("Seller");
+    var isUser = roles.Contains("User");
+    var isLocked = user?.LockoutEnd.HasValue == true && user.LockoutEnd > DateTimeOffset.UtcNow;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">@Localizer["UserDetails"]</h1>
+            <p class="text-muted mb-0">
+                @Localizer["ManageUser"]: <strong>@user?.FullName</strong>
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Edit" asp-route-id="@user?.Id" class="btn btn-primary">
+                <i class="fas fa-edit me-1"></i> @Localizer["EditUser"]
+            </a>
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> @Localizer["BackToList"]
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Info"] != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="fas fa-info-circle me-2"></i>@TempData["Info"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- User Profile Card -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    @if (!string.IsNullOrEmpty(user?.AvatarUrl))
+                    {
+                        <img src="@user.AvatarUrl" alt="@user?.FullName" class="rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        <div class="rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center mb-3" style="width: 120px; height: 120px;">
+                            <i class="fas fa-user fa-3x text-white"></i>
+                        </div>
+                    }
+
+                    <h4 class="mb-1">@user?.FullName</h4>
+
+                    <div class="mb-3">
+                        @foreach (var role in roles)
+                        {
+                            var badgeClass = role == "Admin" ? "bg-danger" :
+                                            role == "Moderator" ? "bg-purple" :
+                                            role == "Seller" ? "bg-primary" : "bg-success";
+                            var iconClass = role == "Admin" ? "fas fa-user-shield" :
+                                           role == "Moderator" ? "fas fa-user-tie" :
+                                           role == "Seller" ? "fas fa-store" : "fas fa-user";
+                            <span class="badge @badgeClass me-1" @(role == "Moderator" ? "style=background-color:#6f42c1;" : "")>
+                                <i class="@iconClass me-1"></i>
+                                @role
+                            </span>
+                        }
+                    </div>
+
+                    @if (isLocked)
+                    {
+                        <div class="alert alert-danger mb-3">
+                            <i class="fas fa-lock me-1"></i> @Localizer["AccountLocked"]
+                        </div>
+                    }
+
+                    @if (user?.IsVerified == true)
+                    {
+                        <p class="text-success mb-3">
+                            <i class="fas fa-check-circle me-1"></i> @Localizer["VerifiedUser"]
+                        </p>
+                    }
+
+                    <hr />
+
+                    <div class="text-start">
+                        <p class="mb-2"><i class="fas fa-envelope text-muted me-2" style="width: 20px;"></i>@user?.Email</p>
+                        @if (!string.IsNullOrEmpty(user?.PhoneNumber))
+                        {
+                            <p class="mb-2"><i class="fas fa-phone text-muted me-2" style="width: 20px;"></i>@user.PhoneNumber</p>
+                        }
+                        @if (user?.DateOfBirth.HasValue == true)
+                        {
+                            <p class="mb-2"><i class="fas fa-birthday-cake text-muted me-2" style="width: 20px;"></i>@user.DateOfBirth.Value.ToBangladeshShortDateString()</p>
+                        }
+                        <p class="mb-2"><i class="fas fa-calendar text-muted me-2" style="width: 20px;"></i>@Localizer["Joined"] @user?.CreatedAt.ToBangladeshShortDateString()</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Role Management & Actions -->
+        <div class="col-lg-8">
+            <!-- Role Management Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-user-tag me-2"></i>@Localizer["RoleManagement"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Current Role Display -->
+                        <div class="col-md-6 mb-4">
+                            <h6 class="text-muted mb-3">@Localizer["CurrentRole"]</h6>
+                            <div class="p-3 border rounded">
+                                @if (isAdmin)
+                                {
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-user-shield text-danger fa-2x me-3"></i>
+                                        <div>
+                                            <strong>@Localizer["Administrator"]</strong>
+                                            <p class="text-muted small mb-0">@Localizer["FullSystemAccess"]</p>
+                                        </div>
+                                    </div>
+                                }
+                                else if (isModerator)
+                                {
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-user-tie fa-2x me-3" style="color: #6f42c1;"></i>
+                                        <div>
+                                            <strong>@Localizer["Moderator"]</strong>
+                                            <p class="text-muted small mb-0">@Localizer["WebsiteManagementAccess"]</p>
+                                        </div>
+                                    </div>
+                                }
+                                else if (isSeller)
+                                {
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-store text-primary fa-2x me-3"></i>
+                                        <div>
+                                            <strong>@Localizer["Seller"]</strong>
+                                            <p class="text-muted small mb-0">@Localizer["CanManageProductsOrders"]</p>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-user text-success fa-2x me-3"></i>
+                                        <div>
+                                            <strong>@Localizer["Customer"]</strong>
+                                            <p class="text-muted small mb-0">@Localizer["StandardUserAccess"]</p>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Role Actions -->
+                        <div class="col-md-6 mb-4">
+                            <h6 class="text-muted mb-3">@Localizer["RoleActions"]</h6>
+                            <div class="d-grid gap-2">
+                                @if (!isAdmin)
+                                {
+                                    <!-- Promote to Admin -->
+                                    <form asp-action="PromoteToAdmin" method="post" class="promote-admin-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@user?.Id" />
+                                        <button type="button" class="btn btn-danger w-100 promote-admin-btn">
+                                            <i class="fas fa-arrow-up me-1"></i> @Localizer["PromoteToAdmin"]
+                                        </button>
+                                    </form>
+                                }
+
+                                @if (!isModerator && !isAdmin)
+                                {
+                                    <!-- Promote to Moderator -->
+                                    <form asp-action="PromoteToModerator" method="post" class="promote-moderator-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@user?.Id" />
+                                        <button type="button" class="btn w-100 promote-moderator-btn" style="background-color: #6f42c1; color: white;">
+                                            <i class="fas fa-arrow-up me-1"></i> @Localizer["PromoteToModerator"]
+                                        </button>
+                                    </form>
+                                }
+
+                                @if (!isSeller && !isAdmin && !isModerator)
+                                {
+                                    <!-- Promote to Seller -->
+                                    <form asp-action="PromoteToSeller" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@user?.Id" />
+                                        <button type="submit" class="btn btn-primary w-100">
+                                            <i class="fas fa-arrow-up me-1"></i> @Localizer["PromoteToSeller"]
+                                        </button>
+                                    </form>
+                                }
+
+                                @if (isAdmin)
+                                {
+                                    <!-- Demote Admin to Seller -->
+                                    <form asp-action="DemoteToSeller" method="post" class="demote-seller-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@user?.Id" />
+                                        <button type="button" class="btn btn-warning w-100 demote-seller-btn">
+                                            <i class="fas fa-arrow-down me-1"></i> @Localizer["DemoteToSeller"]
+                                        </button>
+                                    </form>
+                                }
+
+                                @if (isModerator)
+                                {
+                                    <!-- Demote Moderator to User -->
+                                    <form asp-action="DemoteFromModerator" method="post" class="demote-moderator-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@user?.Id" />
+                                        <button type="button" class="btn btn-outline-warning w-100 demote-moderator-btn">
+                                            <i class="fas fa-arrow-down me-1"></i> @Localizer["DemoteToCustomer"]
+                                        </button>
+                                    </form>
+                                }
+
+                                @if ((isSeller || isAdmin) && !isModerator)
+                                {
+                                    <!-- Demote to User -->
+                                    <form asp-action="DemoteToUser" method="post" class="demote-user-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@user?.Id" />
+                                        <button type="button" class="btn btn-outline-warning w-100 demote-user-btn">
+                                            <i class="fas fa-arrow-down me-1"></i> @Localizer["DemoteToCustomer"]
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Actions Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-cog me-2"></i>@Localizer["AccountActions"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <!-- Block/Unblock with Modal -->
+                            @if (isLocked)
+                            {
+                                <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#unblockModal">
+                                    <i class="fas fa-unlock me-1"></i> @Localizer["UnblockUser"]
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#blockModal" @(isAdmin ? "disabled" : "")>
+                                    <i class="fas fa-ban me-1"></i> @Localizer["BlockUser"]
+                                </button>
+                            }
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            @if (user?.EmailConfirmed != true)
+                            {
+                                <form asp-action="VerifyEmail" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@user?.Id" />
+                                    <button type="submit" class="btn btn-info w-100">
+                                        <i class="fas fa-envelope-check me-1"></i> @Localizer["VerifyEmail"]
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <button class="btn btn-outline-success w-100" disabled>
+                                    <i class="fas fa-check me-1"></i> @Localizer["EmailVerified"]
+                                </button>
+                            }
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a asp-action="Permissions" asp-route-id="@user?.Id" class="btn btn-outline-info w-100">
+                                <i class="fas fa-shield-alt me-1"></i> @Localizer["MenuPermissions"]
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a asp-action="Edit" asp-route-id="@user?.Id" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-user-edit me-1"></i> @Localizer["EditProfile"]
+                            </a>
+                        </div>
+                    </div>
+                    <!-- Second Row - COD, Payment, Refund -->
+                    <div class="row mt-2">
+                        <div class="col-md-3 mb-3">
+                            <a asp-action="CODSettings" asp-route-id="@user?.Id" class="btn btn-outline-warning w-100">
+                                <i class="fas fa-money-bill-wave me-1"></i> @Localizer["CODSettings"]
+                            </a>
+                        </div>
+                        @if (isSeller)
+                        {
+                            <div class="col-md-3 mb-3">
+                                <a asp-action="SellerPayments" asp-route-id="@user?.Id" class="btn btn-outline-success w-100">
+                                    <i class="fas fa-hand-holding-usd me-1"></i> @Localizer["SellerPayments"]
+                                </a>
+                            </div>
+                        }
+                        <div class="col-md-3 mb-3">
+                            <a asp-action="CustomerRefunds" asp-route-id="@user?.Id" class="btn btn-outline-danger w-100">
+                                <i class="fas fa-undo me-1"></i> @Localizer["Refunds"]
+                            </a>
+                        </div>
+                    </div>
+                    @if (isAdmin)
+                    {
+                        <div class="alert alert-info small mb-0 mt-2">
+                            <i class="fas fa-info-circle me-1"></i> @Localizer["AdminsCannotBeBlocked"]
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Address & Stats Card -->
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>@Localizer["Address"]</h5>
+                        </div>
+                        <div class="card-body">
+                            @if (user?.Division != null || user?.District != null || !string.IsNullOrEmpty(user?.Address))
+                            {
+                                @if (!string.IsNullOrEmpty(user?.Address))
+                                {
+                                    <p class="mb-2">@user.Address</p>
+                                }
+                                <p class="mb-1 text-muted">
+                                    @if (user?.Upazila != null)
+                                    {
+                                        <span>@user.Upazila.Name, </span>
+                                    }
+                                    @if (user?.District != null)
+                                    {
+                                        <span>@user.District.Name, </span>
+                                    }
+                                    @if (user?.Division != null)
+                                    {
+                                        <span>@user.Division.Name</span>
+                                    }
+                                </p>
+                                @if (!string.IsNullOrEmpty(user?.PostalCode))
+                                {
+                                    <p class="mb-0 text-muted"><small>@Localizer["PostalCode"]: @user.PostalCode</small></p>
+                                }
+                            }
+                            else
+                            {
+                                <p class="text-muted mb-0">@Localizer["NoAddressOnFile"]</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>@Localizer["Statistics"]</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6 mb-3">
+                                    <h3 class="mb-0">@orderCount</h3>
+                                    <small class="text-muted">@Localizer["TotalOrders"]</small>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <h3 class="mb-0">@((DateTime.UtcNow - user?.CreatedAt)?.Days ?? 0)</h3>
+                                    <small class="text-muted">@Localizer["DaysAsMember"]</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Block User Modal -->
+<div class="modal fade" id="blockModal" tabindex="-1" aria-labelledby="blockModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <form asp-action="Block" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="userId" value="@user?.Id" />
+                <div class="modal-body text-center">
+                    <div class="confirm-icon-wrapper mb-3">
+                        <div class="confirm-icon-circle confirm-icon-danger">
+                            <i class="fas fa-ban"></i>
+                        </div>
+                    </div>
+                    <h4 class="modal-title fw-bold mb-2" id="blockModalLabel">@Localizer["BlockUserQuestion"]</h4>
+                    <p class="text-muted mb-0">@Localizer["AreYouSureBlockUser"]</p>
+                    <p class="text-muted small mb-3">
+                        <strong>@user?.FullName</strong> (@user?.Email)
+                    </p>
+                    <div class="alert alert-warning text-start small mb-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>@Localizer["WhatHappens"]:</strong>
+                        <ul class="mb-0 mt-1 ps-3">
+                            <li>@Localizer["UserCannotLogin"]</li>
+                            <li>@Localizer["AllSessionsInvalidated"]</li>
+                            <li>@Localizer["CanUnblockAnytime"]</li>
+                        </ul>
+                    </div>
+                    <div class="mb-0 text-start">
+                        <label for="blockReason" class="form-label small">@Localizer["ReasonForBlocking"]</label>
+                        <textarea class="form-control" id="blockReason" name="reason" rows="2" placeholder="@Localizer["EnterReasonForBlocking"]"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center gap-2">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                    </button>
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="fas fa-ban me-1"></i> @Localizer["BlockUser"]
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Promote to Admin Confirmation Modal -->
+<div class="modal fade" id="promoteAdminModal" tabindex="-1" aria-labelledby="promoteAdminModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-danger">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="promoteAdminModalLabel">@Localizer["PromoteToAdminQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["AreYouSurePromoteAdmin"]</p>
+                <p class="text-muted small">@Localizer["GivesFullSystemAccess"]</p>
+            </div>
+            <div class="modal-footer justify-content-center gap-2">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmPromoteAdminBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesPromote"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Demote to Seller Confirmation Modal -->
+<div class="modal fade" id="demoteSellerModal" tabindex="-1" aria-labelledby="demoteSellerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-warning">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="demoteSellerModalLabel">@Localizer["DemoteToSellerQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["AreYouSureDemoteToSeller"]</p>
+                <p class="text-muted small">@Localizer["AdminPrivilegesRemoved"]</p>
+            </div>
+            <div class="modal-footer justify-content-center gap-2">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-warning px-4" id="confirmDemoteSellerBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesDemote"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Demote to Customer Confirmation Modal -->
+<div class="modal fade" id="demoteUserModal" tabindex="-1" aria-labelledby="demoteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-warning">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="demoteUserModalLabel">@Localizer["DemoteToCustomerQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["AreYouSureDemoteToCustomer"]</p>
+                <p class="text-muted small">@Localizer["AllElevatedPrivilegesRemoved"]</p>
+            </div>
+            <div class="modal-footer justify-content-center gap-2">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-warning px-4" id="confirmDemoteUserBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesDemote"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Promote to Moderator Confirmation Modal -->
+<div class="modal fade" id="promoteModeratorModal" tabindex="-1" aria-labelledby="promoteModeratorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-purple">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="promoteModeratorModalLabel">@Localizer["PromoteToModeratorQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["AreYouSurePromoteModerator"]</p>
+                <p class="text-muted small">@Localizer["GivesWebsiteManagementAccess"]</p>
+            </div>
+            <div class="modal-footer justify-content-center gap-2">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-purple px-4" id="confirmPromoteModeratorBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesPromote"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Demote from Moderator Confirmation Modal -->
+<div class="modal fade" id="demoteModeratorModal" tabindex="-1" aria-labelledby="demoteModeratorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-warning">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="demoteModeratorModalLabel">@Localizer["DemoteFromModeratorQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["AreYouSureDemoteModerator"]</p>
+                <p class="text-muted small">@Localizer["ModeratorPrivilegesRemoved"]</p>
+            </div>
+            <div class="modal-footer justify-content-center gap-2">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-warning px-4" id="confirmDemoteModeratorBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesDemote"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unblock User Modal -->
+<div class="modal fade" id="unblockModal" tabindex="-1" aria-labelledby="unblockModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <form asp-action="Unblock" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="userId" value="@user?.Id" />
+                <div class="modal-body text-center">
+                    <div class="confirm-icon-wrapper mb-3">
+                        <div class="confirm-icon-circle confirm-icon-success">
+                            <i class="fas fa-unlock"></i>
+                        </div>
+                    </div>
+                    <h4 class="modal-title fw-bold mb-2" id="unblockModalLabel">@Localizer["UnblockUserQuestion"]</h4>
+                    <p class="text-muted mb-0">@Localizer["AreYouSureUnblockUser"]</p>
+                    <p class="text-muted small mb-3">
+                        <strong>@user?.FullName</strong> (@user?.Email)
+                    </p>
+                    <div class="alert alert-info text-start small mb-0">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>@Localizer["WhatHappens"]:</strong>
+                        <ul class="mb-0 mt-1 ps-3">
+                            <li>@Localizer["UserCanLoginAgain"]</li>
+                            <li>@Localizer["PreviousPermissionsRestored"]</li>
+                            <li>@Localizer["UserCanAccessImmediately"]</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center gap-2">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                    </button>
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="fas fa-unlock me-1"></i> @Localizer["UnblockUser"]
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Dark mode support for cards */
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-header.bg-light {
+            background-color: var(--bs-gray-800) !important;
+            border-color: var(--bs-gray-700);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .card-body {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .border {
+            border-color: var(--bs-gray-600) !important;
+        }
+        [data-theme="dark"] h1,
+        [data-theme="dark"] h3,
+        [data-theme="dark"] h4,
+        [data-theme="dark"] h5,
+        [data-theme="dark"] h6,
+        [data-theme="dark"] strong {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] hr {
+            border-color: var(--bs-gray-600);
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Promote to Admin modal
+            const promoteAdminModal = new bootstrap.Modal(document.getElementById('promoteAdminModal'));
+            const promoteAdminBtn = document.querySelector('.promote-admin-btn');
+            const promoteAdminForm = document.querySelector('.promote-admin-form');
+
+            if (promoteAdminBtn) {
+                promoteAdminBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    promoteAdminModal.show();
+                });
+            }
+
+            document.getElementById('confirmPromoteAdminBtn')?.addEventListener('click', function() {
+                if (promoteAdminForm) {
+                    promoteAdminModal.hide();
+                    promoteAdminForm.submit();
+                }
+            });
+
+            // Demote to Seller modal
+            const demoteSellerModal = new bootstrap.Modal(document.getElementById('demoteSellerModal'));
+            const demoteSellerBtn = document.querySelector('.demote-seller-btn');
+            const demoteSellerForm = document.querySelector('.demote-seller-form');
+
+            if (demoteSellerBtn) {
+                demoteSellerBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    demoteSellerModal.show();
+                });
+            }
+
+            document.getElementById('confirmDemoteSellerBtn')?.addEventListener('click', function() {
+                if (demoteSellerForm) {
+                    demoteSellerModal.hide();
+                    demoteSellerForm.submit();
+                }
+            });
+
+            // Demote to User modal
+            const demoteUserModal = new bootstrap.Modal(document.getElementById('demoteUserModal'));
+            const demoteUserBtn = document.querySelector('.demote-user-btn');
+            const demoteUserForm = document.querySelector('.demote-user-form');
+
+            if (demoteUserBtn) {
+                demoteUserBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    demoteUserModal.show();
+                });
+            }
+
+            document.getElementById('confirmDemoteUserBtn')?.addEventListener('click', function() {
+                if (demoteUserForm) {
+                    demoteUserModal.hide();
+                    demoteUserForm.submit();
+                }
+            });
+
+            // Promote to Moderator modal
+            const promoteModeratorModal = new bootstrap.Modal(document.getElementById('promoteModeratorModal'));
+            const promoteModeratorBtn = document.querySelector('.promote-moderator-btn');
+            const promoteModeratorForm = document.querySelector('.promote-moderator-form');
+
+            if (promoteModeratorBtn) {
+                promoteModeratorBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    promoteModeratorModal.show();
+                });
+            }
+
+            document.getElementById('confirmPromoteModeratorBtn')?.addEventListener('click', function() {
+                if (promoteModeratorForm) {
+                    promoteModeratorModal.hide();
+                    promoteModeratorForm.submit();
+                }
+            });
+
+            // Demote from Moderator modal
+            const demoteModeratorModal = new bootstrap.Modal(document.getElementById('demoteModeratorModal'));
+            const demoteModeratorBtn = document.querySelector('.demote-moderator-btn');
+            const demoteModeratorForm = document.querySelector('.demote-moderator-form');
+
+            if (demoteModeratorBtn) {
+                demoteModeratorBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    demoteModeratorModal.show();
+                });
+            }
+
+            document.getElementById('confirmDemoteModeratorBtn')?.addEventListener('click', function() {
+                if (demoteModeratorForm) {
+                    demoteModeratorModal.hide();
+                    demoteModeratorForm.submit();
+                }
+            });
+        });
+    </script>
+}

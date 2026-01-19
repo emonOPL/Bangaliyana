@@ -1,0 +1,514 @@
+@page
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@model PaymentMethodsModel
+@{
+    ViewData["Title"] = Localizer["PaymentMethods"].Value;
+    ViewData["ActivePage"] = ManageNavPages.PaymentMethods;
+}
+
+<div class="payment-methods-page">
+    <partial name="_StatusMessage" for="StatusMessage" />
+
+    <!-- Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h4 class="mb-1">
+                    <i class="fas fa-credit-card text-info me-2"></i>@Localizer["PaymentMethods"]
+                </h4>
+                <p class="text-muted mb-0">@Localizer["PaymentMethodsDescription"]</p>
+            </div>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                <i class="fas fa-plus me-1"></i>@Localizer["AddPaymentMethod"]
+            </button>
+        </div>
+    </div>
+
+    <!-- Available Payment Providers -->
+    <div class="payment-providers-section mb-4">
+        <h6 class="section-title mb-3">@Localizer["SupportedPaymentMethods"]</h6>
+        <div class="row g-3 align-items-stretch">
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="provider-card h-100">
+                    <img src="~/images/logos/bkash-logo.png" alt="bKash" />
+                    <span>bKash</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="provider-card h-100">
+                    <img src="~/images/logos/nagad-logo.png" alt="Nagad" />
+                    <span>Nagad</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="provider-card h-100">
+                    <img src="~/images/logos/rocket-logo.png" alt="Rocket" />
+                    <span>Rocket</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="provider-card h-100">
+                    <img src="~/images/logos/upay-logo.png" alt="Upay" />
+                    <span>Upay</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="provider-card cod h-100">
+                    <img src="~/images/logos/cod-logo.png" alt="Cash on Delivery" />
+                    <span>@Localizer["CashOnDelivery"]</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!Model.PaymentMethods.Any())
+    {
+        <!-- Empty State -->
+        <div class="empty-state text-center py-5">
+            <div class="empty-icon mb-4">
+                <i class="fas fa-wallet"></i>
+            </div>
+            <h5>@Localizer["NoSavedPaymentMethods"]</h5>
+            <p class="text-muted mb-4">@Localizer["AddPaymentMethodDescription"]</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                <i class="fas fa-plus me-2"></i>@Localizer["AddFirstPaymentMethod"]
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Saved Payment Methods -->
+        <div class="saved-methods-section">
+            <h6 class="section-title mb-3">@Localizer["SavedPaymentMethods"]</h6>
+            <div class="row g-4">
+                @foreach (var method in Model.PaymentMethods)
+                {
+                    <div class="col-md-6">
+                        <div class="payment-card @(method.IsDefault ? "default" : "")">
+                            @if (method.IsDefault)
+                            {
+                                <div class="default-badge">
+                                    <i class="fas fa-check-circle me-1"></i>@Localizer["Default"]
+                                </div>
+                            }
+                            <div class="payment-logo">
+                                @{
+                                    var logoPath = method.Type switch
+                                    {
+                                        "bKash" => "~/images/logos/bkash-logo.png",
+                                        "Nagad" => "~/images/logos/nagad-logo.png",
+                                        "Rocket" => "~/images/logos/rocket-logo.png",
+                                        "Upay" => "~/images/logos/upay-logo.png",
+                                        _ => "~/images/logos/bkash-logo.png"
+                                    };
+                                }
+                                <img src="@Url.Content(logoPath)" alt="@method.ProviderName" />
+                            </div>
+                            <div class="payment-content">
+                                <h6>@method.ProviderName</h6>
+                                <span class="masked-number">@method.MaskedNumber</span>
+                                <small class="text-muted d-block">@Localizer["Added"] @method.AddedAt.ToBangladeshShortDateString()</small>
+                            </div>
+                            <div class="payment-actions">
+                                @if (!method.IsDefault)
+                                {
+                                    <form method="post" asp-page-handler="SetDefault" class="d-inline">
+                                        <input type="hidden" name="id" value="@method.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" title="@Localizer["SetAsDefault"]">
+                                            <i class="fas fa-star"></i>
+                                        </button>
+                                    </form>
+                                }
+                                <form method="post" asp-page-handler="Delete" class="d-inline delete-payment-form">
+                                    <input type="hidden" name="id" value="@method.Id" />
+                                    <button type="button" class="btn btn-sm btn-outline-danger delete-payment-btn" title="@Localizer["Remove"]">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Security Info -->
+    <div class="security-info mt-4">
+        <div class="alert alert-permanent alert-info">
+            <div class="d-flex align-items-start gap-3">
+                <i class="fas fa-shield-alt fs-4"></i>
+                <div>
+                    <strong>@Localizer["PaymentInfoSecure"]</strong>
+                    <p class="mb-0 mt-1 small">@Localizer["PaymentSecurityDescription"]</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Payment Confirmation Modal -->
+<div class="modal fade" id="deletePaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="delete-icon-wrapper mb-3"><div class="delete-icon-circle"><i class="fas fa-trash-alt text-danger"></i></div></div>
+                <h4 class="modal-title fw-bold mb-2">@Localizer["RemovePaymentMethodQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["ConfirmRemovePaymentMethod"]</p>
+                <p class="text-muted small">@Localizer["ActionCannotBeUndone"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i> @Localizer["Cancel"]</button>
+                <button type="button" class="btn btn-danger px-4" id="confirmDeletePaymentBtn"><i class="fas fa-check me-1"></i> @Localizer["YesRemove"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Payment Method Modal -->
+<div class="modal fade" id="addPaymentModal" tabindex="-1" aria-labelledby="addPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPaymentModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>@Localizer["AddPaymentMethod"]
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" asp-page-handler="Add">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label asp-for="Input.Type" class="form-label">@Localizer["SelectProvider"] *</label>
+                        <div class="provider-selection">
+                            <label class="provider-option">
+                                <input type="radio" name="Input.Type" value="bKash" required />
+                                <span class="provider-box bkash">
+                                    <img src="~/images/logos/bkash-logo.png" alt="bKash" />
+                                    <strong>bKash</strong>
+                                </span>
+                            </label>
+                            <label class="provider-option">
+                                <input type="radio" name="Input.Type" value="Nagad" />
+                                <span class="provider-box nagad">
+                                    <img src="~/images/logos/nagad-logo.png" alt="Nagad" />
+                                    <strong>Nagad</strong>
+                                </span>
+                            </label>
+                            <label class="provider-option">
+                                <input type="radio" name="Input.Type" value="Rocket" />
+                                <span class="provider-box rocket">
+                                    <img src="~/images/logos/rocket-logo.png" alt="Rocket" />
+                                    <strong>Rocket</strong>
+                                </span>
+                            </label>
+                            <label class="provider-option">
+                                <input type="radio" name="Input.Type" value="Upay" />
+                                <span class="provider-box upay">
+                                    <img src="~/images/logos/upay-logo.png" alt="Upay" />
+                                    <strong>Upay</strong>
+                                </span>
+                            </label>
+                        </div>
+                        <span asp-validation-for="Input.Type" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Input.MobileNumber" class="form-label">@Localizer["MobileNumber"] *</label>
+                        <input asp-for="Input.MobileNumber" class="form-control" placeholder="01XXXXXXXXX" maxlength="11" />
+                        <span asp-validation-for="Input.MobileNumber" class="text-danger"></span>
+                    </div>
+                    <div class="form-check">
+                        <input asp-for="Input.IsDefault" class="form-check-input" type="checkbox" />
+                        <label asp-for="Input.IsDefault" class="form-check-label">
+                            @Localizer["SetAsDefaultPaymentMethod"]
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>@Localizer["AddPaymentMethod"]
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .payment-methods-page .page-header h4 {
+        font-weight: 600;
+    }
+
+    .section-title {
+        font-weight: 600;
+        color: #374151;
+    }
+
+    /* Provider Cards */
+    .provider-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        transition: all 0.3s ease;
+        min-height: 90px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .provider-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    }
+
+    .provider-card img {
+        height: 32px;
+        width: auto;
+        margin-bottom: 0.5rem;
+    }
+
+    .provider-card span {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #6b7280;
+    }
+
+    /* Empty State */
+    .empty-state {
+        background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+        border-radius: 16px;
+        padding: 3rem;
+    }
+
+    .empty-icon {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        font-size: 2.5rem;
+        color: white;
+    }
+
+    /* Payment Card */
+    .payment-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        position: relative;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .payment-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+
+    .payment-card.default {
+        border-color: #3b82f6;
+        background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+    }
+
+    .default-badge {
+        position: absolute;
+        top: -10px;
+        right: 16px;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .payment-logo {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        background: #f9fafb;
+        padding: 8px;
+    }
+
+    .payment-logo img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+
+    .payment-content {
+        flex: 1;
+    }
+
+    .payment-content h6 {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .masked-number {
+        font-family: monospace;
+        font-size: 1rem;
+        color: #374151;
+        letter-spacing: 1px;
+    }
+
+    .payment-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    /* Provider Selection in Modal */
+    .provider-selection {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .provider-option {
+        cursor: pointer;
+    }
+
+    .provider-option input {
+        display: none;
+    }
+
+    .provider-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        border-radius: 12px;
+        border: 2px solid #e5e7eb;
+        transition: all 0.3s ease;
+    }
+
+    .provider-box img {
+        height: 32px;
+        width: auto;
+        margin-bottom: 0.5rem;
+    }
+
+    .provider-option input:checked + .provider-box {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
+
+    .provider-box.bkash { border-color: #e91e63; }
+    .provider-option input:checked + .provider-box.bkash { background: #fce4ec; }
+
+    .provider-box.nagad { border-color: #ff6f00; }
+    .provider-option input:checked + .provider-box.nagad { background: #fff3e0; }
+
+    .provider-box.rocket { border-color: #8e24aa; }
+    .provider-option input:checked + .provider-box.rocket { background: #f3e5f5; }
+
+    .provider-box.upay { border-color: #00bcd4; }
+    .provider-option input:checked + .provider-box.upay { background: #e0f7fa; }
+
+    /* Dark Mode */
+    [data-theme="dark"] .provider-card,
+    [data-theme="dark"] .payment-card {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .payment-card.default {
+        background: linear-gradient(135deg, #1e3a5f 0%, #1f2937 100%);
+    }
+
+    [data-theme="dark"] .section-title,
+    [data-theme="dark"] .payment-content h6 {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .masked-number {
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .empty-state {
+        background: linear-gradient(135deg, #1e3a5f 0%, #1f2937 100%);
+    }
+
+    [data-theme="dark"] .empty-state h5,
+    [data-theme="dark"] .empty-state p {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .modal-content {
+        background: #1f2937;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .modal-header,
+    [data-theme="dark"] .modal-footer {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .provider-box {
+        border-color: #4b5563;
+        background: #374151;
+    }
+
+    [data-theme="dark"] .btn-close {
+        filter: invert(1);
+    }
+
+    [data-theme="dark"] .payment-logo {
+        background: #374151;
+    }
+
+    /* Delete Modal Styles */
+    .delete-icon-wrapper { display: flex; justify-content: center; }
+    .delete-icon-circle { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); display: flex; align-items: center; justify-content: center; animation: pulse-danger 2s infinite; }
+    .delete-icon-circle i { font-size: 2.5rem; }
+    @@keyframes pulse-danger { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
+    #deletePaymentModal .modal-content { border-radius: 1rem; }
+    #deletePaymentModal .btn { border-radius: 0.5rem; font-weight: 500; }
+    [data-theme="dark"] #deletePaymentModal .modal-content { background-color: #252538; }
+    [data-theme="dark"] #deletePaymentModal .modal-title { color: #e0e0e0; }
+    [data-theme="dark"] #deletePaymentModal .text-muted { color: #a0a0a0 !important; }
+    [data-theme="dark"] .delete-icon-circle { background: linear-gradient(135deg, #3d2020 0%, #4a2525 100%); }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let currentForm = null;
+            const deletePaymentModal = new bootstrap.Modal(document.getElementById('deletePaymentModal'));
+            document.querySelectorAll('.delete-payment-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    currentForm = this.closest('.delete-payment-form');
+                    deletePaymentModal.show();
+                });
+            });
+            document.getElementById('confirmDeletePaymentBtn')?.addEventListener('click', function() {
+                if (currentForm) {
+                    deletePaymentModal.hide();
+                    currentForm.submit();
+                }
+            });
+        });
+    </script>
+}

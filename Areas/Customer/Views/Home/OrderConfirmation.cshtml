@@ -1,0 +1,714 @@
+@model Bangaliyana.Models.Order
+@using System.Globalization
+@using Bangaliyana.Extensions
+@using Bangaliyana.Models
+
+@{
+    ViewData["Title"] = Localizer["OrderConfirmed"];
+    var currencySymbol = "৳";
+}
+
+<style>
+    .confirmation-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .success-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #198754, #20c997);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        animation: scaleIn 0.5s ease-out;
+    }
+
+    .success-icon i {
+        font-size: 2.5rem;
+        color: white;
+    }
+
+    @@keyframes scaleIn {
+        0% {
+            transform: scale(0);
+            opacity: 0;
+        }
+        50% {
+            transform: scale(1.2);
+        }
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .confirmation-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #198754;
+        margin-bottom: 0.5rem;
+    }
+
+    .confirmation-subtitle {
+        color: #6c757d;
+        margin-bottom: 2rem;
+    }
+
+    .order-id-card {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        text-align: center;
+        margin-bottom: 1.5rem;
+        border: 2px dashed #dee2e6;
+    }
+
+    .order-id-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+    }
+
+    .order-id-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #212529;
+        font-family: 'Courier New', monospace;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .summary-header {
+        background: #f8f9fa;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .summary-header h6 {
+        margin: 0;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .summary-body {
+        padding: 1.25rem;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f1f3f4;
+    }
+
+    .summary-row:last-child {
+        border-bottom: none;
+    }
+
+    /* Remove border from row before total to avoid double lines */
+    .summary-row:has(+ .summary-row.total) {
+        border-bottom: none;
+    }
+
+    .summary-row.total {
+        border-top: 1px solid #dee2e6;
+        margin-top: 0.5rem;
+        padding-top: 1rem;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .summary-label {
+        color: #6c757d;
+    }
+
+    .summary-value {
+        color: #212529;
+        font-weight: 500;
+    }
+
+    .summary-row.total .summary-value {
+        color: #198754;
+    }
+
+    .track-btn {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .secondary-actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: center;
+    }
+
+    .secondary-actions .btn {
+        flex: 1;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+    }
+
+    .order-items-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .order-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f1f3f4;
+    }
+
+    .order-item:last-child {
+        border-bottom: none;
+    }
+
+    .item-name {
+        font-weight: 500;
+        color: #212529;
+    }
+
+    .item-variant {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+
+    .item-qty {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .item-price {
+        font-weight: 600;
+        color: #212529;
+    }
+
+    /* Dark mode styles */
+    [data-theme="dark"] .order-id-card {
+        background: linear-gradient(135deg, #2a2a3d, #1e1e2e);
+        border-color: #444;
+    }
+
+    [data-theme="dark"] .order-id-value {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .summary-card {
+        background: #2a2a3d;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="dark"] .summary-header {
+        background: #1e1e2e;
+        border-color: #444;
+    }
+
+    [data-theme="dark"] .summary-header h6 {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .summary-row {
+        border-color: #444;
+    }
+
+    [data-theme="dark"] .summary-value,
+    [data-theme="dark"] .item-name,
+    [data-theme="dark"] .item-price {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .summary-row.total {
+        border-color: #555;
+    }
+
+    /* Print Styles - Beautiful PDF */
+    @@media print {
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        body {
+            background: white !important;
+            font-size: 12pt;
+        }
+
+        .btn, .navbar, .footer, .secondary-actions, .track-btn, .modal {
+            display: none !important;
+        }
+
+        .confirmation-container {
+            max-width: 100%;
+            padding: 0;
+            margin: 0 auto;
+        }
+
+        /* Success Icon - Force green background */
+        .success-icon {
+            width: 70px !important;
+            height: 70px !important;
+            background: #198754 !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 auto 1rem !important;
+            border: 3px solid #198754 !important;
+            box-shadow: none !important;
+            animation: none !important;
+        }
+
+        .success-icon i {
+            font-size: 2rem !important;
+            color: white !important;
+        }
+
+        /* Title styling for print */
+        .confirmation-title {
+            font-size: 24pt !important;
+            font-weight: 700 !important;
+            color: #198754 !important;
+            margin-bottom: 0.25rem !important;
+        }
+
+        .confirmation-subtitle {
+            font-size: 11pt !important;
+            color: #555 !important;
+            margin-bottom: 1.5rem !important;
+        }
+
+        /* Order ID Card - decorative border */
+        .order-id-card {
+            background: #f8f9fa !important;
+            border: 2px dashed #198754 !important;
+            border-radius: 0.75rem !important;
+            padding: 1rem !important;
+            margin-bottom: 1.25rem !important;
+            page-break-inside: avoid;
+        }
+
+        .order-id-label {
+            font-size: 9pt !important;
+            color: #198754 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 2px !important;
+            font-weight: 600 !important;
+        }
+
+        .order-id-value {
+            font-size: 20pt !important;
+            font-weight: 800 !important;
+            color: #212529 !important;
+            letter-spacing: 1px !important;
+        }
+
+        /* Summary Card */
+        .summary-card {
+            background: white !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 0.75rem !important;
+            box-shadow: none !important;
+            margin-bottom: 1rem !important;
+            page-break-inside: avoid;
+        }
+
+        .summary-header {
+            background: #f8f9fa !important;
+            padding: 0.75rem 1rem !important;
+            border-bottom: 1px solid #dee2e6 !important;
+        }
+
+        .summary-header h6 {
+            font-size: 11pt !important;
+            font-weight: 700 !important;
+            color: #333 !important;
+            margin: 0 !important;
+        }
+
+        .summary-body {
+            padding: 1rem !important;
+        }
+
+        .order-items-list {
+            max-height: none !important;
+            overflow: visible !important;
+        }
+
+        .order-item {
+            padding: 0.5rem 0 !important;
+            border-bottom: 1px solid #eee !important;
+        }
+
+        .item-name {
+            font-size: 11pt !important;
+            font-weight: 600 !important;
+            color: #212529 !important;
+        }
+
+        .item-variant {
+            font-size: 8pt !important;
+            color: #666 !important;
+        }
+
+        .item-qty {
+            font-size: 9pt !important;
+            color: #666 !important;
+        }
+
+        .item-price {
+            font-size: 11pt !important;
+            font-weight: 700 !important;
+            color: #198754 !important;
+        }
+
+        .summary-row {
+            padding: 0.4rem 0 !important;
+            font-size: 10pt !important;
+        }
+
+        .summary-label {
+            color: #555 !important;
+        }
+
+        .summary-value {
+            font-weight: 600 !important;
+            color: #212529 !important;
+        }
+
+        /* Remove border from row before total in print */
+        .summary-row:has(+ .summary-row.total) {
+            border-bottom: none !important;
+        }
+
+        .summary-row.total {
+            border-top: 1px solid #198754 !important;
+            margin-top: 0.5rem !important;
+            padding-top: 0.75rem !important;
+        }
+
+        .summary-row.total .summary-label {
+            font-size: 12pt !important;
+            font-weight: 700 !important;
+            color: #212529 !important;
+        }
+
+        .summary-row.total .summary-value {
+            font-size: 14pt !important;
+            font-weight: 800 !important;
+            color: #198754 !important;
+        }
+
+        /* Badge styling for print */
+        .badge {
+            padding: 0.25rem 0.5rem !important;
+            font-size: 9pt !important;
+            border-radius: 0.25rem !important;
+            border: 1px solid currentColor !important;
+        }
+
+        .badge.bg-warning {
+            background: #ffc107 !important;
+            color: #212529 !important;
+        }
+
+        .badge.bg-success {
+            background: #198754 !important;
+            color: white !important;
+        }
+
+        .badge.bg-info {
+            background: #0dcaf0 !important;
+            color: #212529 !important;
+        }
+
+        .badge.bg-primary {
+            background: #0d6efd !important;
+            color: white !important;
+        }
+
+        .badge.bg-danger {
+            background: #dc3545 !important;
+            color: white !important;
+        }
+
+        /* Footer text for print */
+        .confirmation-container::after {
+            content: "Thank you for shopping with Bangaliyana!";
+            display: block;
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px dashed #dee2e6;
+            font-size: 10pt;
+            color: #666;
+            font-style: italic;
+        }
+    }
+</style>
+
+<div class="confirmation-container">
+    <!-- Success Icon -->
+    <div class="text-center">
+        <div class="success-icon">
+            <i class="fas fa-check"></i>
+        </div>
+        <h1 class="confirmation-title">@Localizer["OrderConfirmedExclamation"]</h1>
+        <p class="confirmation-subtitle">@Localizer["ThankYouForYourOrder", Model.CustomerName]</p>
+    </div>
+
+    <!-- Order ID Card -->
+    <div class="order-id-card">
+        <div class="order-id-label">@Localizer["OrderID"]</div>
+        <div class="order-id-value">#@Model.Id.ToString("D6")</div>
+    </div>
+
+    <!-- Order Summary Card -->
+    <div class="summary-card">
+        <div class="summary-header">
+            <h6><i class="fas fa-receipt me-2"></i>@Localizer["OrderSummary"]</h6>
+        </div>
+        <div class="summary-body">
+            <!-- Order Items -->
+            <div class="order-items-list mb-3">
+                @foreach (var item in Model.OrderItems)
+                {
+                    <div class="order-item">
+                        <div>
+                            <div class="item-name">@item.ProductName</div>
+                            @if (!string.IsNullOrEmpty(item.VariantInfo))
+                            {
+                                <div class="item-variant text-muted small"><i class="fas fa-tag me-1"></i>@item.VariantInfo</div>
+                            }
+                            <div class="item-qty">@Localizer["Qty"]: @item.Quantity x @currencySymbol@item.UnitPrice.ToString("N0")</div>
+                        </div>
+                        <div class="item-price">@currencySymbol@item.TotalPrice.ToString("N0")</div>
+                    </div>
+                }
+            </div>
+
+            <!-- Summary Rows -->
+            @{
+                var itemsSubtotal = Model.OrderItems.Sum(i => i.TotalPrice);
+                var totalDiscount = Model.DiscountAmount + Model.RewardDiscountAmount + Model.PremiumDiscountAmount;
+            }
+            <div class="summary-row">
+                <span class="summary-label">@Localizer["Subtotal"]</span>
+                <span class="summary-value">@currencySymbol@itemsSubtotal.ToString("N0")</span>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.CouponCode) && Model.DiscountAmount > 0)
+            {
+                <div class="summary-row text-success">
+                    <span class="summary-label">
+                        <i class="fas fa-ticket-alt me-1"></i>@Localizer["Coupon"] (@Model.CouponCode)
+                    </span>
+                    <span class="summary-value">-@currencySymbol@Model.DiscountAmount.ToString("N0")</span>
+                </div>
+            }
+            @if (Model.RewardDiscountAmount > 0)
+            {
+                <div class="summary-row text-success">
+                    <span class="summary-label">
+                        <i class="fas fa-gift me-1"></i>@Localizer["RewardDiscount"]
+                    </span>
+                    <span class="summary-value">-@currencySymbol@Model.RewardDiscountAmount.ToString("N0")</span>
+                </div>
+            }
+            @if (Model.PremiumDiscountAmount > 0)
+            {
+                <div class="summary-row text-success">
+                    <span class="summary-label">
+                        <i class="fas fa-crown me-1"></i>@Localizer["PremiumDiscount"]
+                    </span>
+                    <span class="summary-value">-@currencySymbol@Model.PremiumDiscountAmount.ToString("N0")</span>
+                </div>
+            }
+            <div class="summary-row">
+                <span class="summary-label">@Localizer["DeliveryCharge"]</span>
+                <span class="summary-value">@currencySymbol@Model.DeliveryCharge.ToString("N0")</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">@Localizer["PaymentMethod"]</span>
+                <span class="summary-value">@Model.PaymentMethod.GetDisplayName()</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">@Localizer["Status"]</span>
+                <span class="summary-value">
+                    <span class="badge @GetStatusBadgeClass(Model.Status)">@Model.Status.GetDisplayName()</span>
+                </span>
+            </div>
+            <div class="summary-row total">
+                <span class="summary-label">@Localizer["Total"]</span>
+                <span class="summary-value">@currencySymbol@Model.TotalAmount.ToString("N0")</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Track Order Button -->
+    <a asp-action="OrderDetails" asp-route-id="@Model.Id" class="btn btn-success track-btn">
+        <i class="fas fa-truck me-2"></i>@Localizer["TrackOrder"]
+    </a>
+
+    <!-- Secondary Actions -->
+    <div class="secondary-actions">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-home me-1"></i>@Localizer["Home"]
+        </a>
+        <button class="btn btn-outline-secondary" onclick="window.print();">
+            <i class="fas fa-print me-1"></i>@Localizer["Print"]
+        </button>
+        @if (User.Identity.IsAuthenticated && Model.Status == OrderStatus.Pending)
+        {
+            <form asp-action="CancelOrder" method="post" class="d-inline flex-fill" id="cancelOrderForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button type="button" class="btn btn-outline-danger w-100" id="cancelOrderBtn">
+                    <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+@functions {
+    private string GetStatusBadgeClass(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Pending => "bg-warning text-dark",
+            OrderStatus.Confirmed => "bg-info text-white",
+            OrderStatus.Paid => "bg-success text-white",
+            OrderStatus.Shipped => "bg-primary text-white",
+            OrderStatus.Cancelled => "bg-danger text-white",
+            _ => "bg-secondary text-white"
+        };
+    }
+}
+
+@if (User.Identity.IsAuthenticated && Model.Status == OrderStatus.Pending)
+{
+    <!-- Cancel Order Confirmation Modal -->
+    <div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Localizer["Close"]"></button>
+                </div>
+                <div class="modal-body text-center px-4 pt-0 pb-4">
+                    <div class="confirm-icon-wrapper mb-3">
+                        <div class="confirm-icon-circle">
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                        </div>
+                    </div>
+                    <h4 class="modal-title fw-bold mb-2" id="cancelOrderModalLabel">@Localizer["CancelOrderQuestion"]</h4>
+                    <p class="text-muted mb-0">@Localizer["CancelOrderConfirmMessage"]</p>
+                    <p class="text-muted small">@Localizer["ActionCannotBeUndone"]</p>
+                </div>
+                <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> @Localizer["NoKeepIt"]
+                    </button>
+                    <button type="button" class="btn btn-danger px-4" id="confirmCancelBtn">
+                        <i class="fas fa-check me-1"></i> @Localizer["YesCancel"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .confirm-icon-wrapper {
+            display: flex;
+            justify-content: center;
+        }
+        .confirm-icon-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse-warning 2s infinite;
+        }
+        .confirm-icon-circle i {
+            font-size: 2.5rem;
+        }
+        @@keyframes pulse-warning {
+            0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 193, 7, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+        }
+        #cancelOrderModal .modal-content {
+            border-radius: 1rem;
+        }
+        #cancelOrderModal .btn {
+            border-radius: 0.5rem;
+            font-weight: 500;
+        }
+        [data-theme="dark"] #cancelOrderModal .modal-content {
+            background-color: #252538;
+        }
+        [data-theme="dark"] #cancelOrderModal .modal-title {
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] #cancelOrderModal .text-muted {
+            color: #a0a0a0 !important;
+        }
+        [data-theme="dark"] .confirm-icon-circle {
+            background: linear-gradient(135deg, #3d3a20 0%, #4a4520 100%);
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Show success/error/warning messages from TempData
+            @if (TempData["success"] != null)
+            {
+                <text>alertify.success('@Html.Raw(TempData["success"])');</text>
+            }
+            @if (TempData["error"] != null)
+            {
+                <text>alertify.error('@Html.Raw(TempData["error"])');</text>
+            }
+            @if (TempData["warning"] != null)
+            {
+                <text>alertify.warning('@Html.Raw(TempData["warning"])');</text>
+            }
+
+            // Cancel order modal
+            var cancelBtn = document.getElementById('cancelOrderBtn');
+            if (cancelBtn) {
+                var cancelModal = new bootstrap.Modal(document.getElementById('cancelOrderModal'));
+                cancelBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    cancelModal.show();
+                });
+                document.getElementById('confirmCancelBtn').addEventListener('click', function() {
+                    cancelModal.hide();
+                    document.getElementById('cancelOrderForm').submit();
+                });
+            }
+        });
+    </script>
+}

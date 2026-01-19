@@ -1,0 +1,859 @@
+@using System.Globalization
+@model List<CartItem>
+
+@{
+    ViewData["Title"] = Localizer["ShoppingCart"].Value;
+    var siteSettings = ViewBag.SiteSettings as Bangaliyana.Models.SiteSettings;
+    var currencySymbol = siteSettings?.CurrencySymbol ?? "৳";
+    var deliveryCharge = siteSettings?.DefaultDeliveryCharge ?? 100m;
+    var freeDeliveryThreshold = siteSettings?.FreeDeliveryThreshold ?? 0m;
+
+    var subtotal = Model.Sum(i => i.EffectivePrice * i.Quantity);
+    var appliedCoupon = ViewBag.AppliedCoupon as Bangaliyana.Models.Coupon;
+    var discount = ViewBag.DiscountAmount as decimal? ?? 0m;
+    var shipping = (freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold) ? 0m : deliveryCharge;
+    var grandTotal = subtotal - discount + shipping;
+    var isLoggedIn = User.Identity?.IsAuthenticated ?? false;
+}
+
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Home"]</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Localizer["ShoppingCart"]</li>
+        </ol>
+    </nav>
+
+    @if (!Model.Any())
+    {
+        <!-- Empty Cart -->
+        <div class="empty-cart text-center py-5">
+            <div class="empty-cart-icon mb-4">
+                <i class="fas fa-shopping-cart fa-5x text-muted"></i>
+            </div>
+            <h3 class="mb-3">@Localizer["YourCartIsEmpty"]</h3>
+            <p class="text-muted mb-4">@Localizer["CartEmptyMessage"]</p>
+            <a asp-action="Index" class="btn btn-success btn-lg px-5">
+                <i class="fas fa-shopping-bag me-2"></i>@Localizer["StartShopping"]
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <!-- Cart Items -->
+            <div class="col-lg-8">
+                <div class="cart-items-container">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>@Localizer["ShoppingCart"] (@Model.Sum(i => i.Quantity) @Localizer["Items"])</h4>
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearCart()">
+                            <i class="fas fa-trash-alt me-1"></i>@Localizer["ClearCart"]
+                        </button>
+                    </div>
+
+                    <div class="cart-items">
+                        @foreach (var item in Model)
+                        {
+                            var effectivePrice = item.EffectivePrice;
+                            var hasDiscount = item.Product.DiscountPrice.HasValue && item.Product.DiscountPrice < item.Product.Price;
+                            <div class="cart-item-card mb-3" data-product-id="@item.Product.Id" data-variant-id="@item.ProductVariantId">
+                                <div class="row g-0 align-items-center">
+                                    <!-- Product Image -->
+                                    <div class="col-3 col-md-2">
+                                        <a asp-action="Details" asp-route-id="@item.Product.Id">
+                                            <img src="~/@item.Product.ImageUrl" alt="@item.Product.Name" class="cart-item-image">
+                                        </a>
+                                    </div>
+
+                                    <!-- Product Details -->
+                                    <div class="col-9 col-md-10">
+                                        <div class="cart-item-content p-3">
+                                            <div class="row align-items-center">
+                                                <div class="col-md-5">
+                                                    <a asp-action="Details" asp-route-id="@item.Product.Id" class="cart-item-name">
+                                                        @item.Product.Name
+                                                    </a>
+                                                    @if (item.Product.Category != null)
+                                                    {
+                                                        <p class="cart-item-type text-muted small mb-1">@item.Product.Category.Name</p>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(item.VariantInfo))
+                                                    {
+                                                        <p class="cart-item-variant text-muted small mb-1">
+                                                            <i class="fas fa-tag me-1"></i>@item.VariantInfo
+                                                        </p>
+                                                    }
+                                                    @if (item.Product.Stock > 0)
+                                                    {
+                                                        <span class="badge bg-success-subtle text-success">
+                                                            <i class="fas fa-check-circle me-1"></i>@Localizer["InStock"]
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-danger-subtle text-danger">
+                                                            <i class="fas fa-times-circle me-1"></i>@Localizer["OutOfStock"]
+                                                        </span>
+                                                    }
+                                                </div>
+
+                                                <!-- Price -->
+                                                <div class="col-md-2 text-center my-2 my-md-0">
+                                                    <div class="cart-item-price">
+                                                        <span class="current-price">@currencySymbol@effectivePrice.ToString("N0")</span>
+                                                        @if (hasDiscount)
+                                                        {
+                                                            <span class="original-price text-muted text-decoration-line-through small d-block">
+                                                                @currencySymbol@item.Product.Price.ToString("N0")
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                </div>
+
+                                                <!-- Quantity -->
+                                                <div class="col-md-3 text-center my-2 my-md-0">
+                                                    <div class="quantity-control d-inline-flex align-items-center">
+                                                        <button type="button" class="qty-btn decrement" data-id="@item.Product.Id">
+                                                            <i class="fas fa-minus"></i>
+                                                        </button>
+                                                        <input type="number" class="qty-input" value="@item.Quantity" min="1" max="@item.Product.Stock"
+                                                               data-id="@item.Product.Id" readonly>
+                                                        <button type="button" class="qty-btn increment" data-id="@item.Product.Id"
+                                                                @(item.Quantity >= item.Product.Stock ? "disabled" : "")>
+                                                            <i class="fas fa-plus"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Total -->
+                                                <div class="col-md-2 text-center text-md-end my-2 my-md-0">
+                                                    <span class="cart-item-total fw-bold">
+                                                        @currencySymbol@((effectivePrice * item.Quantity).ToString("N0"))
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Actions -->
+                                            <div class="cart-item-actions mt-3 pt-3 border-top d-flex gap-3">
+                                                @if (isLoggedIn)
+                                                {
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary move-to-wishlist"
+                                                            data-id="@item.Product.Id" title="@Localizer["MoveToWishlist"]">
+                                                        <i class="far fa-heart me-1"></i>@Localizer["MoveToWishlist"]
+                                                    </button>
+                                                }
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-item"
+                                                        data-id="@item.Product.Id" title="@Localizer["Remove"]">
+                                                    <i class="fas fa-trash-alt me-1"></i>@Localizer["Remove"]
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Continue Shopping -->
+                    <div class="mt-4">
+                        <a asp-action="Index" class="btn btn-outline-success">
+                            <i class="fas fa-arrow-left me-2"></i>@Localizer["ContinueShopping"]
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="col-lg-4">
+                <div class="order-summary-card sticky-top" style="top: 100px;">
+                    <h5 class="summary-title mb-4">
+                        <i class="fas fa-receipt me-2"></i>@Localizer["OrderSummary"]
+                    </h5>
+
+                    <!-- Coupon Section -->
+                    <div class="coupon-section mb-4">
+                        <label class="form-label fw-semibold">
+                            <i class="fas fa-ticket-alt me-1"></i>@Localizer["ApplyCouponVoucher"]
+                        </label>
+                        @if (appliedCoupon != null)
+                        {
+                            <div class="applied-coupon alert alert-success alert-permanent py-2 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    <strong>@appliedCoupon.Code</strong> applied
+                                    <span class="badge bg-success ms-2">-@currencySymbol@discount.ToString("N0")</span>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-close" onclick="removeCoupon()" title="Remove Coupon"></button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="input-group">
+                                <input type="text" id="couponCode" class="form-control" placeholder="@Localizer["EnterCouponCode"]" maxlength="50">
+                                <button type="button" class="btn btn-success" onclick="applyCoupon()">
+                                    @Localizer["Apply"]
+                                </button>
+                            </div>
+                            <div id="couponError" class="text-danger small mt-1" style="display: none;"></div>
+                            <div id="couponSuccess" class="text-success small mt-1" style="display: none;"></div>
+                        }
+                    </div>
+
+                    <!-- Price Breakdown -->
+                    <div class="price-breakdown">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">@Localizer["Subtotal"] (@Model.Sum(i => i.Quantity) @Localizer["Items"])</span>
+                            <span id="subtotalAmount">@currencySymbol@subtotal.ToString("N0")</span>
+                        </div>
+
+                        @if (discount > 0)
+                        {
+                            <div class="d-flex justify-content-between mb-2 text-success">
+                                <span><i class="fas fa-tag me-1"></i>@Localizer["Discount"]</span>
+                                <span id="discountAmount">-@currencySymbol@discount.ToString("N0")</span>
+                            </div>
+                        }
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">@Localizer["Shipping"]</span>
+                            <span id="shippingAmount" class="text-muted small fst-italic">
+                                @Localizer["CalculatedAtCheckout"]
+                            </span>
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-between mb-3 fw-bold fs-5">
+                            <span>@Localizer["EstimatedTotal"]</span>
+                            <span id="grandTotalAmount" class="text-muted small fst-italic">
+                                @Localizer["CalculatedAtCheckout"]
+                            </span>
+                        </div>
+                        <div class="text-center">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>@Localizer["ShippingCostNote"]
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Checkout Button -->
+                    <a asp-action="Checkout" class="btn btn-success btn-lg w-100 py-3">
+                        <i class="fas fa-lock me-2"></i>@Localizer["ProceedToCheckout"]
+                    </a>
+
+                    <!-- Secure Payment Info -->
+                    <div class="secure-info text-center mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-shield-alt me-1"></i>@Localizer["SecureCheckout"]
+                            <span class="mx-2">|</span>
+                            <i class="fas fa-undo me-1"></i>@Localizer["EasyReturns"]
+                        </small>
+                    </div>
+
+                    <!-- Payment Methods -->
+                    <div class="payment-methods mt-3 text-center">
+                        <small class="text-muted d-block mb-2">@Localizer["WeAccept"]</small>
+                        <div class="d-flex justify-content-center gap-2 flex-wrap">
+                            <span class="payment-icon"><i class="fas fa-credit-card"></i></span>
+                            <span class="payment-icon"><i class="fas fa-mobile-alt"></i></span>
+                            <span class="payment-icon"><i class="fas fa-money-bill-wave"></i></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Clear Cart Confirmation Modal -->
+<div class="modal fade" id="clearCartModal" tabindex="-1" aria-labelledby="clearCartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="clear-cart-icon-wrapper mb-3">
+                    <div class="clear-cart-icon-circle">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="clearCartModalLabel">@Localizer["ClearCartQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["ClearCartConfirmMessage"]</p>
+                <p class="text-muted small">@Localizer["ActionCannotBeUndone"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["NoKeepItems"]
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmClearCartBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesClearCart"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Cart Item Card */
+        .cart-item-card {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .cart-item-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .cart-item-image {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            padding: 8px;
+        }
+        .cart-item-name {
+            font-weight: 600;
+            color: #212529;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .cart-item-name:hover {
+            color: #198754;
+        }
+        .current-price {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        /* Quantity Control */
+        .quantity-control {
+            background: #f8f9fa;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .qty-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .qty-btn:hover:not(:disabled) {
+            background: #198754;
+            color: white;
+        }
+        .qty-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .qty-input {
+            width: 50px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-weight: 600;
+            -moz-appearance: textfield;
+        }
+        .qty-input::-webkit-outer-spin-button,
+        .qty-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+        }
+
+        /* Order Summary Card */
+        .order-summary-card {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .summary-title {
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        /* Coupon Section */
+        .coupon-section .form-control {
+            border-radius: 8px 0 0 8px;
+        }
+        .coupon-section .btn {
+            border-radius: 0 8px 8px 0;
+        }
+        .applied-coupon {
+            border-radius: 8px;
+        }
+
+        /* Payment Icons */
+        .payment-icon {
+            width: 40px;
+            height: 28px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+        }
+
+        /* Empty Cart */
+        .empty-cart-icon {
+            opacity: 0.5;
+        }
+
+        /* Dark Mode */
+        [data-theme="dark"] .cart-item-card {
+            background: #2d3748;
+            border-color: #4a5568;
+        }
+        [data-theme="dark"] .cart-item-name {
+            color: #f7fafc;
+        }
+        [data-theme="dark"] .order-summary-card {
+            background: #2d3748;
+            border-color: #4a5568;
+        }
+        [data-theme="dark"] .quantity-control {
+            background: #1a202c;
+        }
+        [data-theme="dark"] .qty-btn {
+            color: #e2e8f0;
+        }
+        [data-theme="dark"] .qty-input {
+            color: #f7fafc;
+        }
+        [data-theme="dark"] .payment-icon {
+            background: #1a202c;
+            color: #a0aec0;
+        }
+        [data-theme="dark"] .summary-title,
+        [data-theme="dark"] .cart-item-actions {
+            border-color: #4a5568 !important;
+        }
+
+        /* Alertify Dialog Styling - Enhanced Design */
+        .alertify .ajs-modal {
+            background: transparent !important;
+        }
+        .alertify .ajs-dialog {
+            border-radius: 8px;
+            overflow: visible;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            border: none;
+            max-width: 400px;
+            margin: 0 auto;
+            background: #fff;
+            position: relative;
+        }
+        .alertify .ajs-header {
+            background: linear-gradient(135deg, #198754 0%, #157347 100%);
+            color: white;
+            font-weight: 600;
+            padding: 14px 20px;
+            border-bottom: none;
+            font-size: 1rem;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        /* Hide default alertify close button */
+        .alertify .ajs-close {
+            display: none !important;
+        }
+        /* Custom Close Button - Exact copy of Details page zoom modal (.zoom-close-btn) */
+        .alertify-custom-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+        .alertify-custom-close:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: rotate(90deg);
+        }
+        .alertify .ajs-body {
+            padding: 20px;
+            background: #fff;
+        }
+        .alertify .ajs-body .ajs-content {
+            color: #495057;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .alertify .ajs-footer {
+            background: #f8f9fa;
+            padding: 12px 20px;
+            border-top: 1px solid #e9ecef;
+            border-radius: 0 0 8px 8px;
+        }
+        .alertify .ajs-footer .ajs-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .alertify .ajs-footer .ajs-buttons .ajs-button {
+            border-radius: 6px;
+            padding: 8px 20px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            border: none;
+        }
+        .alertify .ajs-footer .ajs-buttons .ajs-button.ajs-ok {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+        .alertify .ajs-footer .ajs-buttons .ajs-button.ajs-ok:hover {
+            background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        }
+        .alertify .ajs-footer .ajs-buttons .ajs-button.ajs-cancel {
+            background: #6c757d;
+            color: white;
+        }
+        .alertify .ajs-footer .ajs-buttons .ajs-button.ajs-cancel:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+        }
+        .alertify .ajs-dimmer {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        /* Alertify Dark Mode */
+        [data-theme="dark"] .alertify .ajs-modal {
+            background: transparent !important;
+        }
+        [data-theme="dark"] .alertify .ajs-dialog {
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            background: #2d3748;
+        }
+        [data-theme="dark"] .alertify .ajs-header {
+            background: linear-gradient(135deg, #2d7a50 0%, #236141 100%);
+        }
+        [data-theme="dark"] .alertify-custom-close {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        [data-theme="dark"] .alertify-custom-close:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        [data-theme="dark"] .alertify .ajs-body {
+            background: #2d3748;
+        }
+        [data-theme="dark"] .alertify .ajs-body .ajs-content {
+            color: #e2e8f0;
+        }
+        [data-theme="dark"] .alertify .ajs-footer {
+            background: #1a202c;
+            border-top-color: #4a5568;
+        }
+        [data-theme="dark"] .alertify .ajs-footer .ajs-buttons .ajs-button.ajs-cancel {
+            background: #4a5568;
+        }
+        [data-theme="dark"] .alertify .ajs-footer .ajs-buttons .ajs-button.ajs-cancel:hover {
+            background: #5a6a7a;
+        }
+        [data-theme="dark"] .alertify .ajs-dimmer {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        /* Clear Cart Modal Styles */
+        .clear-cart-icon-wrapper {
+            display: flex;
+            justify-content: center;
+        }
+        .clear-cart-icon-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse-warning 2s infinite;
+        }
+        .clear-cart-icon-circle i {
+            font-size: 2.5rem;
+        }
+        @@keyframes pulse-warning {
+            0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 193, 7, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+        }
+        #clearCartModal .modal-content {
+            border-radius: 1rem;
+        }
+        #clearCartModal .btn {
+            border-radius: 0.5rem;
+            font-weight: 500;
+        }
+        [data-theme="dark"] #clearCartModal .modal-content {
+            background-color: #252538;
+        }
+        [data-theme="dark"] #clearCartModal .modal-title {
+            color: #e0e0e0;
+        }
+        [data-theme="dark"] #clearCartModal .text-muted {
+            color: #a0a0a0 !important;
+        }
+        [data-theme="dark"] .clear-cart-icon-circle {
+            background: linear-gradient(135deg, #3d3a20 0%, #4a4520 100%);
+        }
+    </style>
+}
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        // Function to add custom close button to alertify dialogs
+        // Exact copy of Details page zoom modal close button functionality and design
+        function addCustomCloseButton(dialog) {
+            setTimeout(function() {
+                var headerElement = document.querySelector('.alertify .ajs-header');
+                if (headerElement && !headerElement.querySelector('.alertify-custom-close')) {
+                    var closeBtn = document.createElement('button');
+                    closeBtn.type = 'button';
+                    closeBtn.className = 'alertify-custom-close';
+                    closeBtn.setAttribute('aria-label', 'Close');
+                    closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                    closeBtn.onclick = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Call native click on cancel button
+                        var cancelBtn = document.querySelector('.alertify .ajs-button.ajs-cancel');
+                        if (cancelBtn) {
+                            cancelBtn.click();
+                        }
+                    };
+                    headerElement.appendChild(closeBtn);
+                }
+            }, 50);
+        }
+
+        $(document).ready(function () {
+            // Show success message if any
+            var saveMessage = '@TempData["onAdd"]';
+            if (saveMessage != null && saveMessage != "") {
+                alertify.success(saveMessage);
+            }
+
+            var errorMessage = '@TempData["error"]';
+            if (errorMessage != null && errorMessage != "") {
+                alertify.error(errorMessage);
+            }
+
+            var successMessage = '@TempData["success"]';
+            if (successMessage != null && successMessage != "") {
+                alertify.success(successMessage);
+            }
+
+            // Decrement quantity
+            $(".decrement").on("click", function () {
+                var productId = $(this).data("id");
+                var variantId = $(this).closest('.cart-item-card').data('variant-id');
+                var $input = $(this).siblings('.qty-input');
+                var currentQty = parseInt($input.val());
+
+                if (currentQty > 1) {
+                    updateQuantity(productId, currentQty - 1, variantId);
+                }
+            });
+
+            // Increment quantity
+            $(".increment").on("click", function () {
+                var productId = $(this).data("id");
+                var variantId = $(this).closest('.cart-item-card').data('variant-id');
+                var $input = $(this).siblings('.qty-input');
+                var currentQty = parseInt($input.val());
+                var maxQty = parseInt($input.attr('max'));
+
+                if (currentQty < maxQty) {
+                    updateQuantity(productId, currentQty + 1, variantId);
+                }
+            });
+
+            // Remove item
+            $(".remove-item").on("click", function () {
+                var productId = $(this).data("id");
+                var variantId = $(this).closest('.cart-item-card').data('variant-id');
+
+                var dialog = alertify.confirm('Remove Item', 'Are you sure you want to remove this item from your cart?',
+                    function() {
+                        removeFromCart(productId, variantId);
+                    },
+                    function() {
+                        // Cancelled
+                    }
+                );
+                // Add custom close button matching Details page zoom modal
+                addCustomCloseButton(dialog);
+            });
+
+            // Move to Wishlist
+            $(".move-to-wishlist").on("click", function () {
+                var productId = $(this).data("id");
+                moveToWishlist(productId);
+            });
+        });
+
+        function updateQuantity(productId, quantity, variantId) {
+            $.ajax({
+                url: '@Url.Action("UpdateCartQuantity", "Home", new { area = "Customer" })',
+                type: 'POST',
+                data: { productId: productId, quantity: quantity, variantId: variantId || null },
+                success: function (response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alertify.error(response.message || 'Failed to update quantity');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    alertify.error('An error occurred. Please try again.');
+                }
+            });
+        }
+
+        function removeFromCart(productId, variantId) {
+            $.ajax({
+                url: '@Url.Action("RemoveFromCart", "Home", new { area = "Customer" })',
+                type: 'POST',
+                data: { id: productId, variantId: variantId || null },
+                success: function (response) {
+                    alertify.success('Item removed from cart');
+                    location.reload();
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    alertify.error('Failed to remove item');
+                }
+            });
+        }
+
+        function moveToWishlist(productId) {
+            $.ajax({
+                url: '@Url.Action("MoveToWishlist", "Home", new { area = "Customer" })',
+                type: 'POST',
+                data: { productId: productId },
+                success: function (response) {
+                    if (response.success) {
+                        alertify.success(response.message || 'Moved to wishlist');
+                        location.reload();
+                    } else if (response.requireLogin) {
+                        window.location.href = '@Url.Action("Login", "Account", new { area = "Identity" })';
+                    } else {
+                        alertify.error(response.message || 'Failed to move to wishlist');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    alertify.error('An error occurred. Please try again.');
+                }
+            });
+        }
+
+        // Clear Cart Modal
+        var clearCartModal = new bootstrap.Modal(document.getElementById('clearCartModal'));
+
+        function clearCart() {
+            clearCartModal.show();
+        }
+
+        // Handle confirm clear cart button
+        document.getElementById('confirmClearCartBtn').addEventListener('click', function () {
+            clearCartModal.hide();
+            $.ajax({
+                url: '@Url.Action("ClearCart", "Home", new { area = "Customer" })',
+                type: 'POST',
+                success: function (response) {
+                    alertify.success('Cart cleared');
+                    location.reload();
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    alertify.error('Failed to clear cart');
+                }
+            });
+        });
+
+        function applyCoupon() {
+            var code = $('#couponCode').val().trim();
+            if (!code) {
+                $('#couponError').text('Please enter a coupon code').show();
+                return;
+            }
+
+            $('#couponError').hide();
+            $('#couponSuccess').hide();
+
+            $.ajax({
+                url: '@Url.Action("ApplyCoupon", "Home", new { area = "Customer" })',
+                type: 'POST',
+                data: { couponCode: code },
+                success: function (response) {
+                    if (response.success) {
+                        $('#couponSuccess').text(response.message).show();
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        $('#couponError').text(response.message).show();
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    $('#couponError').text('Failed to apply coupon. Please try again.').show();
+                }
+            });
+        }
+
+        function removeCoupon() {
+            $.ajax({
+                url: '@Url.Action("RemoveCoupon", "Home", new { area = "Customer" })',
+                type: 'POST',
+                success: function (response) {
+                    if (response.success) {
+                        alertify.success('Coupon removed');
+                        location.reload();
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    alertify.error('Failed to remove coupon');
+                }
+            });
+        }
+
+        // Allow Enter key to apply coupon
+        $('#couponCode').on('keypress', function(e) {
+            if (e.which === 13) {
+                applyCoupon();
+            }
+        });
+    </script>
+}

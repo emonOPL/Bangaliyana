@@ -1,0 +1,418 @@
+@model Bangaliyana.Models.Coupon
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    ViewData["Title"] = "Edit Coupon";
+    var categories = ViewBag.Categories as SelectList;
+    var sellers = ViewBag.Sellers as SelectList;
+    var users = ViewBag.Users as SelectList;
+}
+
+<style>
+    .form-card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .form-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 20px 25px;
+    }
+
+    .form-header h4 {
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .form-body {
+        padding: 25px;
+    }
+
+    .form-section {
+        margin-bottom: 25px;
+    }
+
+    .form-section-title {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .code-input {
+        font-family: 'Courier New', monospace;
+        font-size: 1.1rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+    }
+
+    /* Equal height for all inputs */
+    .form-control,
+    .form-select,
+    .input-group-text {
+        height: 42px;
+    }
+
+    .input-group .form-control {
+        height: 42px;
+    }
+
+    .input-group .btn {
+        height: 42px;
+    }
+
+    .discount-preview {
+        background: linear-gradient(135deg, #eff6ff, #dbeafe);
+        border: 1px solid #93c5fd;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+    }
+
+    .discount-preview .value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #2563eb;
+    }
+
+    .usage-stats {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+    }
+
+    .first-order-box {
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        border-radius: 8px;
+        padding: 12px 15px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+    }
+
+    [data-theme="dark"] .form-card {
+        background: #2a2a3d;
+    }
+
+    [data-theme="dark"] .form-section-title {
+        color: #e0e0e0;
+        border-color: #444;
+    }
+
+    [data-theme="dark"] .discount-preview {
+        background: linear-gradient(135deg, #1e3a5f, #1e3a5f);
+        border-color: #2d5a8a;
+    }
+
+    [data-theme="dark"] .usage-stats {
+        background: #1e1e2e;
+    }
+
+    [data-theme="dark"] .first-order-box {
+        background: #3d3520;
+        border-color: #6b5a1e;
+    }
+</style>
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex align-items-center mb-4">
+        <a asp-action="Index" class="btn btn-outline-secondary me-3">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div>
+            <h4 class="mb-1">
+                <i class="fas fa-edit text-primary me-2"></i>Edit Coupon
+            </h4>
+            <p class="text-muted mb-0">Edit coupon: <strong>@Model.Code</strong></p>
+        </div>
+    </div>
+
+    <div class="form-card">
+        <div class="form-body">
+            @if (ViewBag.onError != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>@ViewBag.onError
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            <form asp-action="Edit" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+
+                <div class="row">
+                    <!-- Left Column -->
+                    <div class="col-lg-8">
+                        <!-- Basic Information -->
+                        <div class="form-section">
+                            <h5 class="form-section-title"><i class="fas fa-info-circle me-2"></i>Basic Information</h5>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="Code" class="form-label fw-semibold">Coupon Code <span class="text-danger">*</span></label>
+                                    <input asp-for="Code" class="form-control code-input" maxlength="50" />
+                                    <span asp-validation-for="Code" class="text-danger small"></span>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="Description" class="form-label fw-semibold">Description</label>
+                                    <input asp-for="Description" class="form-control" placeholder="Summer sale discount" maxlength="200" />
+                                    <span asp-validation-for="Description" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Discount Settings -->
+                        <div class="form-section">
+                            <h5 class="form-section-title"><i class="fas fa-percent me-2"></i>Discount Settings</h5>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="DiscountType" class="form-label fw-semibold">Discount Type <span class="text-danger">*</span></label>
+                                    <select asp-for="DiscountType" class="form-select" id="discountTypeSelect">
+                                        <option value="Percentage">Percentage (%)</option>
+                                        <option value="FixedAmount">Fixed Amount (৳)</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="DiscountValue" class="form-label fw-semibold">Discount Value <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input asp-for="DiscountValue" type="number" step="1" min="1" class="form-control" id="discountValueInput" />
+                                        <span class="input-group-text" id="discountSuffix">@(Model.DiscountType == Bangaliyana.Models.DiscountType.Percentage ? "%" : "৳")</span>
+                                    </div>
+                                    <span asp-validation-for="DiscountValue" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3" id="maxDiscountGroup" style="@(Model.DiscountType == Bangaliyana.Models.DiscountType.FixedAmount ? "display:none;" : "")">
+                                    <label asp-for="MaximumDiscountAmount" class="form-label fw-semibold">Maximum Discount</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">৳</span>
+                                        <input asp-for="MaximumDiscountAmount" type="number" step="1" min="0" class="form-control" placeholder="500" />
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="MinimumOrderAmount" class="form-label fw-semibold">Minimum Order Amount</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">৳</span>
+                                        <input asp-for="MinimumOrderAmount" type="number" step="1" min="0" class="form-control" placeholder="500" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Usage Limits -->
+                        <div class="form-section">
+                            <h5 class="form-section-title"><i class="fas fa-chart-bar me-2"></i>Usage Limits</h5>
+
+                            <div class="row align-items-end">
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="UsageLimit" class="form-label fw-semibold">Total Usage Limit</label>
+                                    <input asp-for="UsageLimit" type="number" step="1" min="1" class="form-control" placeholder="Unlimited" />
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="UsagePerUserLimit" class="form-label fw-semibold">Per User Limit</label>
+                                    <input asp-for="UsagePerUserLimit" type="number" step="1" min="1" class="form-control" placeholder="Unlimited" />
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <div class="first-order-box">
+                                        <div class="form-check mb-0">
+                                            <input asp-for="IsFirstOrderOnly" class="form-check-input" />
+                                            <label asp-for="IsFirstOrderOnly" class="form-check-label">
+                                                <i class="fas fa-star text-warning me-1"></i>First Order Only
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Validity Period -->
+                        <div class="form-section">
+                            <h5 class="form-section-title"><i class="fas fa-calendar-alt me-2"></i>Validity Period</h5>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="StartDate" class="form-label fw-semibold">Start Date</label>
+                                    <input asp-for="StartDate" type="datetime-local" class="form-control" />
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="EndDate" class="form-label fw-semibold">End Date</label>
+                                    <input asp-for="EndDate" type="datetime-local" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Restrictions -->
+                        <div class="form-section">
+                            <h5 class="form-section-title"><i class="fas fa-filter me-2"></i>Restrictions (Optional)</h5>
+
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="CategoryId" class="form-label fw-semibold">Category</label>
+                                    <select asp-for="CategoryId" asp-items="categories" class="form-select">
+                                        <option value="">All Categories</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="SellerId" class="form-label fw-semibold">Seller</label>
+                                    <select asp-for="SellerId" asp-items="sellers" class="form-select">
+                                        <option value="">All Sellers</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label asp-for="AssignedToUserId" class="form-label fw-semibold">Assign to User</label>
+                                    <select asp-for="AssignedToUserId" asp-items="users" class="form-select">
+                                        <option value="">All Users</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column - Preview & Stats -->
+                    <div class="col-lg-4">
+                        <div class="sticky-top" style="top: 20px;">
+                            <!-- Discount Preview -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-primary text-white">
+                                    <i class="fas fa-eye me-2"></i>Coupon Preview
+                                </div>
+                                <div class="card-body">
+                                    <div class="discount-preview mb-3">
+                                        <div class="value" id="previewValue">
+                                            @if (Model.DiscountType == Bangaliyana.Models.DiscountType.Percentage)
+                                            {
+                                                @($"{Model.DiscountValue}%")
+                                            }
+                                            else
+                                            {
+                                                @($"৳{Model.DiscountValue:N0}")
+                                            }
+                                        </div>
+                                        <div class="text-muted small">Discount</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <code class="fs-5" id="previewCode">@Model.Code</code>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Usage Stats -->
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-pie me-2"></i>Usage Statistics
+                                </div>
+                                <div class="card-body">
+                                    <div class="usage-stats">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">Times Used:</span>
+                                            <span class="fw-bold">@Model.TimesUsed</span>
+                                        </div>
+                                        @if (Model.UsageLimit.HasValue)
+                                        {
+                                            <div class="progress mb-2" style="height: 8px;">
+                                                @{
+                                                    var percentage = (Model.TimesUsed * 100.0 / Model.UsageLimit.Value);
+                                                    var barClass = percentage >= 90 ? "bg-danger" : (percentage >= 70 ? "bg-warning" : "bg-success");
+                                                }
+                                                <div class="progress-bar @barClass" style="width: @percentage%"></div>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <span class="text-muted">Limit:</span>
+                                                <span class="fw-bold">@Model.UsageLimit</span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="text-muted small">Unlimited usage</div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Status Toggle -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-secondary text-white">
+                                    <i class="fas fa-power-off me-2"></i>Status
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <label asp-for="IsActive" class="form-label mb-0 fw-semibold">Active</label>
+                                        <div class="form-check form-switch mb-0">
+                                            <input asp-for="IsActive" class="form-check-input" style="width: 3rem; height: 1.5rem;" />
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Inactive coupons cannot be used by customers</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="d-flex justify-content-between pt-3 border-top mt-4">
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Cancel
+                    </a>
+                    <div class="d-flex gap-2">
+                        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-info">
+                            <i class="fas fa-eye me-1"></i> View Details
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        $(document).ready(function () {
+            // Update discount suffix based on type
+            $('#discountTypeSelect').on('change', function () {
+                var type = $(this).val();
+                if (type === 'Percentage') {
+                    $('#discountSuffix').text('%');
+                    $('#maxDiscountGroup').show();
+                } else {
+                    $('#discountSuffix').text('৳');
+                    $('#maxDiscountGroup').hide();
+                }
+                updatePreview();
+            });
+
+            // Update preview on input changes
+            $('#Code, #discountValueInput').on('input', updatePreview);
+
+            function updatePreview() {
+                var code = $('#Code').val() || 'CODE';
+                var value = $('#discountValueInput').val() || '0';
+                var type = $('#discountTypeSelect').val();
+                var prefix = type === 'FixedAmount' ? '৳' : '';
+                var suffix = type === 'Percentage' ? '%' : '';
+
+                $('#previewCode').text(code.toUpperCase());
+                $('#previewValue').text(prefix + value + suffix);
+            }
+        });
+    </script>
+}

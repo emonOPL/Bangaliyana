@@ -1,0 +1,335 @@
+@using Bangaliyana.Models
+@using Bangaliyana.Services
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = "Live Chat Support";
+    var statistics = ViewBag.Statistics as ChatStatistics;
+    var waitingSessions = ViewBag.WaitingSessions as List<SupportChatSession>;
+    var activeSessions = ViewBag.ActiveSessions as List<SupportChatSession>;
+    var recentSessions = ViewBag.RecentSessions as List<SupportChatSession>;
+}
+
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="fas fa-comments text-primary me-2"></i>Live Chat Support
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Dashboard">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Live Chat</li>
+                </ol>
+            </nav>
+        </div>
+        <a asp-action="Chat" class="btn btn-primary">
+            <i class="fas fa-headset me-1"></i>Open Agent Console
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Waiting</h6>
+                            <h3 class="mb-0 text-danger">@(statistics?.WaitingSessions ?? 0)</h3>
+                        </div>
+                        <div class="stat-icon bg-danger-soft">
+                            <i class="fas fa-clock text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Active Chats</h6>
+                            <h3 class="mb-0 text-success">@(statistics?.ActiveSessions ?? 0)</h3>
+                        </div>
+                        <div class="stat-icon bg-success-soft">
+                            <i class="fas fa-comments text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Closed Today</h6>
+                            <h3 class="mb-0 text-primary">@(statistics?.ClosedToday ?? 0)</h3>
+                        </div>
+                        <div class="stat-icon bg-primary-soft">
+                            <i class="fas fa-check-circle text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Avg Rating</h6>
+                            <h3 class="mb-0 text-warning">
+                                @(statistics?.AverageRating.ToString("F1") ?? "N/A")
+                                <i class="fas fa-star small"></i>
+                            </h3>
+                        </div>
+                        <div class="stat-icon bg-warning-soft">
+                            <i class="fas fa-star text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Waiting Queue -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock text-danger me-2"></i>Waiting Queue
+                    </h5>
+                    @if (waitingSessions?.Any() == true)
+                    {
+                        <span class="badge bg-danger">@waitingSessions.Count waiting</span>
+                    }
+                </div>
+                <div class="card-body p-0">
+                    @if (waitingSessions?.Any() == true)
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var session in waitingSessions)
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">@session.VisitorName</h6>
+                                            <small class="text-muted">@session.VisitorEmail</small>
+                                            @if (!string.IsNullOrEmpty(session.InitialQuery))
+                                            {
+                                                <p class="mb-0 small text-truncate" style="max-width: 300px;">
+                                                    @session.InitialQuery
+                                                </p>
+                                            }
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-secondary mb-1">@session.Department</span>
+                                            <br />
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>
+                                                @((DateTime.UtcNow - session.CreatedAt).TotalMinutes.ToString("F0")) min
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted mb-0">No customers waiting</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Chats -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-comments text-success me-2"></i>Active Chats
+                    </h5>
+                    @if (activeSessions?.Any() == true)
+                    {
+                        <span class="badge bg-success">@activeSessions.Count active</span>
+                    }
+                </div>
+                <div class="card-body p-0">
+                    @if (activeSessions?.Any() == true)
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var session in activeSessions)
+                            {
+                                <a asp-action="SessionDetails" asp-route-id="@session.Id" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">@session.VisitorName</h6>
+                                            <small class="text-muted">
+                                                Agent: @(session.Agent?.FullName ?? "Unknown")
+                                            </small>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="status-dot online"></span>
+                                            <small class="text-muted">
+                                                @((DateTime.UtcNow - session.LastActivityAt).TotalMinutes.ToString("F0")) min ago
+                                            </small>
+                                        </div>
+                                    </div>
+                                </a>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                            <p class="text-muted mb-0">No active chats</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Sessions -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-history text-primary me-2"></i>Recent Sessions
+            </h5>
+            <a asp-action="History" class="btn btn-sm btn-outline-primary">
+                View All History
+            </a>
+        </div>
+        <div class="card-body p-0">
+            @if (recentSessions?.Any() == true)
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Session</th>
+                                <th>Visitor</th>
+                                <th>Agent</th>
+                                <th>Status</th>
+                                <th>Rating</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var session in recentSessions)
+                            {
+                                <tr>
+                                    <td><code>@session.SessionCode</code></td>
+                                    <td>@session.VisitorName</td>
+                                    <td>@(session.Agent?.FullName ?? "-")</td>
+                                    <td>
+                                        @switch (session.Status)
+                                        {
+                                            case ChatSessionStatus.Waiting:
+                                                <span class="badge bg-warning text-dark">Waiting</span>
+                                                break;
+                                            case ChatSessionStatus.Active:
+                                                <span class="badge bg-success">Active</span>
+                                                break;
+                                            case ChatSessionStatus.Closed:
+                                                <span class="badge bg-secondary">Closed</span>
+                                                break;
+                                            case ChatSessionStatus.Abandoned:
+                                                <span class="badge bg-danger">Abandoned</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (session.Rating.HasValue)
+                                        {
+                                            @for (int i = 0; i < session.Rating.Value; i++)
+                                            {
+                                                <i class="fas fa-star text-warning small"></i>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td><small>@session.CreatedAt.ToBangladeshDateString()</small></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                    <p class="text-muted mb-0">No chat history yet</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .stat-card {
+        transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .bg-primary-soft { background: rgba(99, 102, 241, 0.1); }
+    .bg-danger-soft { background: rgba(239, 68, 68, 0.1); }
+    .bg-warning-soft { background: rgba(245, 158, 11, 0.1); }
+    .bg-success-soft { background: rgba(16, 185, 129, 0.1); }
+
+    .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+
+    .status-dot.online {
+        background: #10b981;
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    /* Dark mode */
+    [data-theme="dark"] .card {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .list-group-item {
+        background: #1f2937;
+        border-color: #374151;
+    }
+</style>

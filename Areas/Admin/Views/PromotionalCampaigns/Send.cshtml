@@ -1,0 +1,225 @@
+@model Bangaliyana.Models.PromotionalCampaign
+
+@{
+    ViewData["Title"] = "Send Campaign";
+    var targetCount = ViewBag.TargetCount as int? ?? 0;
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="d-flex align-items-center mb-4">
+                <a asp-action="Index" class="btn btn-outline-secondary me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h4 class="mb-1">
+                        <i class="fas fa-paper-plane text-primary me-2"></i>Send Campaign
+                    </h4>
+                    <p class="text-muted mb-0">Review and send your promotional campaign</p>
+                </div>
+            </div>
+
+            <!-- Preview Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0"><i class="fas fa-eye me-2"></i>Notification Preview</h6>
+                </div>
+                <div class="card-body">
+                    <div class="notification-preview p-4 rounded">
+                        <div class="d-flex align-items-start">
+                            <div class="notification-icon me-3">
+                                <i class="@Model.IconClass @Model.IconColor"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">@Model.Title</h6>
+                                <p class="mb-2 text-muted">@Model.Message</p>
+                                @if (!string.IsNullOrEmpty(Model.PromoCode))
+                                {
+                                    <div class="promo-code-badge mb-2">
+                                        <i class="fas fa-ticket-alt me-1"></i>
+                                        Use code: <strong>@Model.PromoCode</strong>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(Model.DiscountDescription))
+                                {
+                                    <p class="mb-2 text-success fw-bold">@Model.DiscountDescription</p>
+                                }
+                                @if (!string.IsNullOrEmpty(Model.ActionUrl))
+                                {
+                                    <button class="btn btn-primary btn-sm">
+                                        @(Model.ActionText ?? "View Details")
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Campaign Details -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Campaign Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="detail-item">
+                                <span class="label">Target Audience:</span>
+                                <span class="value">
+                                    @(Model.TargetAudience switch
+                                    {
+                                        Bangaliyana.Models.TargetAudience.All => "All Users",
+                                        Bangaliyana.Models.TargetAudience.NewUsers => "New Users (Last 30 days)",
+                                        Bangaliyana.Models.TargetAudience.ReturningUsers => "Returning Customers",
+                                        Bangaliyana.Models.TargetAudience.PremiumMembers => "Premium Members",
+                                        Bangaliyana.Models.TargetAudience.InactiveUsers => "Inactive Users",
+                                        Bangaliyana.Models.TargetAudience.HighSpenders => "High Spenders",
+                                        _ => Model.TargetAudience.ToString()
+                                    })
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Estimated Recipients:</span>
+                                <span class="value fw-bold text-primary">@targetCount.ToString("N0") users</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detail-item">
+                                <span class="label">Email Notifications:</span>
+                                <span class="value">
+                                    @if (Model.SendEmail)
+                                    {
+                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>Enabled</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary"><i class="fas fa-times me-1"></i>Disabled</span>
+                                    }
+                                </span>
+                            </div>
+                            @if (Model.CouponId.HasValue)
+                            {
+                                <div class="detail-item">
+                                    <span class="label">Linked Coupon:</span>
+                                    <span class="value"><i class="fas fa-ticket-alt text-warning me-1"></i>Yes</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Warning and Confirm -->
+            <div class="card border-0 shadow-sm mb-4 border-warning">
+                <div class="card-body">
+                    <div class="alert alert-warning mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Important:</strong> Once sent, this campaign cannot be modified or recalled.
+                        All targeted users will receive the notification immediately.
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+                            <i class="fas fa-edit me-2"></i>Edit Campaign
+                        </a>
+                        <button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#sendCampaignModal">
+                            <i class="fas fa-paper-plane me-2"></i>Send to @targetCount.ToString("N0") Users
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Send Campaign Confirmation Modal -->
+<div class="modal fade" id="sendCampaignModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-paper-plane text-success" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold mb-2">Send Campaign?</h4>
+                <p class="text-muted mb-1">Are you sure you want to send this campaign to <span class="fw-semibold">@targetCount.ToString("N0")</span> users?</p>
+                <p class="text-muted small mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 py-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <form asp-action="SendConfirm" asp-route-id="@Model.Id" method="post" class="m-0 d-inline-flex">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="fas fa-paper-plane me-1"></i>Yes, Send Now
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .notification-preview {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border: 1px solid #e2e8f0;
+    }
+
+    .notification-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .promo-code-badge {
+        display: inline-block;
+        background: #fef3c7;
+        color: #92400e;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+    }
+
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .detail-item:last-child {
+        border-bottom: none;
+    }
+
+    .detail-item .label {
+        color: #6b7280;
+    }
+
+    [data-theme="dark"] .card {
+        background-color: #252538;
+    }
+
+    [data-theme="dark"] .notification-preview {
+        background: linear-gradient(135deg, #1e1e2d 0%, #252538 100%);
+        border-color: #3d3d5c;
+    }
+
+    [data-theme="dark"] .notification-icon {
+        background: #1e1e2d;
+    }
+
+    [data-theme="dark"] .detail-item {
+        border-color: #3d3d5c;
+    }
+</style>

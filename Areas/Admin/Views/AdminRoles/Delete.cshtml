@@ -1,0 +1,62 @@
+@model Bangaliyana.Models.AdminRole
+
+@{
+    ViewData["Title"] = "Delete Admin Role";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Admin Roles</a></li>
+            <li class="breadcrumb-item active">Delete</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete</h5>
+                </div>
+                <div class="card-body text-center py-4">
+                    <i class="fas fa-user-shield fa-3x text-danger mb-3"></i>
+                    <h4>Are you sure you want to delete this role?</h4>
+                    <div class="my-4">
+                        <p class="mb-1"><strong>Role Name:</strong> @Model.Name</p>
+                        <p class="mb-1"><strong>Description:</strong> @(Model.Description ?? "N/A")</p>
+                        <p class="mb-1"><strong>Permissions:</strong> @(Model.Permissions?.Count ?? 0) modules</p>
+                        <p class="mb-0"><strong>Assigned Users:</strong> @(Model.Assignments?.Count ?? 0)</p>
+                    </div>
+                    <div class="alert alert-warning text-start">
+                        <i class="fas fa-warning me-1"></i>
+                        <strong>Warning:</strong> This action will:
+                        <ul class="mb-0 mt-2">
+                            <li>Remove all user assignments from this role</li>
+                            <li>Delete all permissions associated with this role</li>
+                            <li>This action cannot be undone</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-footer d-flex justify-content-center gap-2">
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i> Cancel
+                    </a>
+                    <form asp-action="Delete" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="Id" />
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash me-1"></i> Delete Role
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        [data-theme="dark"] .card { background-color: var(--bs-dark); border-color: var(--bs-gray-700); }
+        [data-theme="dark"] .card-footer { background-color: var(--bs-gray-800); border-color: var(--bs-gray-700); }
+    </style>
+}

@@ -1,0 +1,148 @@
+@model Bangaliyana.Models.BlogPost
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Model.Title;
+    var relatedPosts = ViewBag.RelatedPosts as List<BlogPost>;
+    var categories = ViewBag.Categories as List<BlogCategory>;
+}
+
+<div class="blog-details-page py-5">
+    <div class="container">
+        <div class="row">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <article class="blog-article">
+                    <!-- Breadcrumb -->
+                    <nav aria-label="breadcrumb" class="mb-4">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a asp-area="Customer" asp-controller="Home" asp-action="Index">@Localizer["Home"]</a></li>
+                            <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Blog"]</a></li>
+                            @if (Model.Category != null)
+                            {
+                                <li class="breadcrumb-item"><a asp-action="Index" asp-route-categoryId="@Model.Category.Id">@Model.Category.Name</a></li>
+                            }
+                            <li class="breadcrumb-item active" aria-current="page">@Model.Title</li>
+                        </ol>
+                    </nav>
+
+                    <!-- Title -->
+                    <h1 class="article-title mb-3">@Model.Title</h1>
+
+                    <!-- Meta -->
+                    <div class="article-meta d-flex flex-wrap gap-3 mb-4 text-muted">
+                        @if (!string.IsNullOrEmpty(Model.AuthorName))
+                        {
+                            <span><i class="fas fa-user me-1"></i>@Model.AuthorName</span>
+                        }
+                        @if (Model.PublishedAt.HasValue)
+                        {
+                            <span><i class="far fa-calendar me-1"></i>@Model.PublishedAt.Value.ToString("dd MMMM yyyy")</span>
+                        }
+                        <span><i class="far fa-eye me-1"></i>@Model.ViewCount @Localizer["Views"]</span>
+                        @if (Model.Category != null)
+                        {
+                            <a asp-action="Index" asp-route-categoryId="@Model.Category.Id" class="badge bg-primary text-decoration-none">@Model.Category.Name</a>
+                        }
+                    </div>
+
+                    <!-- Featured Image -->
+                    @if (!string.IsNullOrEmpty(Model.FeaturedImageUrl))
+                    {
+                        <div class="article-image mb-4">
+                            <img src="~/@Model.FeaturedImageUrl" class="img-fluid rounded" alt="@Model.Title">
+                        </div>
+                    }
+
+                    <!-- Content -->
+                    <div class="article-content">
+                        @Html.Raw(Model.Content)
+                    </div>
+
+                    <!-- Tags -->
+                    @if (Model.TagList.Any())
+                    {
+                        <div class="article-tags mt-4 pt-4 border-top">
+                            <strong class="me-2"><i class="fas fa-tags"></i> @Localizer["Tags"]:</strong>
+                            @foreach (var tag in Model.TagList)
+                            {
+                                <a asp-action="Index" asp-route-search="@tag" class="badge bg-light text-dark me-1 text-decoration-none">@tag</a>
+                            }
+                        </div>
+                    }
+
+                    <!-- Share -->
+                    <div class="article-share mt-4 pt-4 border-top">
+                        <strong class="me-2"><i class="fas fa-share-alt"></i> @Localizer["Share"]:</strong>
+                        <a href="https://www.facebook.com/sharer/sharer.php?u=@Url.Action("Details", "Blog", new { slug = Model.Slug }, Context.Request.Scheme)" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fab fa-facebook-f"></i></a>
+                        <a href="https://twitter.com/intent/tweet?url=@Url.Action("Details", "Blog", new { slug = Model.Slug }, Context.Request.Scheme)&text=@Model.Title" target="_blank" class="btn btn-outline-info btn-sm"><i class="fab fa-twitter"></i></a>
+                        <a href="https://wa.me/?text=@Model.Title - @Url.Action("Details", "Blog", new { slug = Model.Slug }, Context.Request.Scheme)" target="_blank" class="btn btn-outline-success btn-sm"><i class="fab fa-whatsapp"></i></a>
+                    </div>
+                </article>
+
+                <!-- Related Posts -->
+                @if (relatedPosts?.Any() == true)
+                {
+                    <div class="related-posts mt-5 pt-5 border-top">
+                        <h4 class="mb-4"><i class="fas fa-newspaper me-2"></i>@Localizer["RelatedArticles"]</h4>
+                        <div class="row g-4">
+                            @foreach (var post in relatedPosts)
+                            {
+                                <div class="col-md-6">
+                                    <div class="card h-100 border-0 shadow-sm">
+                                        @if (!string.IsNullOrEmpty(post.FeaturedImageUrl))
+                                        {
+                                            <a asp-action="Details" asp-route-slug="@post.Slug">
+                                                <img src="~/@post.FeaturedImageUrl" class="card-img-top" alt="@post.Title" style="height: 150px; object-fit: cover;">
+                                            </a>
+                                        }
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <a asp-action="Details" asp-route-slug="@post.Slug" class="text-decoration-none text-dark">@post.Title</a>
+                                            </h6>
+                                            <small class="text-muted">@post.PublishedAt?.ToString("dd MMM yyyy")</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Categories -->
+                @if (categories?.Any() == true)
+                {
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-light">
+                            <i class="fas fa-folder me-2"></i>@Localizer["Categories"]
+                        </div>
+                        <ul class="list-group list-group-flush">
+                            @foreach (var cat in categories)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <a asp-action="Index" asp-route-categoryId="@cat.Id" class="text-decoration-none">@cat.Name</a>
+                                    <span class="badge bg-primary rounded-pill">@cat.PostCount</span>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                <!-- Back to Blog -->
+                <div class="d-grid">
+                    <a asp-action="Index" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>@Localizer["BackToBlog"]
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .article-content { font-size: 1.1rem; line-height: 1.8; }
+    .article-content img { max-width: 100%; height: auto; margin: 1rem 0; }
+    .article-content h2, .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; }
+</style>

@@ -1,0 +1,67 @@
+@model Bangaliyana.Models.SocialLink
+@{ ViewData["Title"] = "Edit Social Link"; }
+
+<div class="container px-4">
+    <h1 class="mt-4"><i class="fas fa-edit me-2"></i>Edit Social Link</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a asp-action="Index">Site Settings</a></li>
+        <li class="breadcrumb-item"><a asp-action="SocialLinks">Social Links</a></li>
+        <li class="breadcrumb-item active">Edit</li>
+    </ol>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="EditSocialLink" method="post">
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="CreatedAt" />
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="PlatformName" class="form-label"></label>
+                        <input asp-for="PlatformName" class="form-control" />
+                        <span asp-validation-for="PlatformName" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Url" class="form-label"></label>
+                        <input asp-for="Url" class="form-control" />
+                        <span asp-validation-for="Url" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="IconClass" class="form-label"></label>
+                        <input asp-for="IconClass" class="form-control" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="IconColor" class="form-label"></label>
+                        <input asp-for="IconColor" class="form-control form-control-color" type="color" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="DisplayOrder" class="form-label"></label>
+                        <input asp-for="DisplayOrder" class="form-control" type="number" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                            <label asp-for="IsActive" class="form-check-label"></label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input asp-for="OpenInNewTab" class="form-check-input" type="checkbox" />
+                            <label asp-for="OpenInNewTab" class="form-check-label"></label>
+                        </div>
+                    </div>
+                </div>
+                <hr />
+                <div class="d-flex justify-content-between">
+                    <a asp-action="SocialLinks" class="btn btn-secondary"><i class="fas fa-arrow-left me-1"></i> Back</a>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

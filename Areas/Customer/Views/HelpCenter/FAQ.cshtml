@@ -1,0 +1,650 @@
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Localizer["FrequentlyAskedQuestions"].Value;
+    var faqs = ViewBag.FAQs as List<FAQ>;
+    var categories = ViewBag.Categories as List<string>;
+    var searchQuery = ViewBag.SearchQuery as string;
+    var selectedCategory = ViewBag.SelectedCategory as string;
+    var totalCount = (int?)ViewBag.TotalCount ?? 0;
+}
+
+<div class="faq-page">
+    <!-- Header -->
+    <section class="faq-header py-4 bg-gradient-primary text-white">
+        <div class="container">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb breadcrumb-light">
+                    <li class="breadcrumb-item"><a asp-area="Customer" asp-controller="Home" asp-action="Index">@Localizer["Home"]</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Index">@Localizer["HelpCenter"]</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">@Localizer["FAQs"]</li>
+                </ol>
+            </nav>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <h1 class="display-5 fw-bold mb-2">
+                        <i class="fas fa-question-circle me-3"></i>@Localizer["FrequentlyAskedQuestions"]
+                    </h1>
+                    <p class="lead mb-0">@Localizer["FindAnswersToCommonQuestions"]</p>
+                </div>
+                <!-- Search Box -->
+                <div class="header-search">
+                    <form method="get" class="search-form">
+                        <div class="input-group">
+                            <input type="text" name="search" class="form-control" placeholder="@Localizer["SearchQuestions"]"
+                                   value="@searchQuery">
+                            <button type="submit" class="btn btn-light">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="container pt-4">
+        <div class="row">
+            <!-- Sidebar with Categories -->
+            <div class="col-lg-3 mb-4">
+                <div class="categories-card">
+                    <h5 class="categories-title">
+                        <i class="fas fa-folder me-2"></i>@Localizer["Categories"]
+                    </h5>
+                    <div class="categories-list">
+                        <a asp-action="FAQ" class="category-item @(string.IsNullOrEmpty(selectedCategory) && string.IsNullOrEmpty(searchQuery) ? "active" : "")">
+                            <i class="fas fa-list me-2"></i>@Localizer["AllQuestions"]
+                            <span class="badge">@totalCount</span>
+                        </a>
+                        @if (categories?.Any() == true)
+                        {
+                            @foreach (var category in categories)
+                            {
+                                var count = faqs?.Count(f => f.Category == category) ?? 0;
+                                <a asp-action="FAQ" asp-route-category="@category"
+                                   class="category-item @(selectedCategory == category ? "active" : "")">
+                                    <i class="fas fa-tag me-2"></i>@category
+                                    <span class="badge">@count</span>
+                                </a>
+                            }
+                        }
+                    </div>
+                </div>
+
+                <!-- Quick Links -->
+                <div class="quick-links-card mt-4">
+                    <h5 class="categories-title">
+                        <i class="fas fa-bolt me-2"></i>@Localizer["QuickLinks"]
+                    </h5>
+                    <div class="quick-links">
+                        <a asp-action="Contact" class="quick-link">
+                            <i class="fas fa-envelope text-success"></i>
+                            <span>@Localizer["ContactSupport"]</span>
+                        </a>
+                        <a asp-action="LiveChat" class="quick-link">
+                            <i class="fas fa-comments text-info"></i>
+                            <span>@Localizer["LiveChat"]</span>
+                        </a>
+                        <a asp-area="Identity" asp-page="/Account/Manage/SupportTickets" class="quick-link">
+                            <i class="fas fa-ticket-alt text-warning"></i>
+                            <span>@Localizer["MyTickets"]</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FAQ Content -->
+            <div class="col-lg-9">
+                <!-- Search Results Info -->
+                @if (!string.IsNullOrEmpty(searchQuery))
+                {
+                    <div class="search-results-info mb-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <span>
+                                <i class="fas fa-search me-2"></i>
+                                @Localizer["FoundResults", totalCount, searchQuery]
+                            </span>
+                            <a asp-action="FAQ" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>@Localizer["ClearSearch"]
+                            </a>
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(selectedCategory))
+                {
+                    <div class="category-info mb-4">
+                        <span class="badge bg-primary fs-6">
+                            <i class="fas fa-tag me-1"></i>@selectedCategory
+                        </span>
+                        <a asp-action="FAQ" class="btn btn-sm btn-outline-secondary ms-2">
+                            <i class="fas fa-times me-1"></i>@Localizer["ClearFilter"]
+                        </a>
+                    </div>
+                }
+
+                @if (faqs?.Any() == true)
+                {
+                    <div class="accordion faq-accordion" id="faqAccordion">
+                        @{
+                            var index = 0;
+                            var groupedFaqs = string.IsNullOrEmpty(selectedCategory) && string.IsNullOrEmpty(searchQuery)
+                                ? faqs.GroupBy(f => f.Category ?? "General")
+                                : new[] { faqs.GroupBy(f => f.Category ?? "General").First() };
+                        }
+
+                        @foreach (var group in faqs.GroupBy(f => f.Category ?? "General"))
+                        {
+                            @if (string.IsNullOrEmpty(selectedCategory) && string.IsNullOrEmpty(searchQuery))
+                            {
+                                <div class="faq-category-header">
+                                    <i class="fas fa-folder-open text-primary me-2"></i>@group.Key
+                                </div>
+                            }
+
+                            @foreach (var faq in group)
+                            {
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="faqHeading_@faq.Id">
+                                        <button class="accordion-button collapsed" type="button"
+                                                data-bs-toggle="collapse" data-bs-target="#faqCollapse_@faq.Id"
+                                                aria-expanded="false" aria-controls="faqCollapse_@faq.Id">
+                                            <span class="faq-number">@(++index)</span>
+                                            @faq.Question
+                                        </button>
+                                    </h2>
+                                    <div id="faqCollapse_@faq.Id" class="accordion-collapse collapse"
+                                         aria-labelledby="faqHeading_@faq.Id" data-bs-parent="#faqAccordion">
+                                        <div class="accordion-body">
+                                            <div class="faq-answer">
+                                                @Html.Raw(faq.Answer)
+                                            </div>
+                                            <div class="faq-meta mt-3 pt-3 border-top">
+                                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        @if (!string.IsNullOrEmpty(faq.Category))
+                                                        {
+                                                            <span class="badge bg-secondary">
+                                                                <i class="fas fa-tag me-1"></i>@faq.Category
+                                                            </span>
+                                                        }
+                                                        @{
+                                                            var totalFeedback = faq.HelpfulCount + faq.NotHelpfulCount;
+                                                            var helpfulPercent = totalFeedback > 0 ? (faq.HelpfulCount * 100 / totalFeedback) : 0;
+                                                        }
+                                                        @if (totalFeedback > 0)
+                                                        {
+                                                            <span class="feedback-stats text-muted small" id="faq-stats-@faq.Id">
+                                                                <i class="fas fa-chart-bar me-1"></i>
+                                                                <span class="helpful-percent">@helpfulPercent%</span> @Localizer["FoundHelpful"]
+                                                                (<span class="helpful-count">@faq.HelpfulCount</span>/<span class="total-count">@totalFeedback</span>)
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                    <div class="faq-feedback" id="faq-feedback-@faq.Id" data-faq-id="@faq.Id">
+                                                        <span class="feedback-question text-muted small me-2">@Localizer["WasThisHelpful"]</span>
+                                                        <button class="btn btn-sm btn-outline-success feedback-btn" data-faq-id="@faq.Id" data-helpful="true" title="@Localizer["YesHelpful"]">
+                                                            <i class="fas fa-thumbs-up"></i>
+                                                            <span class="helpful-badge badge bg-success ms-1 d-none">@faq.HelpfulCount</span>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger feedback-btn" data-faq-id="@faq.Id" data-helpful="false" title="@Localizer["NoNotHelpful"]">
+                                                            <i class="fas fa-thumbs-down"></i>
+                                                            <span class="not-helpful-badge badge bg-danger ms-1 d-none">@faq.NotHelpfulCount</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+                else
+                {
+                    <!-- No Results -->
+                    <div class="no-results text-center py-5">
+                        <div class="no-results-icon mb-4">
+                            <i class="fas fa-search fa-4x text-muted"></i>
+                        </div>
+                        <h4>@Localizer["NoFAQsFound"]</h4>
+                        <p class="text-muted">
+                            @if (!string.IsNullOrEmpty(searchQuery))
+                            {
+                                @Localizer["NoQuestionsMatchSearch", searchQuery]
+                            }
+                            else
+                            {
+                                @Localizer["NoFAQsAvailable"]
+                            }
+                        </p>
+                        <div class="mt-4">
+                            <a asp-action="FAQ" class="btn btn-outline-primary me-2">
+                                <i class="fas fa-list me-1"></i>@Localizer["ViewAllFAQs"]
+                            </a>
+                            <a asp-action="Contact" class="btn btn-primary">
+                                <i class="fas fa-envelope me-1"></i>@Localizer["ContactSupport"]
+                            </a>
+                        </div>
+                    </div>
+                }
+
+                <!-- Still Need Help -->
+                <div class="still-need-help mt-4 p-4 rounded-3">
+                    <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+                        <div>
+                            <h4 class="mb-1">
+                                <i class="fas fa-life-ring text-primary me-2"></i>@Localizer["StillNeedHelp"]
+                            </h4>
+                            <p class="text-muted mb-0">
+                                @Localizer["StillNeedHelpDescription"]
+                            </p>
+                        </div>
+                        <div class="d-flex gap-2 flex-shrink-0">
+                            <a asp-action="Contact" class="btn btn-primary">
+                                <i class="fas fa-envelope me-1"></i>@Localizer["ContactUs"]
+                            </a>
+                            <a asp-action="LiveChat" class="btn btn-outline-primary">
+                                <i class="fas fa-comments me-1"></i>@Localizer["LiveChat"]
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .faq-page {
+        margin-top: 0;
+    }
+
+    .faq-page .faq-header {
+        margin-top: 0;
+    }
+
+    .header-search {
+        max-width: 100%;
+    }
+
+    .header-search .input-group {
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-search .btn-light {
+        background-color: #fff;
+        border-color: #fff;
+        color: #333;
+    }
+
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .breadcrumb-light .breadcrumb-item a {
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .breadcrumb-light .breadcrumb-item.active {
+        color: #fff;
+    }
+
+    .breadcrumb-light .breadcrumb-item + .breadcrumb-item::before {
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    .search-form .form-control {
+        border-radius: 50px 0 0 50px;
+        border: none;
+        padding: 0.75rem 1.5rem;
+    }
+
+    .search-form .btn {
+        border-radius: 0 50px 50px 0;
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+
+    .categories-card, .quick-links-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e5e7eb;
+    }
+
+    .categories-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .category-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.25rem;
+        border-radius: 8px;
+        color: #4b5563;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .category-item:hover {
+        background: #f3f4f6;
+        color: var(--bs-primary);
+    }
+
+    .category-item.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+    }
+
+    .category-item .badge {
+        background: rgba(0, 0, 0, 0.1);
+        color: inherit;
+        font-weight: 500;
+    }
+
+    .quick-link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        border-radius: 8px;
+        color: #374151;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .quick-link:hover {
+        background: #f3f4f6;
+    }
+
+    .quick-link i {
+        font-size: 1.25rem;
+    }
+
+    .search-results-info {
+        background: #f0f9ff;
+        padding: 1rem 1.5rem;
+        border-radius: 10px;
+        border-left: 4px solid var(--bs-primary);
+    }
+
+    .faq-category-header {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #374151;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .faq-category-header:first-child {
+        margin-top: 0;
+    }
+
+    .faq-accordion .accordion-item {
+        border: none;
+        border-radius: 12px !important;
+        margin-bottom: 0.75rem;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        background: #fff;
+    }
+
+    .faq-accordion .accordion-button {
+        font-weight: 600;
+        color: #1f2937;
+        padding: 1.25rem;
+        background: #fff;
+    }
+
+    .faq-accordion .accordion-button:not(.collapsed) {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        box-shadow: none;
+    }
+
+    .faq-accordion .accordion-button:focus {
+        box-shadow: none;
+    }
+
+    .faq-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--bs-primary);
+        border-radius: 50%;
+        font-size: 0.85rem;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .accordion-button:not(.collapsed) .faq-number {
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
+    }
+
+    .faq-accordion .accordion-body {
+        padding: 1.5rem;
+        line-height: 1.8;
+    }
+
+    .faq-answer {
+        color: #4b5563;
+    }
+
+    .faq-answer p {
+        margin-bottom: 1rem;
+    }
+
+    .faq-answer ul, .faq-answer ol {
+        padding-left: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .feedback-btn {
+        padding: 0.25rem 0.5rem;
+    }
+
+    .still-need-help {
+        background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+        border: 1px solid #e5e7eb;
+    }
+
+    .no-results-icon i {
+        opacity: 0.3;
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] .bg-gradient-primary {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    }
+
+    [data-theme="dark"] .header-search .btn-light {
+        background-color: #374151;
+        border-color: #374151;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .header-search .btn-light:hover {
+        background-color: #4b5563;
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .categories-card,
+    [data-theme="dark"] .quick-links-card {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .categories-title {
+        color: #f3f4f6;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .category-item {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .category-item:hover {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .quick-link {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .quick-link:hover {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .search-results-info {
+        background: #1e3a5f;
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .faq-category-header {
+        color: #f3f4f6;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .faq-accordion .accordion-item {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .faq-accordion .accordion-button {
+        background: #1f2937;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .faq-accordion .accordion-body {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .faq-answer {
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .still-need-help {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        border-color: #374151;
+    }
+
+    @@media (max-width: 768px) {
+        .faq-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .header-search {
+            width: 100%;
+            max-width: 100%;
+        }
+
+        .categories-card {
+            margin-bottom: 1.5rem;
+        }
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.feedback-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const faqId = this.dataset.faqId;
+                const isHelpful = this.dataset.helpful === 'true';
+                const parent = this.closest('.faq-feedback');
+                const metaContainer = this.closest('.faq-meta');
+
+                // Disable buttons while processing
+                parent.querySelectorAll('.feedback-btn').forEach(b => {
+                    b.disabled = true;
+                });
+
+                try {
+                    const response = await fetch('@Url.Action("SubmitFAQFeedback", "HelpCenter", new { area = "Customer" })', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `faqId=${faqId}&isHelpful=${isHelpful}`
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Update button styles
+                        this.classList.remove('btn-outline-success', 'btn-outline-danger');
+                        this.classList.add(isHelpful ? 'btn-success' : 'btn-danger');
+
+                        // Update or create stats
+                        updateFeedbackStats(faqId, data.helpfulCount, data.notHelpfulCount, data.helpfulPercentage, metaContainer);
+
+                        // Show success message
+                        const questionSpan = parent.querySelector('.feedback-question');
+                        if (questionSpan) {
+                            questionSpan.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Thanks!</span>';
+                        }
+                    } else if (data.alreadySubmitted) {
+                        // Already submitted feedback
+                        const questionSpan = parent.querySelector('.feedback-question');
+                        if (questionSpan) {
+                            questionSpan.innerHTML = '<span class="text-warning"><i class="fas fa-info-circle me-1"></i>Already voted</span>';
+                        }
+                        // Update stats anyway
+                        updateFeedbackStats(faqId, data.helpfulCount, data.notHelpfulCount, data.helpfulPercentage, metaContainer);
+                    } else {
+                        // Re-enable buttons on error
+                        parent.querySelectorAll('.feedback-btn').forEach(b => {
+                            b.disabled = false;
+                        });
+                        alert(data.message || 'An error occurred');
+                    }
+                } catch (error) {
+                    console.error('Error submitting feedback:', error);
+                    // Re-enable buttons on error
+                    parent.querySelectorAll('.feedback-btn').forEach(b => {
+                        b.disabled = false;
+                    });
+                }
+            });
+        });
+
+        function updateFeedbackStats(faqId, helpfulCount, notHelpfulCount, helpfulPercentage, container) {
+            const totalCount = helpfulCount + notHelpfulCount;
+            let statsEl = document.getElementById(`faq-stats-${faqId}`);
+
+            if (statsEl) {
+                // Update existing stats
+                statsEl.querySelector('.helpful-percent').textContent = helpfulPercentage + '%';
+                statsEl.querySelector('.helpful-count').textContent = helpfulCount;
+                statsEl.querySelector('.total-count').textContent = totalCount;
+            } else if (totalCount > 0) {
+                // Create new stats element
+                const leftDiv = container.querySelector('.d-flex.align-items-center');
+                if (leftDiv) {
+                    const statsSpan = document.createElement('span');
+                    statsSpan.className = 'feedback-stats text-muted small';
+                    statsSpan.id = `faq-stats-${faqId}`;
+                    statsSpan.innerHTML = `
+                        <i class="fas fa-chart-bar me-1"></i>
+                        <span class="helpful-percent">${helpfulPercentage}%</span> found helpful
+                        (<span class="helpful-count">${helpfulCount}</span>/<span class="total-count">${totalCount}</span>)
+                    `;
+                    leftDiv.appendChild(statsSpan);
+                }
+            }
+        }
+    </script>
+}

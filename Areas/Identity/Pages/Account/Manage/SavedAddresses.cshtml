@@ -1,0 +1,684 @@
+@page
+@model SavedAddressesModel
+@using Bangaliyana.Models
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    ViewData["Title"] = Localizer["SavedAddresses"].Value;
+    ViewData["ActivePage"] = ManageNavPages.SavedAddresses;
+}
+
+<div class="saved-addresses-page">
+    <partial name="_StatusMessage" for="StatusMessage" />
+
+    <!-- Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h4 class="mb-1">
+                    <i class="fas fa-map-marker-alt text-success me-2"></i>@Localizer["SavedAddresses"]
+                </h4>
+                <p class="text-muted mb-0">@Localizer["ManageDeliveryAddresses"]</p>
+            </div>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addressModal" onclick="openAddModal()">
+                <i class="fas fa-plus me-1"></i>@Localizer["AddNewAddress"]
+            </button>
+        </div>
+    </div>
+
+    @if (!Model.Addresses.Any())
+    {
+        <!-- Empty State -->
+        <div class="empty-state text-center py-5">
+            <div class="empty-icon mb-4">
+                <i class="fas fa-map-marked-alt"></i>
+            </div>
+            <h5>@Localizer["NoSavedAddresses"]</h5>
+            <p class="text-muted mb-4">@Localizer["AddAddressesForFasterCheckout"]</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addressModal" onclick="openAddModal()">
+                <i class="fas fa-plus me-2"></i>@Localizer["AddYourFirstAddress"]
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Address Cards Grid -->
+        <div class="row g-4">
+            @foreach (var address in Model.Addresses)
+            {
+                <div class="col-md-6">
+                    <div class="address-card @(address.IsDefault ? "default" : "")">
+                        @if (address.IsDefault)
+                        {
+                            <div class="default-badge">
+                                <i class="fas fa-check-circle me-1"></i>@Localizer["Default"]
+                            </div>
+                        }
+                        <div class="address-type-icon">
+                            @if (address.AddressType == AddressType.Home)
+                            {
+                                <i class="fas fa-home"></i>
+                            }
+                            else if (address.AddressType == AddressType.Office)
+                            {
+                                <i class="fas fa-briefcase"></i>
+                            }
+                            else
+                            {
+                                <i class="fas fa-map-pin"></i>
+                            }
+                        </div>
+                        <!-- Action Icons -->
+                        <div class="address-actions">
+                            <button type="button" class="address-action-btn edit-btn" onclick="editAddress(@address.Id)" title="@Localizer["EditAddress"]">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="address-action-btn delete-btn" onclick="confirmDeleteAddress(@address.Id)" title="@Localizer["DeleteAddress"]">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                        <div class="address-content">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="address-label mb-1">@address.Label</h6>
+                                    <span class="address-type-badge">@address.AddressType.ToString()</span>
+                                </div>
+                                @if (!address.IsDefault)
+                                {
+                                    <form method="post" asp-page-handler="SetDefault" class="d-inline">
+                                        <input type="hidden" name="id" value="@address.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="@Localizer["SetAsDefault"]">
+                                            <i class="fas fa-star me-1"></i>@Localizer["SetDefault"]
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                            <div class="recipient-info mb-2">
+                                <strong>@address.RecipientName</strong>
+                                <span class="phone-number">@address.Phone</span>
+                            </div>
+                            <p class="full-address mb-2">@address.FullAddress</p>
+                            <div class="location-info">
+                                @if (address.Upazila != null)
+                                {
+                                    <span>@address.Upazila.Name, </span>
+                                }
+                                @if (address.District != null)
+                                {
+                                    <span>@address.District.Name, </span>
+                                }
+                                @if (address.Division != null)
+                                {
+                                    <span>@address.Division.Name</span>
+                                }
+                                @if (!string.IsNullOrEmpty(address.PostalCode))
+                                {
+                                    <span> - @address.PostalCode</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Address Modal -->
+<div class="modal fade" id="addressModal" tabindex="-1" aria-labelledby="addressModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addressModalLabel">
+                    <i class="fas fa-map-marker-alt me-2"></i><span id="modalTitle">@Localizer["AddNewAddress"]</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Localizer["Close"]"></button>
+            </div>
+            <form method="post" asp-page-handler="Save" id="addressForm" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" asp-for="Input.Id" id="addressId" />
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Input.Label" class="form-label">@Localizer["AddressLabel"] *</label>
+                            <input asp-for="Input.Label" class="form-control" placeholder="@Localizer["AddressLabelPlaceholder"]" />
+                            <span asp-validation-for="Input.Label" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Input.AddressType" class="form-label">@Localizer["AddressType"]</label>
+                            <select asp-for="Input.AddressType" class="form-select" asp-items="Html.GetEnumSelectList<AddressType>()"></select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Input.RecipientName" class="form-label">@Localizer["RecipientName"] *</label>
+                            <input asp-for="Input.RecipientName" class="form-control" placeholder="@Localizer["FullName"]" />
+                            <span asp-validation-for="Input.RecipientName" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Input.Phone" class="form-label">@Localizer["PhoneNumber"] *</label>
+                            <input asp-for="Input.Phone" class="form-control" placeholder="01XXXXXXXXX" maxlength="11" />
+                            <span asp-validation-for="Input.Phone" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Input.DivisionId" class="form-label">@Localizer["Division"] *</label>
+                            <select asp-for="Input.DivisionId" class="form-select" id="divisionSelect" required>
+                                <option value="">-- @Localizer["SelectDivision"] --</option>
+                                @foreach (var division in Model.Divisions)
+                                {
+                                    <option value="@division.Id">@division.Name</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Input.DivisionId" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Input.DistrictId" class="form-label">@Localizer["District"] *</label>
+                            <select asp-for="Input.DistrictId" class="form-select" id="districtSelect" required>
+                                <option value="">-- @Localizer["SelectDistrict"] --</option>
+                            </select>
+                            <span asp-validation-for="Input.DistrictId" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Input.UpazilaId" class="form-label">@Localizer["Upazila"] *</label>
+                            <select asp-for="Input.UpazilaId" class="form-select" id="upazilaSelect" required>
+                                <option value="">-- @Localizer["SelectUpazila"] --</option>
+                            </select>
+                            <span asp-validation-for="Input.UpazilaId" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Input.FullAddress" class="form-label">@Localizer["FullAddress"] *</label>
+                            <textarea asp-for="Input.FullAddress" class="form-control" rows="3" placeholder="@Localizer["FullAddressPlaceholder"]"></textarea>
+                            <span asp-validation-for="Input.FullAddress" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Input.PostalCode" class="form-label">@Localizer["PostalCode"]</label>
+                            <input asp-for="Input.PostalCode" class="form-control" placeholder="@Localizer["PostalCodePlaceholder"]" maxlength="10" />
+                            <span asp-validation-for="Input.PostalCode" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check">
+                                <input asp-for="Input.IsDefault" class="form-check-input" type="checkbox" />
+                                <label asp-for="Input.IsDefault" class="form-check-label">
+                                    @Localizer["SetAsDefaultDeliveryAddress"]
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>@Localizer["SaveAddress"]
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Address Form (Hidden) -->
+<form method="post" asp-page-handler="Delete" id="deleteAddressForm" style="display: none;">
+    <input type="hidden" name="id" id="deleteAddressId" />
+</form>
+
+<!-- Delete Address Confirmation Modal -->
+<div class="modal fade" id="deleteAddressModal" tabindex="-1" aria-labelledby="deleteAddressModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Localizer["Close"]"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="delete-icon-wrapper mb-3">
+                    <div class="delete-icon-circle">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="deleteAddressModalLabel">@Localizer["DeleteAddressQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["ConfirmDeleteAddress"]</p>
+                <p class="text-muted small">@Localizer["ActionCannotBeUndone"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["NoKeepIt"]
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmDeleteAddressBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesDelete"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Address data for editing -->
+<script type="application/json" id="addressData">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Addresses.Select(a => new { a.Id, a.Label, AddressType = (int)a.AddressType, a.RecipientName, a.Phone, a.DivisionId, a.DistrictId, a.UpazilaId, a.FullAddress, a.PostalCode, a.IsDefault })))</script>
+
+<!-- Localized strings for JavaScript -->
+<script type="application/json" id="localizedStrings">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { AddNewAddress = Localizer["AddNewAddress"].Value, EditAddress = Localizer["EditAddress"].Value, SelectDivision = Localizer["SelectDivision"].Value, SelectDistrict = Localizer["SelectDistrict"].Value, SelectUpazila = Localizer["SelectUpazila"].Value }))</script>
+
+<style>
+    .saved-addresses-page .page-header h4 {
+        font-weight: 600;
+    }
+
+    /* Empty State */
+    .empty-state {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border-radius: 16px;
+        padding: 3rem;
+    }
+
+    .empty-icon {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        font-size: 2.5rem;
+        color: white;
+    }
+
+    /* Address Card */
+    .address-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        position: relative;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        height: 100%;
+    }
+
+    .address-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+
+    .address-card.default {
+        border-color: #10b981;
+        background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+    }
+
+    .default-badge {
+        position: absolute;
+        top: -10px;
+        right: 16px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .address-type-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .address-label {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: #1f2937;
+    }
+
+    .address-type-badge {
+        display: inline-block;
+        background: #e5e7eb;
+        color: #6b7280;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 500;
+    }
+
+    .recipient-info {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    .phone-number {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+
+    .phone-number::before {
+        content: "|";
+        margin-right: 0.75rem;
+        color: #d1d5db;
+    }
+
+    .full-address {
+        color: #4b5563;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    .location-info {
+        font-size: 0.8rem;
+        color: #9ca3af;
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] .address-card {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .address-card.default {
+        background: linear-gradient(135deg, #064e3b 0%, #1f2937 100%);
+    }
+
+    [data-theme="dark"] .address-label {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .address-type-badge {
+        background: #374151;
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .full-address {
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .empty-state {
+        background: linear-gradient(135deg, #064e3b 0%, #1f2937 100%);
+    }
+
+    [data-theme="dark"] .empty-state h5,
+    [data-theme="dark"] .empty-state p {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .modal-content {
+        background: #1f2937;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .modal-header {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .modal-footer {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .btn-close {
+        filter: invert(1);
+    }
+
+    /* Address Action Icons */
+    .address-actions {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        display: flex;
+        gap: 8px;
+        z-index: 1;
+    }
+
+    .address-action-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.85rem;
+    }
+
+    .address-action-btn.edit-btn {
+        background: #e0f2fe;
+        color: #0284c7;
+    }
+
+    .address-action-btn.edit-btn:hover {
+        background: #0284c7;
+        color: white;
+        transform: scale(1.1);
+    }
+
+    .address-action-btn.delete-btn {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .address-action-btn.delete-btn:hover {
+        background: #dc2626;
+        color: white;
+        transform: scale(1.1);
+    }
+
+    [data-theme="dark"] .address-action-btn.edit-btn {
+        background: #1e3a5f;
+        color: #7dd3fc;
+    }
+
+    [data-theme="dark"] .address-action-btn.edit-btn:hover {
+        background: #0284c7;
+        color: white;
+    }
+
+    [data-theme="dark"] .address-action-btn.delete-btn {
+        background: #450a0a;
+        color: #fca5a5;
+    }
+
+    [data-theme="dark"] .address-action-btn.delete-btn:hover {
+        background: #dc2626;
+        color: white;
+    }
+
+    /* Delete Modal Styles */
+    .delete-icon-wrapper {
+        display: flex;
+        justify-content: center;
+    }
+
+    .delete-icon-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: pulse-warning 2s infinite;
+    }
+
+    .delete-icon-circle i {
+        font-size: 2.5rem;
+    }
+
+    @@keyframes pulse-warning {
+        0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+        70% { box-shadow: 0 0 0 15px rgba(255, 193, 7, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+    }
+
+    #deleteAddressModal .modal-content {
+        border-radius: 1rem;
+    }
+
+    #deleteAddressModal .btn {
+        border-radius: 0.5rem;
+        font-weight: 500;
+    }
+
+    [data-theme="dark"] #deleteAddressModal .modal-content {
+        background-color: #252538;
+    }
+
+    [data-theme="dark"] #deleteAddressModal .modal-title {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] #deleteAddressModal .text-muted {
+        color: #a0a0a0 !important;
+    }
+
+    [data-theme="dark"] .delete-icon-circle {
+        background: linear-gradient(135deg, #3d3a20 0%, #4a4520 100%);
+    }
+
+    /* Fix validation icons overlapping select elements */
+    #addressModal .form-select,
+    #addressModal .form-select.is-valid,
+    #addressModal .form-select.is-invalid,
+    #addressModal .form-select:valid,
+    #addressModal .form-select:invalid {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 0.75rem center !important;
+        background-size: 16px 12px !important;
+        padding-right: 2.25rem !important;
+    }
+
+    [data-theme="dark"] #addressModal .form-select,
+    [data-theme="dark"] #addressModal .form-select.is-valid,
+    [data-theme="dark"] #addressModal .form-select.is-invalid,
+    [data-theme="dark"] #addressModal .form-select:valid,
+    [data-theme="dark"] #addressModal .form-select:invalid {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23f3f4f6' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+        background-repeat: no-repeat !important;
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const addressData = JSON.parse(document.getElementById('addressData').textContent);
+        const localizedStrings = JSON.parse(document.getElementById('localizedStrings').textContent);
+
+        function clearValidationMessages() {
+            // Clear all validation error messages
+            const validationSpans = document.querySelectorAll('#addressForm .text-danger');
+            validationSpans.forEach(span => {
+                span.textContent = '';
+            });
+            // Remove validation classes from inputs
+            const inputs = document.querySelectorAll('#addressForm .form-control, #addressForm .form-select');
+            inputs.forEach(input => {
+                input.classList.remove('is-invalid', 'is-valid', 'input-validation-error');
+            });
+        }
+
+        function openAddModal() {
+            clearValidationMessages();
+            document.getElementById('modalTitle').textContent = localizedStrings.AddNewAddress;
+            document.getElementById('addressId').value = '';
+            document.getElementById('addressForm').reset();
+            document.getElementById('districtSelect').innerHTML = '<option value="">-- ' + localizedStrings.SelectDistrict + ' --</option>';
+            document.getElementById('upazilaSelect').innerHTML = '<option value="">-- ' + localizedStrings.SelectUpazila + ' --</option>';
+        }
+
+        function editAddress(id) {
+            clearValidationMessages();
+            const address = addressData.find(a => a.Id === id);
+            if (!address) return;
+
+            document.getElementById('modalTitle').textContent = localizedStrings.EditAddress;
+            document.getElementById('addressId').value = address.Id;
+            document.getElementById('Input_Label').value = address.Label;
+            document.getElementById('Input_AddressType').value = address.AddressType;
+            document.getElementById('Input_RecipientName').value = address.RecipientName;
+            document.getElementById('Input_Phone').value = address.Phone;
+            document.getElementById('Input_FullAddress').value = address.FullAddress;
+            document.getElementById('Input_PostalCode').value = address.PostalCode || '';
+            document.getElementById('Input_IsDefault').checked = address.IsDefault;
+
+            // Load cascading dropdowns
+            if (address.DivisionId) {
+                document.getElementById('divisionSelect').value = address.DivisionId;
+                loadDistricts(address.DivisionId, address.DistrictId, address.UpazilaId);
+            }
+
+            new bootstrap.Modal(document.getElementById('addressModal')).show();
+        }
+
+        async function loadDistricts(divisionId, selectedDistrict, selectedUpazila) {
+            const response = await fetch(`?handler=Districts&divisionId=${divisionId}`);
+            const districts = await response.json();
+            const select = document.getElementById('districtSelect');
+            select.innerHTML = '<option value="">-- ' + localizedStrings.SelectDistrict + ' --</option>';
+            districts.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.id;
+                option.textContent = d.name;
+                if (d.id === selectedDistrict) option.selected = true;
+                select.appendChild(option);
+            });
+
+            if (selectedDistrict) {
+                await loadUpazilas(selectedDistrict, selectedUpazila);
+            }
+        }
+
+        async function loadUpazilas(districtId, selectedUpazila) {
+            const response = await fetch(`?handler=Upazilas&districtId=${districtId}`);
+            const upazilas = await response.json();
+            const select = document.getElementById('upazilaSelect');
+            select.innerHTML = '<option value="">-- ' + localizedStrings.SelectUpazila + ' --</option>';
+            upazilas.forEach(u => {
+                const option = document.createElement('option');
+                option.value = u.id;
+                option.textContent = u.name;
+                if (u.id === selectedUpazila) option.selected = true;
+                select.appendChild(option);
+            });
+        }
+
+        document.getElementById('divisionSelect').addEventListener('change', function() {
+            document.getElementById('districtSelect').innerHTML = '<option value="">-- ' + localizedStrings.SelectDistrict + ' --</option>';
+            document.getElementById('upazilaSelect').innerHTML = '<option value="">-- ' + localizedStrings.SelectUpazila + ' --</option>';
+            if (this.value) loadDistricts(this.value);
+        });
+
+        document.getElementById('districtSelect').addEventListener('change', function() {
+            document.getElementById('upazilaSelect').innerHTML = '<option value="">-- ' + localizedStrings.SelectUpazila + ' --</option>';
+            if (this.value) loadUpazilas(this.value);
+        });
+
+        // Delete Address Modal
+        const deleteAddressModal = new bootstrap.Modal(document.getElementById('deleteAddressModal'));
+
+        function confirmDeleteAddress(id) {
+            document.getElementById('deleteAddressId').value = id;
+            deleteAddressModal.show();
+        }
+
+        // Handle confirm delete button
+        document.getElementById('confirmDeleteAddressBtn').addEventListener('click', function () {
+            deleteAddressModal.hide();
+            document.getElementById('deleteAddressForm').submit();
+        });
+    </script>
+}

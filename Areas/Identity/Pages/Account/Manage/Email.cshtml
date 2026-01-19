@@ -1,0 +1,93 @@
+@page
+@model EmailModel
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    ViewData["Title"] = Localizer["ManageEmail"].Value;
+    ViewData["ActivePage"] = ManageNavPages.Email;
+}
+
+<h3>@ViewData["Title"]</h3>
+<partial name="_StatusMessage" for="StatusMessage" />
+<div class="row">
+    <div class="col-12">
+        <form id="email-form" method="post">
+            <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+            @if (Model.IsEmailConfirmed)
+            {
+                <div class="form-floating mb-3 input-group">
+                    <input asp-for="Email" class="form-control" placeholder="Please enter your email." disabled />
+                    <div class="input-group-append">
+                        <span class="h-100 input-group-text text-success font-weight-bold">✓</span>
+                    </div>
+                    <label asp-for="Email" class="form-label"></label>
+                </div>
+            }
+            else
+            {
+                <div class="form-floating mb-3">
+                    <input asp-for="Email" class="form-control" placeholder="Please enter your email." disabled />
+                    <label asp-for="Email" class="form-label"></label>
+                    <button id="email-verification" type="submit" asp-page-handler="SendVerificationEmail" class="btn btn-link">@Localizer["SendVerificationEmail"]</button>
+                </div>
+            }
+            <div class="form-floating mb-3">
+                <input asp-for="Input.NewEmail" class="form-control" autocomplete="email" aria-required="true" placeholder="Please enter new email." />
+                <label asp-for="Input.NewEmail" class="form-label"></label>
+                <span asp-validation-for="Input.NewEmail" class="text-danger"></span>
+            </div>
+            <div class="form-floating mb-3 position-relative">
+                <input asp-for="Input.Password" type="password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Please enter your password." />
+                <label asp-for="Input.Password" class="form-label"></label>
+                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y me-2 p-0 password-toggle" tabindex="-1" style="z-index: 10;">
+                    <i class="fas fa-eye text-muted"></i>
+                </button>
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+            </div>
+            <div class="text-center">
+                <button id="change-email-button" type="submit" asp-page-handler="ChangeEmail" class="btn btn-lg btn-primary px-5">@Localizer["ChangeEmail"]</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-control:focus {
+        background-color: #374151 !important;
+        color: #e5e7eb !important;
+        border-color: #4b5563 !important;
+    }
+    [data-theme="dark"] .form-control:-webkit-autofill,
+    [data-theme="dark"] .form-control:-webkit-autofill:hover,
+    [data-theme="dark"] .form-control:-webkit-autofill:focus {
+        -webkit-box-shadow: 0 0 0 1000px #374151 inset !important;
+        -webkit-text-fill-color: #e5e7eb !important;
+        caret-color: #e5e7eb !important;
+    }
+    [data-theme="dark"] .form-floating > label {
+        color: #9ca3af !important;
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.password-toggle').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const input = this.closest('.form-floating').querySelector('input');
+                    if (input) {
+                        if (input.type === 'password') {
+                            input.type = 'text';
+                            this.innerHTML = '<i class="fas fa-eye-slash text-muted"></i>';
+                        } else {
+                            input.type = 'password';
+                            this.innerHTML = '<i class="fas fa-eye text-muted"></i>';
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+}

@@ -1,0 +1,229 @@
+@{
+    var divisionField = ViewData["DivisionField"]?.ToString() ?? "DivisionId";
+    var districtField = ViewData["DistrictField"]?.ToString() ?? "DistrictId";
+    var upazilaField = ViewData["UpazilaField"]?.ToString() ?? "UpazilaId";
+    var addressField = ViewData["AddressField"]?.ToString() ?? "Address";
+    var postalCodeField = ViewData["PostalCodeField"]?.ToString() ?? "PostalCode";
+
+    var selectedDivision = ViewData["SelectedDivision"]?.ToString() ?? "";
+    var selectedDistrict = ViewData["SelectedDistrict"]?.ToString() ?? "";
+    var selectedUpazila = ViewData["SelectedUpazila"]?.ToString() ?? "";
+    var addressValue = ViewData["AddressValue"]?.ToString() ?? "";
+    var postalCodeValue = ViewData["PostalCodeValue"]?.ToString() ?? "";
+
+    var isCheckout = ViewData["IsCheckout"]?.ToString() == "true";
+}
+
+<div class="address-fields">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-floating mb-3">
+                <select name="@divisionField" id="@divisionField" class="form-select address-division" data-val="true">
+                    <option value="">Select Division</option>
+                </select>
+                <label for="@divisionField">Division</label>
+                <span class="text-danger field-validation-valid" data-valmsg-for="@divisionField" data-valmsg-replace="true"></span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-floating mb-3">
+                <select name="@districtField" id="@districtField" class="form-select address-district" disabled data-val="true">
+                    <option value="">Select District</option>
+                </select>
+                <label for="@districtField">District</label>
+                <span class="text-danger field-validation-valid" data-valmsg-for="@districtField" data-valmsg-replace="true"></span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-floating mb-3">
+                <select name="@upazilaField" id="@upazilaField" class="form-select address-upazila" disabled data-val="true">
+                    <option value="">Select Upazila</option>
+                </select>
+                <label for="@upazilaField">Upazila</label>
+                <span class="text-danger field-validation-valid" data-valmsg-for="@upazilaField" data-valmsg-replace="true"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-floating mb-3">
+        <textarea name="@addressField" id="@addressField" class="form-control" style="height: 80px;" data-val="true">@addressValue</textarea>
+        <label for="@addressField">Address (House/Road/Street)</label>
+        <span class="text-danger field-validation-valid" data-valmsg-for="@addressField" data-valmsg-replace="true"></span>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-floating mb-3">
+                <input type="text" name="@postalCodeField" id="@postalCodeField" class="form-control" value="@postalCodeValue" />
+                <label for="@postalCodeField">Postal Code (Optional)</label>
+            </div>
+        </div>
+        @if (isCheckout)
+        {
+            <div class="col-md-6">
+                <div class="form-floating mb-3">
+                    <input type="text" id="deliveryCharge" class="form-control" readonly value="100" />
+                    <label for="deliveryCharge">Delivery Charge (৳)</label>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const divisionSelect = document.getElementById('@divisionField');
+    const districtSelect = document.getElementById('@districtField');
+    const upazilaSelect = document.getElementById('@upazilaField');
+    @if (isCheckout)
+    {
+        <text>
+        const deliveryChargeInput = document.getElementById('deliveryCharge');
+        const hiddenDeliveryCharge = document.querySelector('input[name="DeliveryCharge"]');
+        </text>
+    }
+
+    // Load divisions on page load
+    loadDivisions();
+
+    // Division change handler
+    divisionSelect.addEventListener('change', function() {
+        const divisionId = this.value;
+        resetSelects(['district', 'upazila']);
+
+        if (divisionId) {
+            loadDistricts(divisionId);
+            @if (isCheckout)
+            {
+                <text>
+                updateDeliveryCharge(divisionId);
+                </text>
+            }
+        }
+    });
+
+    // District change handler
+    districtSelect.addEventListener('change', function() {
+        const districtId = this.value;
+        resetSelects(['upazila']);
+
+        if (districtId) {
+            loadUpazilas(districtId);
+        }
+    });
+
+    async function loadDivisions() {
+        try {
+            const response = await fetch('/api/address/divisions');
+            const divisions = await response.json();
+
+            divisionSelect.innerHTML = '<option value="">Select Division</option>';
+            divisions.forEach(division => {
+                const option = new Option(division.name, division.id);
+                if (division.id == '@selectedDivision') {
+                    option.selected = true;
+                }
+                divisionSelect.appendChild(option);
+            });
+
+            // If there's a selected division, load its districts
+            if ('@selectedDivision') {
+                divisionSelect.dispatchEvent(new Event('change'));
+            }
+        } catch (error) {
+            console.error('Error loading divisions:', error);
+        }
+    }
+
+    async function loadDistricts(divisionId) {
+        try {
+            const response = await fetch(`/api/address/districts/${divisionId}`);
+            const districts = await response.json();
+
+            districtSelect.innerHTML = '<option value="">Select District</option>';
+            districts.forEach(district => {
+                const option = new Option(district.name, district.id);
+                if (district.id == '@selectedDistrict') {
+                    option.selected = true;
+                }
+                districtSelect.appendChild(option);
+            });
+
+            districtSelect.disabled = false;
+
+            // If there's a selected district, load its upazilas
+            if ('@selectedDistrict') {
+                districtSelect.dispatchEvent(new Event('change'));
+            }
+        } catch (error) {
+            console.error('Error loading districts:', error);
+        }
+    }
+
+    async function loadUpazilas(districtId) {
+        try {
+            const response = await fetch(`/api/address/upazilas/${districtId}`);
+            const upazilas = await response.json();
+
+            upazilaSelect.innerHTML = '<option value="">Select Upazila</option>';
+            upazilas.forEach(upazila => {
+                const option = new Option(upazila.name, upazila.id);
+                if (upazila.id == '@selectedUpazila') {
+                    option.selected = true;
+                }
+                upazilaSelect.appendChild(option);
+            });
+
+            upazilaSelect.disabled = false;
+        } catch (error) {
+            console.error('Error loading upazilas:', error);
+        }
+    }
+
+    @if (isCheckout)
+    {
+        <text>
+        async function updateDeliveryCharge(divisionId) {
+            try {
+                const response = await fetch(`/api/address/delivery-charge/${divisionId}`);
+                const data = await response.json();
+
+                deliveryChargeInput.value = data.deliveryCharge;
+                if (hiddenDeliveryCharge) {
+                    hiddenDeliveryCharge.value = data.deliveryCharge;
+                }
+
+                // Trigger calculation update if there's a grand total calculation
+                const event = new CustomEvent('deliveryChargeUpdated', {
+                    detail: { deliveryCharge: data.deliveryCharge }
+                });
+                document.dispatchEvent(event);
+            } catch (error) {
+                console.error('Error updating delivery charge:', error);
+            }
+        }
+        </text>
+    }
+
+    function resetSelects(selectTypes) {
+        selectTypes.forEach(type => {
+            let select;
+            switch(type) {
+                case 'district':
+                    select = districtSelect;
+                    select.innerHTML = '<option value="">Select District</option>';
+                    select.disabled = true;
+                    break;
+                case 'upazila':
+                    select = upazilaSelect;
+                    select.innerHTML = '<option value="">Select Upazila</option>';
+                    select.disabled = true;
+                    break;
+            }
+        });
+    }
+});
+</script>

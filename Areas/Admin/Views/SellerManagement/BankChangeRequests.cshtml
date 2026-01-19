@@ -1,0 +1,165 @@
+@model List<Bangaliyana.Models.SellerBankAccountChangeRequest>
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+
+@{
+    ViewData["Title"] = Localizer["BankAccountChangeRequests"].Value;
+    var currentStatus = ViewBag.CurrentStatus as BankChangeRequestStatus?;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0"><i class="fas fa-university text-primary me-2"></i>@Localizer["BankAccountChangeRequests"]</h2>
+            <p class="text-muted mb-0">@Localizer["ReviewApproveBankChanges"]</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>@Localizer["BackToSellers"]
+        </a>
+    </div>
+
+    <!-- Status Tabs -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link @(currentStatus == null ? "active" : "")" asp-action="BankChangeRequests">
+                @Localizer["All"] <span class="badge bg-secondary ms-1">@(ViewBag.PendingCount + ViewBag.ApprovedCount + ViewBag.RejectedCount)</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(currentStatus == BankChangeRequestStatus.Pending ? "active" : "")"
+               asp-action="BankChangeRequests" asp-route-status="@BankChangeRequestStatus.Pending">
+                <i class="fas fa-clock text-warning me-1"></i>@Localizer["Pending"] <span class="badge bg-warning text-dark ms-1">@ViewBag.PendingCount</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(currentStatus == BankChangeRequestStatus.Approved ? "active" : "")"
+               asp-action="BankChangeRequests" asp-route-status="@BankChangeRequestStatus.Approved">
+                <i class="fas fa-check text-success me-1"></i>@Localizer["Approved"] <span class="badge bg-success ms-1">@ViewBag.ApprovedCount</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(currentStatus == BankChangeRequestStatus.Rejected ? "active" : "")"
+               asp-action="BankChangeRequests" asp-route-status="@BankChangeRequestStatus.Rejected">
+                <i class="fas fa-times text-danger me-1"></i>@Localizer["Rejected"] <span class="badge bg-danger ms-1">@ViewBag.RejectedCount</span>
+            </a>
+        </li>
+    </ul>
+
+    @if (TempData["success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5>@Localizer["NoRequestsFound"]</h5>
+                <p class="text-muted">@Localizer["NoBankChangeRequestsToDisplay"]</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>@Localizer["Shop"]</th>
+                                <th>@Localizer["CurrentBank"]</th>
+                                <th>@Localizer["NewBank"]</th>
+                                <th>@Localizer["NewAccountNumber"]</th>
+                                <th>@Localizer["Requested"]</th>
+                                <th>@Localizer["Status"]</th>
+                                <th>@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var request in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-action="Details" asp-route-id="@request.SellerId" class="fw-medium text-decoration-none">
+                                            @request.Seller?.ShopName
+                                        </a>
+                                    </td>
+                                    <td>
+                                        @if (request.ExistingBankAccount != null)
+                                        {
+                                            <span>@request.ExistingBankAccount.BankName</span>
+                                            <br />
+                                            <small class="text-muted">@request.ExistingBankAccount.AccountNumber</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@Localizer["NewAccount"]</span>
+                                        }
+                                    </td>
+                                    <td>@request.NewBankName</td>
+                                    <td><code>@request.NewAccountNumber</code></td>
+                                    <td>
+                                        <span title="@request.RequestedAt.ToBangladeshString()">
+                                            @request.RequestedAt.ToBangladeshShortDateString()
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @{
+                                            var statusClass = request.Status switch
+                                            {
+                                                BankChangeRequestStatus.Pending => "bg-warning text-dark",
+                                                BankChangeRequestStatus.Approved => "bg-success",
+                                                BankChangeRequestStatus.Rejected => "bg-danger",
+                                                _ => "bg-secondary"
+                                            };
+                                        }
+                                        <span class="badge @statusClass">@request.Status.GetDisplayName()</span>
+                                    </td>
+                                    <td>
+                                        <a asp-action="BankChangeRequestDetails" asp-route-id="@request.Id"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye me-1"></i>@Localizer["View"]
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .table-light {
+            background-color: var(--bs-gray-800) !important;
+        }
+        [data-theme="dark"] .table-light th {
+            background-color: var(--bs-gray-800) !important;
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .nav-tabs .nav-link {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .nav-tabs .nav-link.active {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-600);
+        }
+    </style>
+}

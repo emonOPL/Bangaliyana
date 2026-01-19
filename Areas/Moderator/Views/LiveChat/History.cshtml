@@ -1,0 +1,259 @@
+@model IEnumerable<Bangaliyana.Models.SupportChatSession>
+@using Bangaliyana.Models
+@using Bangaliyana.Services
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = "Chat History";
+    var page = (int)ViewBag.Page;
+    var statistics = ViewBag.Statistics as ChatStatistics;
+}
+
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="fas fa-history text-primary me-2"></i>Chat History
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Dashboard">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Index">Live Chat</a></li>
+                    <li class="breadcrumb-item active">History</li>
+                </ol>
+            </nav>
+        </div>
+        <a asp-action="Chat" class="btn btn-primary">
+            <i class="fas fa-headset me-1"></i>Agent Console
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total Sessions</h6>
+                            <h3 class="mb-0">@(statistics?.TotalSessions ?? 0)</h3>
+                        </div>
+                        <div class="stat-icon bg-primary-soft">
+                            <i class="fas fa-comments text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Closed Today</h6>
+                            <h3 class="mb-0 text-success">@(statistics?.ClosedToday ?? 0)</h3>
+                        </div>
+                        <div class="stat-icon bg-success-soft">
+                            <i class="fas fa-check-circle text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Avg Response</h6>
+                            <h3 class="mb-0 text-info">
+                                @(statistics?.AverageResponseTimeMinutes.ToString("F1") ?? "0") min
+                            </h3>
+                        </div>
+                        <div class="stat-icon bg-info-soft">
+                            <i class="fas fa-clock text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Avg Rating</h6>
+                            <h3 class="mb-0 text-warning">
+                                @(statistics?.AverageRating.ToString("F1") ?? "0")
+                                <i class="fas fa-star small"></i>
+                            </h3>
+                        </div>
+                        <div class="stat-icon bg-warning-soft">
+                            <i class="fas fa-star text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">All Chat Sessions</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Session</th>
+                                <th>Visitor</th>
+                                <th>Agent</th>
+                                <th>Department</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                                <th>Rating</th>
+                                <th>Date</th>
+                                <th style="width: 80px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var session in Model)
+                            {
+                                <tr>
+                                    <td><code class="small">@session.SessionCode</code></td>
+                                    <td>
+                                        <div>
+                                            <div class="fw-semibold">@session.VisitorName</div>
+                                            <small class="text-muted">@session.VisitorEmail</small>
+                                        </div>
+                                    </td>
+                                    <td>@(session.Agent?.FullName ?? "<span class='text-muted'>-</span>")</td>
+                                    <td><span class="badge bg-secondary">@session.Department</span></td>
+                                    <td>
+                                        @switch (session.Status)
+                                        {
+                                            case ChatSessionStatus.Waiting:
+                                                <span class="badge bg-warning text-dark">Waiting</span>
+                                                break;
+                                            case ChatSessionStatus.Active:
+                                                <span class="badge bg-success">Active</span>
+                                                break;
+                                            case ChatSessionStatus.OnHold:
+                                                <span class="badge bg-info">On Hold</span>
+                                                break;
+                                            case ChatSessionStatus.Closed:
+                                                <span class="badge bg-secondary">Closed</span>
+                                                break;
+                                            case ChatSessionStatus.Abandoned:
+                                                <span class="badge bg-danger">Abandoned</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (session.ClosedAt.HasValue)
+                                        {
+                                            var duration = session.ClosedAt.Value - session.CreatedAt;
+                                            <span>@duration.TotalMinutes.ToString("F0") min</span>
+                                        }
+                                        else if (session.Status == ChatSessionStatus.Active)
+                                        {
+                                            <span class="text-success">Ongoing</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (session.Rating.HasValue)
+                                        {
+                                            @for (int i = 0; i < session.Rating.Value; i++)
+                                            {
+                                                <i class="fas fa-star text-warning small"></i>
+                                            }
+                                            @for (int i = session.Rating.Value; i < 5; i++)
+                                            {
+                                                <i class="far fa-star text-muted small"></i>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">No rating</span>
+                                        }
+                                    </td>
+                                    <td><small>@session.CreatedAt.ToBangladeshDateString()</small></td>
+                                    <td>
+                                        <a asp-action="SessionDetails" asp-route-id="@session.Id"
+                                           class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <div class="text-muted small">Page @(page)</div>
+                    <div class="btn-group">
+                        @if (page > 1)
+                        {
+                            <a asp-action="History" asp-route-page="@(page - 1)" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-chevron-left me-1"></i>Previous
+                            </a>
+                        }
+                        <a asp-action="History" asp-route-page="@(page + 1)" class="btn btn-sm btn-outline-primary">
+                            Next<i class="fas fa-chevron-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-history fa-4x text-muted mb-3"></i>
+                    <h5>No Chat History</h5>
+                    <p class="text-muted">No chat sessions have been recorded yet.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .stat-card {
+        transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .bg-primary-soft { background: rgba(99, 102, 241, 0.1); }
+    .bg-success-soft { background: rgba(16, 185, 129, 0.1); }
+    .bg-info-soft { background: rgba(6, 182, 212, 0.1); }
+    .bg-warning-soft { background: rgba(245, 158, 11, 0.1); }
+
+    /* Dark mode */
+    [data-theme="dark"] .card {
+        background: #1f2937;
+        border-color: #374151;
+    }
+</style>

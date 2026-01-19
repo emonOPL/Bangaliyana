@@ -1,0 +1,189 @@
+@model List<Bangaliyana.Areas.Admin.Controllers.UserRolesViewModel>
+@{
+    ViewData["Title"] = "Manage User Roles";
+    var allRoles = ViewData["AllRoles"] as List<string> ?? new List<string>();
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">Manage User Roles</h1>
+            <p class="text-muted mb-0">Assign and manage roles for users</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Roles
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-users me-2"></i>
+                All Users
+                <span class="badge bg-primary ms-2">@Model.Count</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Current Roles</th>
+                                <th style="width: 300px;">Assign Roles</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in Model.OrderBy(u => u.UserName))
+                            {
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-user me-2 text-muted"></i>
+                                        <strong>@user.UserName</strong>
+                                    </td>
+                                    <td class="text-muted">@user.Email</td>
+                                    <td>
+                                        @if (user.Roles.Any())
+                                        {
+                                            @foreach (var role in user.Roles)
+                                            {
+                                                var badgeClass = role == "Admin" || role == "SuperAdmin" ? "bg-danger" :
+                                                                role == "Moderator" ? "bg-purple" :
+                                                                role == "Seller" ? "bg-primary" :
+                                                                role == "User" ? "bg-success" : "bg-secondary";
+                                                <span class="badge @badgeClass me-1" @(role == "Moderator" ? "style=background-color:#6f42c1;" : "")>@role</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">No roles assigned</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <form asp-action="UpdateUserRoles" method="post" class="update-roles-form">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="userId" value="@user.UserId" />
+                                            <div class="d-flex flex-wrap gap-1">
+                                                @foreach (var role in allRoles)
+                                                {
+                                                    var isChecked = user.Roles.Contains(role);
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input role-checkbox" type="checkbox"
+                                                               name="roles" value="@role" id="@($"role_{user.UserId}_{role}")"
+                                                               @(isChecked ? "checked" : "") />
+                                                        <label class="form-check-label small" for="@($"role_{user.UserId}_{role}")">
+                                                            @role
+                                                        </label>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </form>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-primary save-roles-btn"
+                                                data-user-id="@user.UserId" title="Save Roles">
+                                            <i class="fas fa-save"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-users-slash fa-2x mb-2"></i>
+                    <p class="mb-0">No users found</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Dark mode support */
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-header.bg-light {
+            background-color: var(--bs-gray-800) !important;
+            border-color: var(--bs-gray-700);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table-light {
+            background-color: var(--bs-gray-800) !important;
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table-light th {
+            background-color: var(--bs-gray-800) !important;
+            color: var(--bs-light);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .table-hover tbody tr:hover {
+            background-color: var(--bs-gray-700) !important;
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .table td,
+        [data-theme="dark"] .table th {
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .text-muted {
+            color: var(--bs-gray-400) !important;
+        }
+        [data-theme="dark"] h1,
+        [data-theme="dark"] h5,
+        [data-theme="dark"] strong {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-check-label {
+            color: var(--bs-light);
+        }
+        .bg-purple {
+            background-color: #6f42c1 !important;
+        }
+        .form-check-inline {
+            margin-right: 0.5rem;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.save-roles-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const userId = this.dataset.userId;
+                const form = document.querySelector(`input[name="userId"][value="${userId}"]`).closest('form');
+                if (form) {
+                    form.submit();
+                }
+            });
+        });
+    </script>
+}

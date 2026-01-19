@@ -1,0 +1,363 @@
+@model Bangaliyana.Areas.Admin.Controllers.UserEditViewModel
+@using Bangaliyana.Models
+
+@{
+    ViewData["Title"] = Localizer["EditUser"];
+    var divisions = ViewBag.Divisions as List<Division> ?? new List<Division>();
+    var districts = ViewBag.Districts as List<District> ?? new List<District>();
+    var upazilas = ViewBag.Upazilas as List<Upazila> ?? new List<Upazila>();
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">@Localizer["EditUser"]</h1>
+            <p class="text-muted mb-0">
+                @Localizer["UpdateUserInfoFor"]: <strong>@Model.FullName</strong>
+            </p>
+        </div>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> @Localizer["BackToDetails"]
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-edit me-2"></i>@Localizer["UserInformation"]
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Edit" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="Id" />
+
+                        <div asp-validation-summary="All" class="alert alert-danger d-none" role="alert" id="validationSummary"></div>
+
+                        <!-- Personal Information -->
+                        <h6 class="border-bottom pb-2 mb-3">@Localizer["PersonalInformation"]</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="FirstName" class="form-label">@Localizer["FirstName"] <span class="text-danger">*</span></label>
+                                <input asp-for="FirstName" class="form-control" required />
+                                <span asp-validation-for="FirstName" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="LastName" class="form-label">@Localizer["LastName"] <span class="text-danger">*</span></label>
+                                <input asp-for="LastName" class="form-control" required />
+                                <span asp-validation-for="LastName" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="Email" class="form-label">@Localizer["Email"] <span class="text-danger">*</span></label>
+                                <input asp-for="Email" class="form-control" required />
+                                <span asp-validation-for="Email" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="PhoneNumber" class="form-label">@Localizer["PhoneNumber"]</label>
+                                <input asp-for="PhoneNumber" class="form-control" />
+                                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="DateOfBirth" class="form-label">@Localizer["DateOfBirth"]</label>
+                                <input asp-for="DateOfBirth" type="date" class="form-control" />
+                                <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <!-- Address Information -->
+                        <h6 class="border-bottom pb-2 mb-3 mt-4">@Localizer["AddressInformation"]</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="DivisionId" class="form-label">@Localizer["Division"]</label>
+                                <select asp-for="DivisionId" class="form-select" id="divisionSelect">
+                                    <option value="">-- @Localizer["SelectDivision"] --</option>
+                                    @foreach (var division in divisions)
+                                    {
+                                        <option value="@division.Id">@division.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="DistrictId" class="form-label">@Localizer["District"]</label>
+                                <select asp-for="DistrictId" class="form-select" id="districtSelect">
+                                    <option value="">-- @Localizer["SelectDistrict"] --</option>
+                                    @foreach (var district in districts)
+                                    {
+                                        <option value="@district.Id">@district.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="UpazilaId" class="form-label">@Localizer["Upazila"]</label>
+                                <select asp-for="UpazilaId" class="form-select" id="upazilaSelect">
+                                    <option value="">-- @Localizer["SelectUpazila"] --</option>
+                                    @foreach (var upazila in upazilas)
+                                    {
+                                        <option value="@upazila.Id">@upazila.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="PostalCode" class="form-label">@Localizer["PostalCode"]</label>
+                                <input asp-for="PostalCode" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Address" class="form-label">@Localizer["FullAddress"]</label>
+                            <textarea asp-for="Address" class="form-control" rows="3"></textarea>
+                        </div>
+
+                        <!-- Verification Status -->
+                        <h6 class="border-bottom pb-2 mb-3 mt-4">@Localizer["VerificationStatus"]</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input asp-for="IsVerified" class="form-check-input" type="checkbox" role="switch">
+                                    <label asp-for="IsVerified" class="form-check-label">@Localizer["IsVerified"]</label>
+                                </div>
+                                <small class="text-muted">@Localizer["UserAccountIsVerified"]</small>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input asp-for="EmailConfirmed" class="form-check-input" type="checkbox" role="switch">
+                                    <label asp-for="EmailConfirmed" class="form-check-label">@Localizer["EmailConfirmed"]</label>
+                                </div>
+                                <small class="text-muted">@Localizer["EmailAddressIsConfirmed"]</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label d-block">@Localizer["MobileNumberStatus"]</label>
+                                @if (Model.PhoneNumberConfirmed)
+                                {
+                                    <span class="badge bg-success fs-6">
+                                        <i class="fas fa-check-circle me-1"></i> @Localizer["Verified"]
+                                    </span>
+                                    <br/>
+                                    <small class="text-success">@Localizer["UserVerifiedViaOTP"]</small>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary fs-6">
+                                        <i class="fas fa-times-circle me-1"></i> @Localizer["NotVerified"]
+                                    </span>
+                                    <br/>
+                                    <small class="text-muted">@Localizer["UserMustVerifyFromProfile"]</small>
+                                }
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> @Localizer["SaveChanges"]
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="col-lg-4">
+            <div class="card sticky-top" style="top: 1rem;">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>@Localizer["EditNotes"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info alert-permanent small">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>@Localizer["Tips"]:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>@Localizer["ChangingEmailUpdatesLogin"]</li>
+                            <li>@Localizer["ToggleVerificationAffectsCapabilities"]</li>
+                            <li>@Localizer["AddressFieldsOptional"]</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-warning alert-permanent small">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>@Localizer["Warning"]:</strong>
+                        <p class="mb-0">@Localizer["ChangesEffectImmediately"]</p>
+                    </div>
+
+                    <hr />
+
+                    <h6>@Localizer["QuickActions"]</h6>
+                    <div class="d-grid gap-2">
+                        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-user me-1"></i> @Localizer["ViewProfile"]
+                        </a>
+                        <a asp-action="Permissions" asp-route-id="@Model.Id" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-shield-alt me-1"></i> @Localizer["MenuPermissions"]
+                        </a>
+                        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-list me-1"></i> @Localizer["AllUsers"]
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Dark mode support */
+        [data-theme="dark"] .card {
+            background-color: var(--bs-dark);
+            border-color: var(--bs-gray-700);
+        }
+        [data-theme="dark"] .card-header.bg-light {
+            background-color: var(--bs-gray-800) !important;
+            border-color: var(--bs-gray-700);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .card-body {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background-color: var(--bs-gray-800);
+            border-color: var(--bs-gray-600);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-control:focus,
+        [data-theme="dark"] .form-select:focus {
+            background-color: var(--bs-gray-700);
+            border-color: var(--bs-primary);
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-label {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .form-check-label {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .border-bottom {
+            border-color: var(--bs-gray-600) !important;
+        }
+        [data-theme="dark"] .text-muted {
+            color: var(--bs-gray-400) !important;
+        }
+        [data-theme="dark"] h1, h5, h6, strong {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] .alert-info {
+            background-color: rgba(13, 202, 240, 0.15);
+            border-color: rgba(13, 202, 240, 0.3);
+            color: var(--bs-info);
+        }
+        [data-theme="dark"] .alert-warning {
+            background-color: rgba(255, 193, 7, 0.15);
+            border-color: rgba(255, 193, 7, 0.3);
+            color: var(--bs-warning);
+        }
+        [data-theme="dark"] .alert-danger {
+            background-color: rgba(220, 53, 69, 0.15);
+            border-color: rgba(220, 53, 69, 0.3);
+            color: var(--bs-danger);
+        }
+        [data-theme="dark"] p {
+            color: var(--bs-light);
+        }
+        [data-theme="dark"] ul, li {
+            color: var(--bs-light);
+        }
+    </style>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Show validation summary only if it has actual error content
+            const validationSummary = document.getElementById('validationSummary');
+            if (validationSummary) {
+                const errorList = validationSummary.querySelector('ul');
+                const hasErrors = errorList && errorList.querySelectorAll('li').length > 0 && errorList.textContent.trim() !== '';
+                if (hasErrors) {
+                    validationSummary.classList.remove('d-none');
+                    validationSummary.style.display = '';
+                } else {
+                    validationSummary.classList.add('d-none');
+                }
+            }
+
+            const divisionSelect = document.getElementById('divisionSelect');
+            const districtSelect = document.getElementById('districtSelect');
+            const upazilaSelect = document.getElementById('upazilaSelect');
+
+            // Handle form submit - disable empty nullable fields to prevent binding errors
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function () {
+                // Handle nullable int selects
+                const nullableSelects = [divisionSelect, districtSelect, upazilaSelect];
+                nullableSelects.forEach(function (select) {
+                    if (select && select.value === '') {
+                        select.disabled = true;
+                    }
+                });
+
+                // Handle nullable DateTime input
+                const dateOfBirthInput = document.querySelector('input[name="DateOfBirth"]');
+                if (dateOfBirthInput && dateOfBirthInput.value === '') {
+                    dateOfBirthInput.disabled = true;
+                }
+            });
+
+            // Division change - load districts
+            divisionSelect.addEventListener('change', function () {
+                const divisionId = this.value;
+                districtSelect.innerHTML = '<option value="">-- Select District --</option>';
+                upazilaSelect.innerHTML = '<option value="">-- Select Upazila --</option>';
+
+                if (divisionId) {
+                    fetch(`/Admin/UserManagement/GetDistricts?divisionId=${divisionId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            data.forEach(item => {
+                                const option = document.createElement('option');
+                                option.value = item.id;
+                                option.textContent = item.name;
+                                districtSelect.appendChild(option);
+                            });
+                        });
+                }
+            });
+
+            // District change - load upazilas
+            districtSelect.addEventListener('change', function () {
+                const districtId = this.value;
+                upazilaSelect.innerHTML = '<option value="">-- Select Upazila --</option>';
+
+                if (districtId) {
+                    fetch(`/Admin/UserManagement/GetUpazilas?districtId=${districtId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            data.forEach(item => {
+                                const option = document.createElement('option');
+                                option.value = item.id;
+                                option.textContent = item.name;
+                                upazilaSelect.appendChild(option);
+                            });
+                        });
+                }
+            });
+        });
+    </script>
+}

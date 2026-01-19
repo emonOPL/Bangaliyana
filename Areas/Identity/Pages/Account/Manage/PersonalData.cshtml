@@ -1,0 +1,28 @@
+﻿@page
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@model PersonalDataModel
+@{
+    ViewData["Title"] = Localizer["PersonalData"].Value;
+    ViewData["ActivePage"] = ManageNavPages.PersonalData;
+}
+
+<h3>@ViewData["Title"]</h3>
+
+<div class="row">
+    <div class="col-12">
+        <p>@Localizer["PersonalDataDescription"]</p>
+        <p>
+            @Localizer["PersonalDataPdfContent"]
+        </p>
+        <form id="download-data" asp-page="DownloadPersonalData" method="post">
+            <button class="btn btn-primary" type="submit">
+                <i class="fa fa-file-pdf"></i> @Localizer["DownloadPdf"]
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

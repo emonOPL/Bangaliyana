@@ -1,0 +1,367 @@
+@model Bangaliyana.Models.Category
+
+@{
+    ViewData["Title"] = Localizer["CategoryDetails"];
+    var totalProductCount = ViewBag.ProductCount ?? 0;
+}
+
+<style>
+    .details-card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .details-header {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+        padding: 25px;
+    }
+
+    .details-header h4 {
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .details-body {
+        padding: 25px;
+    }
+
+    .category-image {
+        width: 120px;
+        height: 120px;
+        border-radius: 12px;
+        object-fit: cover;
+        border: 3px solid rgba(255,255,255,0.3);
+    }
+
+    .category-icon-large {
+        width: 120px;
+        height: 120px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .category-icon-large i {
+        font-size: 3rem;
+    }
+
+    .path-breadcrumb {
+        background: #f8f9fa;
+        padding: 10px 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .path-breadcrumb span {
+        color: #6c757d;
+    }
+
+    .path-breadcrumb span:last-child {
+        color: #17a2b8;
+        font-weight: 600;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+
+    .info-item {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+    }
+
+    .info-item label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .info-item .value {
+        font-weight: 600;
+        color: #212529;
+    }
+
+    .subcategory-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .subcategory-list li {
+        padding: 10px 15px;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .subcategory-list li:last-child {
+        border-bottom: none;
+    }
+
+    .subcategory-list li:hover {
+        background: #f8f9fa;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+
+    .stat-card {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+    }
+
+    .stat-card .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #17a2b8;
+    }
+
+    .stat-card .stat-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+
+    [data-theme="dark"] .details-card {
+        background: #2a2a3d;
+    }
+
+    [data-theme="dark"] .path-breadcrumb,
+    [data-theme="dark"] .info-item,
+    [data-theme="dark"] .stat-card {
+        background: #1e1e2e;
+    }
+
+    [data-theme="dark"] .info-item .value {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .subcategory-list li {
+        border-color: #444;
+    }
+
+    [data-theme="dark"] .subcategory-list li:hover {
+        background: #1e1e2e;
+    }
+</style>
+
+<div class="container">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Categories"]</a></li>
+            <li class="breadcrumb-item active">@Model.Name</li>
+        </ol>
+    </nav>
+
+    <!-- Main Details Card -->
+    <div class="details-card">
+        <div class="details-header">
+            <div class="d-flex align-items-center gap-4">
+                @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                {
+                    <img src="@Model.ImageUrl" alt="@Model.Name" class="category-image" />
+                }
+                else
+                {
+                    <div class="category-icon-large">
+                        <i class="@(string.IsNullOrEmpty(Model.IconClass) ? "fas fa-folder" : Model.IconClass)"></i>
+                    </div>
+                }
+                <div>
+                    <h4>@Model.Name</h4>
+                    <div class="mt-2">
+                        @if (Model.IsActive)
+                        {
+                            <span class="badge bg-success me-2">@Localizer["Active"]</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary me-2">@Localizer["Inactive"]</span>
+                        }
+                        @if (Model.IsFeatured)
+                        {
+                            <span class="badge bg-warning text-dark me-2">
+                                <i class="fas fa-star me-1"></i>@Localizer["Featured"]
+                            </span>
+                        }
+                        <span class="badge bg-info">@Localizer["Level"] @Model.Level</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="details-body">
+            <!-- Category Path -->
+            @if (!string.IsNullOrEmpty(Model.FullPath))
+            {
+                <div class="path-breadcrumb">
+                    <i class="fas fa-sitemap me-2 text-info"></i>
+                    @{
+                        var pathParts = Model.FullPath.Split(" > ");
+                        for (int i = 0; i < pathParts.Length; i++)
+                        {
+                            <span>@pathParts[i]</span>
+                            if (i < pathParts.Length - 1)
+                            {
+                                <i class="fas fa-chevron-right mx-2 text-muted" style="font-size: 0.7rem;"></i>
+                            }
+                        }
+                    }
+                </div>
+            }
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">@Model.Level</div>
+                    <div class="stat-label">@Localizer["HierarchyLevel"]</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@(Model.Children?.Count ?? 0)</div>
+                    <div class="stat-label">@Localizer["DirectSubcategories"]</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@(Model.Products?.Count ?? 0)</div>
+                    <div class="stat-label">@Localizer["DirectProducts"]</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@totalProductCount</div>
+                    <div class="stat-label">@Localizer["TotalProductsInclSub"]</div>
+                </div>
+            </div>
+
+            <!-- Info Grid -->
+            <div class="info-grid mb-4">
+                <div class="info-item">
+                    <label>@Localizer["Slug"]</label>
+                    <div class="value">@(Model.Slug ?? Localizer["NA"])</div>
+                </div>
+                <div class="info-item">
+                    <label>@Localizer["DisplayOrder"]</label>
+                    <div class="value">@Model.DisplayOrder</div>
+                </div>
+                <div class="info-item">
+                    <label>@Localizer["IconClass"]</label>
+                    <div class="value">
+                        @if (!string.IsNullOrEmpty(Model.IconClass))
+                        {
+                            <i class="@Model.IconClass me-2"></i>@Model.IconClass
+                        }
+                        else
+                        {
+                            <span class="text-muted">@Localizer["NotSet"]</span>
+                        }
+                    </div>
+                </div>
+                <div class="info-item">
+                    <label>@Localizer["ParentCategory"]</label>
+                    <div class="value">
+                        @if (Model.Parent != null)
+                        {
+                            <a asp-action="Details" asp-route-id="@Model.ParentId">@Model.Parent.Name</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">@Localizer["NoneRootCategory"]</span>
+                        }
+                    </div>
+                </div>
+                <div class="info-item">
+                    <label>@Localizer["Created"]</label>
+                    <div class="value">@Model.CreatedAt.ToBangladeshString()</div>
+                </div>
+                <div class="info-item">
+                    <label>@Localizer["LastUpdated"]</label>
+                    <div class="value">@Model.UpdatedAt.ToBangladeshString()</div>
+                </div>
+            </div>
+
+            <!-- Description -->
+            @if (!string.IsNullOrEmpty(Model.Description))
+            {
+                <div class="mb-4">
+                    <h6 class="text-muted mb-2">@Localizer["Description"]</h6>
+                    <p class="mb-0">@Model.Description</p>
+                </div>
+            }
+
+            <!-- Subcategories -->
+            @if (Model.Children?.Any() == true)
+            {
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="text-muted mb-0">
+                            <i class="fas fa-folder-tree me-2"></i>@Localizer["Subcategories"] (@Model.Children.Count)
+                        </h6>
+                        <a asp-action="Create" asp-route-parentId="@Model.Id" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-plus me-1"></i>@Localizer["AddSubcategory"]
+                        </a>
+                    </div>
+                    <div class="card">
+                        <ul class="subcategory-list">
+                            @foreach (var child in Model.Children.OrderBy(c => c.DisplayOrder).ThenBy(c => c.Name))
+                            {
+                                <li>
+                                    <div>
+                                        @if (!string.IsNullOrEmpty(child.IconClass))
+                                        {
+                                            <i class="@child.IconClass me-2 text-info"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-folder me-2 text-muted"></i>
+                                        }
+                                        <a asp-action="Details" asp-route-id="@child.Id" class="text-decoration-none">@child.Name</a>
+                                        @if (!child.IsActive)
+                                        {
+                                            <span class="badge bg-secondary ms-2">@Localizer["Inactive"]</span>
+                                        }
+                                    </div>
+                                    <div>
+                                        <a asp-action="Edit" asp-route-id="@child.Id" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+
+            <!-- Actions -->
+            <div class="d-flex justify-content-between pt-3 border-top">
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> @Localizer["BackToList"]
+                </a>
+                <div>
+                    <a asp-action="Create" asp-route-parentId="@Model.Id" class="btn btn-outline-success me-2">
+                        <i class="fas fa-plus me-1"></i> @Localizer["AddSubcategory"]
+                    </a>
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                        <i class="fas fa-edit me-1"></i> @Localizer["EditCategory"]
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

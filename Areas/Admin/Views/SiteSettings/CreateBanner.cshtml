@@ -1,0 +1,141 @@
+@model Bangaliyana.Models.Banner
+@{
+    ViewData["Title"] = "Create Banner";
+}
+
+<div class="container px-4">
+    <h1 class="mt-4">
+        <i class="fas fa-plus me-2"></i>Create Banner
+    </h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a asp-action="Index">Site Settings</a></li>
+        <li class="breadcrumb-item"><a asp-action="Banners">Banners</a></li>
+        <li class="breadcrumb-item active">Create</li>
+    </ol>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="CreateBanner" method="post" enctype="multipart/form-data">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label asp-for="Title" class="form-label"></label>
+                            <input asp-for="Title" class="form-control" />
+                            <span asp-validation-for="Title" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Subtitle" class="form-label"></label>
+                            <input asp-for="Subtitle" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label"></label>
+                            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="LinkUrl" class="form-label"></label>
+                                <input asp-for="LinkUrl" class="form-control" placeholder="https://..." />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label asp-for="ButtonText" class="form-label"></label>
+                                <input asp-for="ButtonText" class="form-control" placeholder="Shop Now" />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label asp-for="ButtonStyle" class="form-label"></label>
+                                <select asp-for="ButtonStyle" class="form-select">
+                                    <option value="primary">Primary</option>
+                                    <option value="secondary">Secondary</option>
+                                    <option value="success">Success</option>
+                                    <option value="danger">Danger</option>
+                                    <option value="warning">Warning</option>
+                                    <option value="info">Info</option>
+                                    <option value="light">Light</option>
+                                    <option value="dark">Dark</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Desktop Image</label>
+                            <input type="file" name="imageFile" class="form-control" accept="image/*" />
+                            <small class="text-muted">Recommended: 1920x600px</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mobile Image</label>
+                            <input type="file" name="mobileImageFile" class="form-control" accept="image/*" />
+                            <small class="text-muted">Recommended: 768x400px</small>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label asp-for="BackgroundColor" class="form-label"></label>
+                                <input asp-for="BackgroundColor" class="form-control form-control-color" type="color" />
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label asp-for="TextColor" class="form-label"></label>
+                                <input asp-for="TextColor" class="form-control form-control-color" type="color" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr />
+
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label asp-for="Location" class="form-label"></label>
+                        <select asp-for="Location" asp-items="Html.GetEnumSelectList<Bangaliyana.Models.BannerLocation>()" class="form-select"></select>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label asp-for="DisplayOrder" class="form-label"></label>
+                        <input asp-for="DisplayOrder" class="form-control" type="number" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label asp-for="StartDate" class="form-label"></label>
+                        <input asp-for="StartDate" class="form-control" type="datetime-local" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label asp-for="EndDate" class="form-label"></label>
+                        <input asp-for="EndDate" class="form-control" type="datetime-local" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input asp-for="IsActive" class="form-check-input" type="checkbox" checked />
+                            <label asp-for="IsActive" class="form-check-label"></label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input asp-for="ShowOnDesktop" class="form-check-input" type="checkbox" checked />
+                            <label asp-for="ShowOnDesktop" class="form-check-label"></label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input asp-for="ShowOnMobile" class="form-check-input" type="checkbox" checked />
+                            <label asp-for="ShowOnMobile" class="form-check-label"></label>
+                        </div>
+                    </div>
+                </div>
+
+                <hr />
+
+                <div class="d-flex justify-content-between">
+                    <a asp-action="Banners" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Back
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Create Banner
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

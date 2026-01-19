@@ -1,0 +1,62 @@
+@model Bangaliyana.Models.BlogCategory
+@{ ViewData["Title"] = Localizer["EditBlogCategory"].Value; }
+
+<div class="container px-4">
+    <h1 class="mt-4"><i class="fas fa-edit me-2"></i>@Localizer["EditBlogCategory"]</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a asp-area="Admin" asp-controller="Dashboard" asp-action="Index">@Localizer["Dashboard"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["BlogPosts"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Categories">@Localizer["Categories"]</a></li>
+        <li class="breadcrumb-item active">@Localizer["Edit"]</li>
+    </ol>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="EditCategory" method="post">
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="CreatedAt" />
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Name" class="form-label">@Localizer["Name"]</label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Slug" class="form-label">@Localizer["Slug"]</label>
+                        <input asp-for="Slug" class="form-control" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label">@Localizer["Description"]</label>
+                    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="IconClass" class="form-label">@Localizer["IconClass"]</label>
+                        <input asp-for="IconClass" class="form-control" placeholder="fas fa-tag" />
+                        <small class="text-muted">@Localizer["IconClassHint"]</small>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label asp-for="DisplayOrder" class="form-label">@Localizer["DisplayOrder"]</label>
+                        <input asp-for="DisplayOrder" class="form-control" type="number" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="form-check mt-2">
+                            <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                            <label asp-for="IsActive" class="form-check-label">@Localizer["IsActive"]</label>
+                        </div>
+                    </div>
+                </div>
+                <hr />
+                <div class="d-flex justify-content-between">
+                    <a asp-action="Categories" class="btn btn-secondary"><i class="fas fa-arrow-left me-1"></i> @Localizer["Back"]</a>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> @Localizer["UpdateCategory"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

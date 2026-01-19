@@ -1,0 +1,1656 @@
+@page
+@model OrderReturnsModel
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    ViewData["Title"] = Localizer["ReturnsReplacements"].Value;
+    ViewData["ActivePage"] = ManageNavPages.OrderReturns;
+}
+
+<div class="returns-container">
+    <!-- Header Section -->
+    <div class="page-header mb-4">
+        <div class="header-content">
+            <h4 class="mb-1"><i class="fas fa-undo-alt me-2 text-warning"></i>@Localizer["ReturnsReplacements"]</h4>
+            <p class="text-muted mb-0">@Localizer["ReturnsReplacementsDescription"]</p>
+        </div>
+    </div>
+
+    <!-- Status Message -->
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        var alertClass = Model.StatusMessage.StartsWith("Error") ? "alert-danger" : "alert-success";
+        <div class="alert @alertClass alert-dismissible fade show" role="alert">
+            <i class="fas @(Model.StatusMessage.StartsWith("Error") ? "fa-exclamation-circle" : "fa-check-circle") me-2"></i>
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card stat-total">
+                <div class="stat-icon">
+                    <i class="fas fa-box-open"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">@Model.TotalReturns</span>
+                    <span class="stat-label">@Localizer["TotalReturns"]</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card stat-pending">
+                <div class="stat-icon">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">@Model.PendingReturns</span>
+                    <span class="stat-label">@Localizer["Pending"]</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card stat-completed">
+                <div class="stat-icon">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">@Model.CompletedReturns</span>
+                    <span class="stat-label">@Localizer["Completed"]</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card stat-refunded">
+                <div class="stat-icon">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">৳@Model.TotalRefunded.ToString("N0")</span>
+                    <span class="stat-label">@Localizer["Refunded"]</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Eligible for Return Section -->
+    @if (Model.EligibleOrders.Any())
+    {
+        <div class="section-card mb-4">
+            <div class="section-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-shipping-fast me-2 text-success"></i>@Localizer["EligibleForReturn"]
+                    <span class="badge bg-success ms-2">@Model.EligibleOrders.Count</span>
+                </h5>
+                <small class="text-muted">@Localizer["OrdersDeliveredWithin7Days"]</small>
+            </div>
+            <div class="section-body">
+                @foreach (var order in Model.EligibleOrders)
+                {
+                    <div class="eligible-order-card">
+                        <div class="order-header">
+                            <div class="order-info">
+                                <span class="order-number">#@order.OrderNumber</span>
+                                <span class="order-date">@Localizer["Delivered"] @order.DeliveredAt?.ToBangladeshShortDateString()</span>
+                            </div>
+                            <div class="order-amount">৳@order.TotalAmount.ToString("N0")</div>
+                        </div>
+                        <div class="order-items">
+                            @foreach (var item in order.OrderItems.Take(3))
+                            {
+                                <div class="order-item-mini">
+                                    <img src="@(item.ProductImageUrl ?? "/images/products/noimage.jpg")" alt="@item.ProductName" class="item-thumb" />
+                                    <div class="item-info">
+                                        <span class="item-name">@item.ProductName</span>
+                                        <span class="item-qty">@Localizer["Qty"]: @item.Quantity</span>
+                                    </div>
+                                </div>
+                            }
+                            @if (order.OrderItems.Count > 3)
+                            {
+                                <span class="more-items">+@(order.OrderItems.Count - 3) @Localizer["more"]</span>
+                            }
+                        </div>
+                        <div class="order-actions">
+                            <span class="return-deadline">
+                                <i class="fas fa-clock me-1"></i>
+                                @{
+                                    var daysLeft = 7 - (DateTime.UtcNow - order.DeliveredAt!.Value).Days;
+                                }
+                                @daysLeft @Localizer["DaysLeftToReturn"]
+                            </span>
+                            <button type="button" class="btn btn-outline-warning btn-sm"
+                                    data-bs-toggle="modal" data-bs-target="#returnModal"
+                                    data-order-id="@order.Id"
+                                    data-order-number="@order.OrderNumber">
+                                <i class="fas fa-undo me-1"></i>@Localizer["RequestReturn"]
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Return History Section -->
+    <div class="section-card">
+        <div class="section-header">
+            <h5 class="mb-0">
+                <i class="fas fa-history me-2 text-info"></i>@Localizer["ReturnHistory"]
+            </h5>
+        </div>
+        <div class="section-body">
+            @if (Model.ReturnedOrders.Any())
+            {
+                @foreach (var order in Model.ReturnedOrders)
+                {
+                    var statusClass = order.PaymentStatus == PaymentStatus.Refunded ? "status-refunded" :
+                                     order.PaymentStatus == PaymentStatus.PartiallyRefunded ? "status-partial" : "status-pending";
+                    var statusText = order.PaymentStatus == PaymentStatus.Refunded ? Localizer["Refunded"].Value :
+                                    order.PaymentStatus == PaymentStatus.PartiallyRefunded ? Localizer["PartiallyRefunded"].Value : Localizer["Processing"].Value;
+                    var statusIcon = order.PaymentStatus == PaymentStatus.Refunded ? "fa-check-circle" :
+                                    order.PaymentStatus == PaymentStatus.PartiallyRefunded ? "fa-minus-circle" : "fa-spinner fa-spin";
+
+                    <div class="return-order-card">
+                        <div class="return-status-indicator @statusClass"></div>
+                        <div class="return-content">
+                            <div class="return-header">
+                                <div class="return-info">
+                                    <span class="order-number">#@order.OrderNumber</span>
+                                    <span class="return-date">@Localizer["Returned"] @order.ReturnedAt?.ToBangladeshShortDateString()</span>
+                                </div>
+                                <div class="return-badge @statusClass">
+                                    <i class="fas @statusIcon me-1"></i>@statusText
+                                </div>
+                            </div>
+
+                            <div class="return-reason">
+                                <i class="fas fa-comment-alt me-2"></i>
+                                @Model.FormatReturnReasonForDisplay(order.ReturnReason)
+                            </div>
+
+                            @if (order.PrefersReplacement)
+                            {
+                                <div class="replacement-badge mb-2">
+                                    <i class="fas fa-exchange-alt me-1"></i>@Localizer["ReplacementRequested"]
+                                </div>
+                            }
+
+                            <!-- Return Images -->
+                            @{
+                                var returnImages = Model.GetReturnImages(order);
+                            }
+                            @if (returnImages.Any())
+                            {
+                                <div class="return-images-section mb-3">
+                                    <small class="text-muted d-block mb-2"><i class="fas fa-images me-1"></i>@Localizer["AttachedImages"]</small>
+                                    <div class="return-images-grid">
+                                        @foreach (var img in returnImages)
+                                        {
+                                            <a href="@img" target="_blank" class="return-image-thumb" data-bs-toggle="tooltip" title="Click to view full size">
+                                                <img src="@img" alt="Return evidence" />
+                                                <div class="image-overlay">
+                                                    <i class="fas fa-search-plus"></i>
+                                                </div>
+                                            </a>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Refund Method Details -->
+                            @if (order.PreferredRefundMethod != null && order.PreferredRefundMethod != RefundMethod.OriginalMethod && !order.PrefersReplacement)
+                            {
+                                <div class="refund-method-display mb-3">
+                                    <small class="text-muted d-block mb-2"><i class="fas fa-money-check me-1"></i>@Localizer["RefundMethod"]</small>
+                                    <div class="refund-method-info">
+                                        <span class="method-badge" style="--method-color: @(order.PreferredRefundMethod switch {
+                                            RefundMethod.WalletCredit => "#10b981",
+                                            RefundMethod.Bkash => "#e2136e",
+                                            RefundMethod.Nagad => "#f26622",
+                                            RefundMethod.Upay => "#00a884",
+                                            RefundMethod.Rocket => "#8c28bc",
+                                            RefundMethod.BankTransfer => "#2563eb",
+                                            _ => "#6b7280"
+                                        })">
+                                            @Model.GetRefundMethodDisplay(order.PreferredRefundMethod)
+                                        </span>
+                                        @if (!string.IsNullOrEmpty(order.RefundAccountNumber))
+                                        {
+                                            <span class="account-info">
+                                                @if (order.PreferredRefundMethod == RefundMethod.BankTransfer)
+                                                {
+                                                    <span>@order.RefundBankName - @order.RefundAccountNumber</span>
+                                                    @if (!string.IsNullOrEmpty(order.RefundAccountHolderName))
+                                                    {
+                                                        <span class="text-muted">(@order.RefundAccountHolderName)</span>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span>@order.RefundAccountNumber</span>
+                                                }
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="return-items">
+                                @foreach (var item in order.OrderItems.Take(2))
+                                {
+                                    <div class="return-item">
+                                        <img src="@(item.ProductImageUrl ?? "/images/products/noimage.jpg")" alt="@item.ProductName" />
+                                        <div class="item-details">
+                                            <span class="item-name">@item.ProductName</span>
+                                            <span class="item-meta">@Localizer["Qty"]: @item.Quantity × ৳@item.UnitPrice.ToString("N0")</span>
+                                        </div>
+                                    </div>
+                                }
+                                @if (order.OrderItems.Count > 2)
+                                {
+                                    <div class="more-items-badge">+@(order.OrderItems.Count - 2) @Localizer["MoreItems"]</div>
+                                }
+                            </div>
+
+                            <div class="return-footer">
+                                <div class="return-amount">
+                                    <span class="amount-label">@Localizer["RefundAmount"]:</span>
+                                    <span class="amount-value">৳@order.TotalAmount.ToString("N0")</span>
+                                </div>
+                                @if (order.PaymentStatus != PaymentStatus.Refunded && order.PaymentStatus != PaymentStatus.PartiallyRefunded)
+                                {
+                                    <form method="post" asp-page-handler="CancelReturn" class="d-inline cancel-return-form">
+                                        <input type="hidden" name="orderId" value="@order.Id" />
+                                        <button type="button" class="btn btn-outline-secondary btn-sm cancel-return-btn">
+                                            <i class="fas fa-times me-1"></i>@Localizer["CancelReturn"]
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-box-open"></i>
+                    </div>
+                    <h5>@Localizer["NoReturnsYet"]</h5>
+                    <p class="text-muted">@Localizer["NoReturnsDescription"]</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Return Policy Info -->
+    <div class="policy-card mt-4">
+        <div class="policy-header">
+            <i class="fas fa-info-circle me-2"></i>@Localizer["ReturnReplacementPolicy"]
+        </div>
+        <div class="policy-content">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="policy-item">
+                        <div class="policy-icon bg-success-soft">
+                            <i class="fas fa-calendar-check text-success"></i>
+                        </div>
+                        <div class="policy-text">
+                            <strong>@Localizer["SevenDayReturnWindow"]</strong>
+                            <p class="mb-0 small">@Localizer["ReturnWindowDescription"]</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="policy-item">
+                        <div class="policy-icon bg-info-soft">
+                            <i class="fas fa-exchange-alt text-info"></i>
+                        </div>
+                        <div class="policy-text">
+                            <strong>@Localizer["FreeReplacements"]</strong>
+                            <p class="mb-0 small">@Localizer["FreeReplacementsDescription"]</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="policy-item">
+                        <div class="policy-icon bg-warning-soft">
+                            <i class="fas fa-money-check-alt text-warning"></i>
+                        </div>
+                        <div class="policy-text">
+                            <strong>@Localizer["QuickRefunds"]</strong>
+                            <p class="mb-0 small">@Localizer["QuickRefundsDescription"]</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Return Request Modal -->
+<div class="modal fade" id="returnModal" tabindex="-1" aria-labelledby="returnModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="returnModalLabel">
+                    <i class="fas fa-undo me-2"></i>@Localizer["RequestReturn"]
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" asp-page-handler="RequestReturn" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" asp-for="Input.OrderId" id="modalOrderId" />
+
+                    <div class="order-ref-display mb-3">
+                        <span class="label">@Localizer["Order"]:</span>
+                        <span class="value" id="modalOrderNumber"></span>
+                    </div>
+
+                    <!-- Return Reason Section -->
+                    <div class="return-section mb-4">
+                        <h6 class="section-title"><i class="fas fa-clipboard-list me-2"></i>@Localizer["ReturnDetails"]</h6>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Reason" class="form-label">@Localizer["ReasonForReturn"] <span class="text-danger">*</span></label>
+                            <select asp-for="Input.Reason" class="form-select" id="returnReasonSelect" required>
+                                <option value="" selected disabled>@Localizer["SelectAReason"]</option>
+                                @foreach (var reason in Enum.GetValues<OrderReturnsModel.ReturnReason>())
+                                {
+                                    var displayName = reason.GetType().GetField(reason.ToString())
+                                        ?.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.DisplayAttribute), false)
+                                        .Cast<System.ComponentModel.DataAnnotations.DisplayAttribute>()
+                                        .FirstOrDefault()?.Name ?? reason.ToString();
+                                    <option value="@reason">@displayName</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Details" class="form-label">@Localizer["AdditionalDetails"]</label>
+                            <textarea asp-for="Input.Details" class="form-control" rows="3"
+                                      placeholder="@Localizer["ProvideMoreDetailsPlaceholder"].Value"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Image Upload Section -->
+                    <div class="return-section mb-4">
+                        <h6 class="section-title"><i class="fas fa-camera me-2"></i>@Localizer["UploadImages"] <span class="text-muted small fw-normal">(@Localizer["OptionalMax5Images"])</span></h6>
+
+                        <div class="image-upload-zone" id="imageUploadZone">
+                            <input type="file" name="ReturnImages" id="returnImagesInput"
+                                   accept=".jpg,.jpeg,.png,.gif,.webp" multiple class="d-none" />
+                            <div class="upload-placeholder" id="uploadPlaceholder">
+                                <div class="upload-icon">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <p class="upload-text">@Localizer["DragDropOrBrowse"]</p>
+                                <p class="upload-hint">@Localizer["SupportedFormatsMax5MB"]</p>
+                            </div>
+                            <div class="image-preview-grid" id="imagePreviewGrid"></div>
+                        </div>
+                    </div>
+
+                    <!-- Refund Method Section -->
+                    <div class="return-section mb-4" id="refundMethodSection">
+                        <h6 class="section-title"><i class="fas fa-money-bill-wave me-2"></i>@Localizer["RefundMethod"]</h6>
+
+                        <div class="form-check form-check-inline mb-3">
+                            <input asp-for="Input.PreferReplacement" class="form-check-input" type="checkbox" id="preferReplacementCheck" />
+                            <label asp-for="Input.PreferReplacement" class="form-check-label">
+                                <i class="fas fa-exchange-alt me-1 text-info"></i>
+                                @Localizer["PreferReplacementInsteadOfRefund"]
+                            </label>
+                        </div>
+
+                        <div id="refundMethodFields">
+                            <div class="mb-3">
+                                <label asp-for="Input.RefundMethod" class="form-label">@Localizer["SelectRefundMethod"] <span class="text-danger">*</span></label>
+                                <div class="refund-method-grid">
+                                    @foreach (var method in Enum.GetValues<RefundMethod>().Where(m => m != RefundMethod.OriginalMethod))
+                                    {
+                                        var displayName = method.GetType().GetField(method.ToString())
+                                            ?.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.DisplayAttribute), false)
+                                            .Cast<System.ComponentModel.DataAnnotations.DisplayAttribute>()
+                                            .FirstOrDefault()?.Name ?? method.ToString();
+                                        var iconClass = method switch
+                                        {
+                                            RefundMethod.WalletCredit => "fas fa-wallet",
+                                            RefundMethod.BankTransfer => "fas fa-university",
+                                            _ => ""
+                                        };
+                                        var logoUrl = method switch
+                                        {
+                                            RefundMethod.Bkash => "/images/logos/bkash-logo.png",
+                                            RefundMethod.Nagad => "/images/logos/nagad-logo.png",
+                                            RefundMethod.Upay => "/images/logos/upay-logo.png",
+                                            RefundMethod.Rocket => "/images/logos/rocket-logo.png",
+                                            _ => ""
+                                        };
+                                        var methodColor = method switch
+                                        {
+                                            RefundMethod.WalletCredit => "#10b981",
+                                            RefundMethod.Bkash => "#e2136e",
+                                            RefundMethod.Nagad => "#f26622",
+                                            RefundMethod.Upay => "#00a884",
+                                            RefundMethod.Rocket => "#8c28bc",
+                                            RefundMethod.BankTransfer => "#2563eb",
+                                            _ => "#6b7280"
+                                        };
+                                        var hasLogo = !string.IsNullOrEmpty(logoUrl);
+                                        <div class="refund-method-option" data-method="@method">
+                                            @if (method == RefundMethod.WalletCredit)
+                                            {
+                                                <input type="radio" name="Input.RefundMethod" value="@method" id="refund_@method"
+                                                       class="refund-method-radio" checked />
+                                            }
+                                            else
+                                            {
+                                                <input type="radio" name="Input.RefundMethod" value="@method" id="refund_@method"
+                                                       class="refund-method-radio" />
+                                            }
+                                            <label for="refund_@method" class="refund-method-label" style="--method-color: @methodColor">
+                                                @if (hasLogo)
+                                                {
+                                                    <img src="@logoUrl" alt="@displayName" class="method-logo" />
+                                                }
+                                                else
+                                                {
+                                                    <i class="@iconClass method-icon"></i>
+                                                }
+                                                <span class="method-name">@displayName</span>
+                                            </label>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Mobile Banking Account Details -->
+                            <div class="account-details-section" id="mobileAccountSection" style="display: none;">
+                                <div class="mb-3">
+                                    <label asp-for="Input.AccountNumber" class="form-label">
+                                        <span id="accountNumberLabel">@Localizer["AccountNumber"]</span> <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                        <input asp-for="Input.AccountNumber" class="form-control"
+                                               placeholder="01XXXXXXXXX" maxlength="11" />
+                                    </div>
+                                    <small class="text-muted">@Localizer["EnterMobileBankingNumber"]</small>
+                                </div>
+                            </div>
+
+                            <!-- Bank Transfer Details -->
+                            <div class="account-details-section" id="bankAccountSection" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label asp-for="Input.AccountHolderName" class="form-label">@Localizer["AccountHolderName"] <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                            <input asp-for="Input.AccountHolderName" class="form-control" placeholder="@Localizer["FullNameAsPerBank"].Value" />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label asp-for="Input.BankName" class="form-label">@Localizer["BankName"] <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-university"></i></span>
+                                            <input asp-for="Input.BankName" class="form-control" placeholder="@Localizer["BankNamePlaceholder"].Value" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label asp-for="Input.AccountNumber" class="form-label">@Localizer["AccountNumber"] <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-credit-card"></i></span>
+                                        <input asp-for="Input.AccountNumber" class="form-control" placeholder="@Localizer["BankAccountNumberPlaceholder"].Value" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info small mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        @Localizer["ReturnRequestReviewInfo"]
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-paper-plane me-1"></i>@Localizer["SubmitRequest"]
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Return Confirmation Modal -->
+<div class="modal fade" id="cancelReturnModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="cancel-icon-wrapper mb-3">
+                    <div class="cancel-icon-circle">
+                        <i class="fas fa-undo-alt text-warning"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">@Localizer["CancelReturnRequestQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["CancelReturnConfirmation"]</p>
+                <p class="text-muted small">@Localizer["CanRequestReturnAgain"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-arrow-left me-1"></i> @Localizer["GoBack"]
+                </button>
+                <button type="button" class="btn btn-warning px-4" id="confirmCancelReturnBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesCancel"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .returns-container {
+        max-width: 100%;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+    }
+
+    .page-header h4, .page-header p {
+        color: white !important;
+    }
+
+    /* Stat Cards */
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        transition: transform 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .stat-total .stat-icon { background: #dbeafe; color: #2563eb; }
+    .stat-pending .stat-icon { background: #fef3c7; color: #d97706; }
+    .stat-completed .stat-icon { background: #d1fae5; color: #059669; }
+    .stat-refunded .stat-icon { background: #ede9fe; color: #7c3aed; }
+
+    .stat-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1.2;
+        color: #1f2937;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+
+    /* Section Cards */
+    .section-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .section-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+
+    .section-body {
+        padding: 1.5rem;
+    }
+
+    /* Eligible Order Cards */
+    .eligible-order-card {
+        background: #fefce8;
+        border: 1px solid #fef08a;
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .eligible-order-card:last-child {
+        margin-bottom: 0;
+    }
+
+    .order-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .order-number {
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 1rem;
+    }
+
+    .order-date {
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin-left: 0.75rem;
+    }
+
+    .order-amount {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #059669;
+    }
+
+    .order-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .order-item-mini {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: white;
+        padding: 0.5rem;
+        border-radius: 8px;
+    }
+
+    .item-thumb {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 6px;
+    }
+
+    .item-name {
+        font-size: 0.85rem;
+        font-weight: 500;
+        display: block;
+        max-width: 120px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .item-qty {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    .more-items {
+        font-size: 0.85rem;
+        color: #6b7280;
+        align-self: center;
+    }
+
+    .order-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 1rem;
+        border-top: 1px dashed #fcd34d;
+    }
+
+    .return-deadline {
+        font-size: 0.85rem;
+        color: #d97706;
+    }
+
+    /* Return Order Cards */
+    .return-order-card {
+        display: flex;
+        gap: 1rem;
+        background: #f9fafb;
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        position: relative;
+    }
+
+    .return-order-card:last-child {
+        margin-bottom: 0;
+    }
+
+    .return-status-indicator {
+        width: 4px;
+        border-radius: 4px;
+        flex-shrink: 0;
+    }
+
+    .return-status-indicator.status-pending { background: linear-gradient(180deg, #f59e0b, #d97706); }
+    .return-status-indicator.status-refunded { background: linear-gradient(180deg, #10b981, #059669); }
+    .return-status-indicator.status-partial { background: linear-gradient(180deg, #3b82f6, #2563eb); }
+
+    .return-content {
+        flex: 1;
+    }
+
+    .return-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+
+    .return-badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .return-badge.status-pending { background: #fef3c7; color: #92400e; }
+    .return-badge.status-refunded { background: #d1fae5; color: #065f46; }
+    .return-badge.status-partial { background: #dbeafe; color: #1e40af; }
+
+    .return-reason {
+        font-size: 0.9rem;
+        color: #4b5563;
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        background: white;
+        border-radius: 8px;
+        border-left: 3px solid #e5e7eb;
+    }
+
+    .return-items {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .return-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: white;
+        padding: 0.5rem;
+        border-radius: 8px;
+    }
+
+    .return-item img {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: 6px;
+    }
+
+    .item-details {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .item-meta {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    .more-items-badge {
+        align-self: center;
+        font-size: 0.8rem;
+        color: #6b7280;
+        background: white;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+    }
+
+    .return-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 1rem;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .amount-label {
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+
+    .amount-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #059669;
+        margin-left: 0.5rem;
+    }
+
+    /* Policy Card */
+    .policy-card {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    .policy-header {
+        background: #0ea5e9;
+        color: white;
+        padding: 1rem 1.5rem;
+        font-weight: 600;
+    }
+
+    .policy-content {
+        padding: 1.5rem;
+    }
+
+    .policy-item {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .policy-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .bg-success-soft { background: rgba(16, 185, 129, 0.15); }
+    .bg-info-soft { background: rgba(14, 165, 233, 0.15); }
+    .bg-warning-soft { background: rgba(245, 158, 11, 0.15); }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+
+    .empty-icon {
+        width: 80px;
+        height: 80px;
+        background: #fef3c7;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 2rem;
+        color: #d97706;
+    }
+
+    /* Modal Styles */
+    .order-ref-display {
+        background: #f3f4f6;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .order-ref-display .label {
+        color: #6b7280;
+    }
+
+    .order-ref-display .value {
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    /* Dark Mode Styles */
+    [data-theme="dark"] .stat-card,
+    [data-theme="dark"] .section-card {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .stat-value {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .section-header {
+        background: #111827;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .section-header h5 {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .eligible-order-card {
+        background: #292524;
+        border-color: #78716c;
+    }
+
+    [data-theme="dark"] .order-number {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .order-item-mini,
+    [data-theme="dark"] .return-item,
+    [data-theme="dark"] .more-items-badge {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .item-name {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .return-order-card {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .return-reason {
+        background: #1f2937;
+        color: #d1d5db;
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .return-footer {
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .policy-card {
+        background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%);
+    }
+
+    [data-theme="dark"] .policy-text strong {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .empty-state h5 {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .modal-content {
+        background: #1f2937;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .modal-header {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .modal-footer {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .form-select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23f3f4f6' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 16px 12px;
+    }
+
+    [data-theme="dark"] .order-ref-display {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .order-ref-display .value {
+        color: #f3f4f6;
+    }
+
+    /* Cancel Return Modal Styles */
+    .cancel-icon-wrapper { display: flex; justify-content: center; }
+    .cancel-icon-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: pulse-warning 2s infinite;
+    }
+    .cancel-icon-circle i { font-size: 2.5rem; }
+    @@keyframes pulse-warning {
+        0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+        70% { box-shadow: 0 0 0 15px rgba(245, 158, 11, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    }
+    #cancelReturnModal .modal-content { border-radius: 1rem; }
+    #cancelReturnModal .btn { border-radius: 0.5rem; font-weight: 500; }
+    [data-theme="dark"] #cancelReturnModal .modal-content { background-color: #252538; }
+    [data-theme="dark"] #cancelReturnModal .modal-title { color: #e0e0e0; }
+    [data-theme="dark"] #cancelReturnModal .text-muted { color: #a0a0a0 !important; }
+    [data-theme="dark"] .cancel-icon-circle { background: linear-gradient(135deg, #3d3520 0%, #4a4025 100%); }
+
+    /* Return Section Styles */
+    .return-section {
+        background: #f9fafb;
+        border-radius: 12px;
+        padding: 1.25rem;
+        border: 1px solid #e5e7eb;
+    }
+
+    .section-title {
+        color: #374151;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    /* Image Upload Zone */
+    .image-upload-zone {
+        border: 2px dashed #d1d5db;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: white;
+        min-height: 120px;
+    }
+
+    .image-upload-zone:hover,
+    .image-upload-zone.dragover {
+        border-color: #f59e0b;
+        background: #fefce8;
+    }
+
+    .upload-icon {
+        font-size: 2.5rem;
+        color: #9ca3af;
+        margin-bottom: 0.75rem;
+    }
+
+    .image-upload-zone:hover .upload-icon {
+        color: #f59e0b;
+    }
+
+    .upload-text {
+        color: #4b5563;
+        margin-bottom: 0.25rem;
+    }
+
+    .upload-hint {
+        font-size: 0.8rem;
+        color: #9ca3af;
+        margin: 0;
+    }
+
+    .image-preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    .image-preview-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        aspect-ratio: 1;
+        background: #f3f4f6;
+    }
+
+    .image-preview-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .image-preview-item .remove-image {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(239, 68, 68, 0.9);
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .image-preview-item:hover .remove-image {
+        opacity: 1;
+    }
+
+    /* Refund Method Grid */
+    .refund-method-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 0.75rem;
+        align-items: stretch;
+    }
+
+    .refund-method-option {
+        position: relative;
+        height: 100%;
+    }
+
+    .refund-method-radio {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .refund-method-label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem 0.5rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: white;
+        min-height: 100px;
+        height: 100%;
+    }
+
+    .refund-method-label:hover {
+        border-color: var(--method-color, #d1d5db);
+        background: rgba(0, 0, 0, 0.02);
+    }
+
+    .refund-method-radio:checked + .refund-method-label {
+        border-color: var(--method-color, #f59e0b);
+        background: rgba(0, 0, 0, 0.02);
+        box-shadow: 0 0 0 3px rgba(var(--method-color-rgb, 245, 158, 11), 0.15);
+    }
+
+    .method-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--method-color, #6b7280);
+    }
+
+    .method-logo {
+        width: 40px;
+        height: 40px;
+        object-fit: contain;
+        margin-bottom: 0.5rem;
+    }
+
+    .method-name {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #374151;
+        text-align: center;
+    }
+
+    /* Account Details Section */
+    .account-details-section {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #fffbeb;
+        border-radius: 8px;
+        border: 1px solid #fcd34d;
+        animation: slideDown 0.3s ease;
+    }
+
+    @@keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Return Images Display in History */
+    .return-images-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .return-image-thumb {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
+        overflow: hidden;
+        display: block;
+    }
+
+    .return-image-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.2s;
+    }
+
+    .return-image-thumb:hover img {
+        transform: scale(1.05);
+    }
+
+    .return-image-thumb .image-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .return-image-thumb:hover .image-overlay {
+        opacity: 1;
+    }
+
+    .return-image-thumb .image-overlay i {
+        color: white;
+        font-size: 1rem;
+    }
+
+    /* Refund Method Display in History */
+    .refund-method-display {
+        background: white;
+        padding: 0.75rem;
+        border-radius: 8px;
+    }
+
+    .refund-method-info {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .method-badge {
+        background: var(--method-color, #6b7280);
+        color: white;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .account-info {
+        font-size: 0.85rem;
+        color: #4b5563;
+    }
+
+    /* Replacement Badge */
+    .replacement-badge {
+        display: inline-flex;
+        align-items: center;
+        background: #dbeafe;
+        color: #1d4ed8;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    /* Dark Mode Additional Styles */
+    [data-theme="dark"] .return-section {
+        background: #374151;
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .section-title {
+        color: #f3f4f6;
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .image-upload-zone {
+        background: #1f2937;
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .image-upload-zone:hover,
+    [data-theme="dark"] .image-upload-zone.dragover {
+        background: #292524;
+        border-color: #f59e0b;
+    }
+
+    [data-theme="dark"] .upload-text {
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .refund-method-label {
+        background: #1f2937;
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .refund-method-label:hover {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .refund-method-radio:checked + .refund-method-label {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .method-name {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .account-details-section {
+        background: #292524;
+        border-color: #78716c;
+    }
+
+    [data-theme="dark"] .refund-method-display {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .account-info {
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .replacement-badge {
+        background: #1e3a5f;
+        color: #93c5fd;
+    }
+
+    /* Responsive */
+    @@media (max-width: 767.98px) {
+        .order-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .order-actions {
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: stretch;
+        }
+
+        .return-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .return-items {
+            flex-direction: column;
+        }
+
+        .return-footer {
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: stretch;
+        }
+
+        .policy-item {
+            margin-bottom: 1rem;
+        }
+
+        .refund-method-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .refund-method-info {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Return request modal
+            const returnModal = document.getElementById('returnModal');
+            returnModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const orderId = button.getAttribute('data-order-id');
+                const orderNumber = button.getAttribute('data-order-number');
+
+                document.getElementById('modalOrderId').value = orderId;
+                // Use orderNumber if available, otherwise fall back to orderId
+                const displayOrderNum = orderNumber && orderNumber.trim() !== '' ? orderNumber : orderId;
+                document.getElementById('modalOrderNumber').textContent = '#' + displayOrderNum;
+
+                // Reset form
+                resetReturnForm();
+            });
+
+            // Cancel return confirmation modal
+            let currentCancelForm = null;
+            const cancelReturnModal = new bootstrap.Modal(document.getElementById('cancelReturnModal'));
+
+            document.querySelectorAll('.cancel-return-btn').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    currentCancelForm = this.closest('.cancel-return-form');
+                    cancelReturnModal.show();
+                });
+            });
+
+            document.getElementById('confirmCancelReturnBtn')?.addEventListener('click', function () {
+                if (currentCancelForm) {
+                    cancelReturnModal.hide();
+                    currentCancelForm.submit();
+                }
+            });
+
+            // Image Upload Functionality
+            const imageUploadZone = document.getElementById('imageUploadZone');
+            const returnImagesInput = document.getElementById('returnImagesInput');
+            const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+            const imagePreviewGrid = document.getElementById('imagePreviewGrid');
+            let selectedFiles = [];
+            const maxFiles = 5;
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+            // Click to browse
+            imageUploadZone.addEventListener('click', function (e) {
+                if (e.target.closest('.remove-image')) return;
+                returnImagesInput.click();
+            });
+
+            // File input change
+            returnImagesInput.addEventListener('change', function () {
+                handleFiles(this.files);
+            });
+
+            // Drag and drop
+            imageUploadZone.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                this.classList.add('dragover');
+            });
+
+            imageUploadZone.addEventListener('dragleave', function () {
+                this.classList.remove('dragover');
+            });
+
+            imageUploadZone.addEventListener('drop', function (e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+
+            function handleFiles(files) {
+                for (let file of files) {
+                    if (selectedFiles.length >= maxFiles) {
+                        alert(`Maximum ${maxFiles} images allowed.`);
+                        break;
+                    }
+
+                    if (!allowedTypes.includes(file.type)) {
+                        alert(`${file.name} is not a supported image type.`);
+                        continue;
+                    }
+
+                    if (file.size > maxSize) {
+                        alert(`${file.name} exceeds 5MB limit.`);
+                        continue;
+                    }
+
+                    selectedFiles.push(file);
+                }
+
+                updateImagePreviews();
+                updateFileInput();
+            }
+
+            function updateImagePreviews() {
+                imagePreviewGrid.innerHTML = '';
+
+                if (selectedFiles.length > 0) {
+                    uploadPlaceholder.style.display = 'none';
+
+                    selectedFiles.forEach((file, index) => {
+                        const reader = new FileReader();
+                        reader.onload = function (e) {
+                            const previewItem = document.createElement('div');
+                            previewItem.className = 'image-preview-item';
+                            previewItem.innerHTML = `
+                                <img src="${e.target.result}" alt="Preview ${index + 1}" />
+                                <button type="button" class="remove-image" data-index="${index}" title="Remove">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            `;
+                            imagePreviewGrid.appendChild(previewItem);
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                } else {
+                    uploadPlaceholder.style.display = 'block';
+                }
+            }
+
+            function updateFileInput() {
+                const dataTransfer = new DataTransfer();
+                selectedFiles.forEach(file => dataTransfer.items.add(file));
+                returnImagesInput.files = dataTransfer.files;
+            }
+
+            // Remove image
+            imagePreviewGrid.addEventListener('click', function (e) {
+                const removeBtn = e.target.closest('.remove-image');
+                if (removeBtn) {
+                    e.stopPropagation();
+                    const index = parseInt(removeBtn.dataset.index);
+                    selectedFiles.splice(index, 1);
+                    updateImagePreviews();
+                    updateFileInput();
+                }
+            });
+
+            // Refund Method Functionality
+            const preferReplacementCheck = document.getElementById('preferReplacementCheck');
+            const refundMethodFields = document.getElementById('refundMethodFields');
+            const mobileAccountSection = document.getElementById('mobileAccountSection');
+            const bankAccountSection = document.getElementById('bankAccountSection');
+            const refundMethodRadios = document.querySelectorAll('.refund-method-radio');
+            const accountNumberLabel = document.getElementById('accountNumberLabel');
+
+            // Toggle refund fields based on replacement preference
+            preferReplacementCheck.addEventListener('change', function () {
+                refundMethodFields.style.display = this.checked ? 'none' : 'block';
+                if (this.checked) {
+                    mobileAccountSection.style.display = 'none';
+                    bankAccountSection.style.display = 'none';
+                }
+            });
+
+            // Show/hide account details based on refund method
+            refundMethodRadios.forEach(radio => {
+                radio.addEventListener('change', function () {
+                    const method = this.value;
+
+                    mobileAccountSection.style.display = 'none';
+                    bankAccountSection.style.display = 'none';
+
+                    if (['Bkash', 'Nagad', 'Upay', 'Rocket'].includes(method)) {
+                        mobileAccountSection.style.display = 'block';
+                        const methodName = method === 'Bkash' ? 'bKash' : method;
+                        accountNumberLabel.textContent = `Personal ${methodName} Number`;
+                    } else if (method === 'BankTransfer') {
+                        bankAccountSection.style.display = 'block';
+                    }
+                });
+            });
+
+            // Reset form function
+            function resetReturnForm() {
+                selectedFiles = [];
+                updateImagePreviews();
+                updateFileInput();
+
+                // Reset reason select
+                const reasonSelect = document.getElementById('returnReasonSelect');
+                if (reasonSelect) {
+                    reasonSelect.selectedIndex = 0;
+                }
+
+                // Reset details textarea
+                const detailsTextarea = document.getElementById('Input_Details');
+                if (detailsTextarea) {
+                    detailsTextarea.value = '';
+                }
+
+                // Reset refund method
+                const walletRadio = document.getElementById('refund_WalletCredit');
+                if (walletRadio) {
+                    walletRadio.checked = true;
+                }
+                mobileAccountSection.style.display = 'none';
+                bankAccountSection.style.display = 'none';
+
+                // Reset replacement checkbox
+                preferReplacementCheck.checked = false;
+                refundMethodFields.style.display = 'block';
+
+                // Reset account number fields
+                const accountNumberInput = document.getElementById('Input_AccountNumber');
+                const accountHolderInput = document.getElementById('Input_AccountHolderName');
+                const bankNameInput = document.getElementById('Input_BankName');
+                if (accountNumberInput) accountNumberInput.value = '';
+                if (accountHolderInput) accountHolderInput.value = '';
+                if (bankNameInput) bankNameInput.value = '';
+            }
+
+            // Initialize tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
+}

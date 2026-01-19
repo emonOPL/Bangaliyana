@@ -1,0 +1,181 @@
+@model Bangaliyana.Models.AdminRole
+@using Bangaliyana.Models
+
+@{
+    ViewData["Title"] = "Manage User Assignments";
+    var role = ViewBag.Role as AdminRole;
+    var eligibleUsers = ViewBag.EligibleUsers as List<ApplicationUser> ?? new List<ApplicationUser>();
+    var assignedUserIds = ViewBag.AssignedUserIds as HashSet<string> ?? new HashSet<string>();
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Admin Roles</a></li>
+            <li class="breadcrumb-item"><a asp-action="Edit" asp-route-id="@Model.Id">@Model.Name</a></li>
+            <li class="breadcrumb-item active">Manage Assignments</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-users text-success me-2"></i>Manage User Assignments</h1>
+            <p class="text-muted mb-0">Assign or remove users from the <strong>@Model.Name</strong> role</p>
+        </div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Role
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Assigned Users -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-check me-2"></i>Assigned Users
+                        <span class="badge bg-white text-success ms-2">@assignedUserIds.Count</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    @if (assignedUserIds.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var user in eligibleUsers.Where(u => assignedUserIds.Contains(u.Id)))
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-user-circle text-success me-2"></i>
+                                        <strong>@(user.FirstName ?? "") @(user.LastName ?? "")</strong>
+                                        <br />
+                                        <small class="text-muted">@user.Email</small>
+                                    </div>
+                                    <form asp-action="RemoveUser" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="roleId" value="@Model.Id" />
+                                        <input type="hidden" name="userId" value="@user.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove from role">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-user-slash fa-2x mb-2"></i>
+                            <p class="mb-0">No users assigned to this role</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Users -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>Available Users
+                        <span class="badge bg-white text-secondary ms-2">@eligibleUsers.Count(u => !assignedUserIds.Contains(u.Id))</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    @{
+                        var availableUsers = eligibleUsers.Where(u => !assignedUserIds.Contains(u.Id)).ToList();
+                    }
+                    @if (availableUsers.Any())
+                    {
+                        <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+                            @foreach (var user in availableUsers)
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-user text-muted me-2"></i>
+                                        <strong>@(user.FirstName ?? "") @(user.LastName ?? "")</strong>
+                                        <br />
+                                        <small class="text-muted">@user.Email</small>
+                                    </div>
+                                    <form asp-action="AssignUser" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="roleId" value="@Model.Id" />
+                                        <input type="hidden" name="userId" value="@user.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Assign to role">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            <p class="mb-0">All eligible users are assigned</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role Permissions Summary -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-key me-2"></i>Role Permissions Summary</h5>
+        </div>
+        <div class="card-body">
+            @if (Model.Permissions?.Any() == true)
+            {
+                <div class="row">
+                    @foreach (var perm in Model.Permissions.OrderBy(p => p.Module))
+                    {
+                        <div class="col-md-4 col-lg-3 mb-3">
+                            <div class="border rounded p-2">
+                                <strong class="d-block mb-1">@perm.Module</strong>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @if (perm.CanView) { <span class="badge bg-success">View</span> }
+                                    @if (perm.CanCreate) { <span class="badge bg-primary">Create</span> }
+                                    @if (perm.CanEdit) { <span class="badge bg-warning text-dark">Edit</span> }
+                                    @if (perm.CanDelete) { <span class="badge bg-danger">Delete</span> }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No permissions defined for this role.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        [data-theme="dark"] .card { background-color: var(--bs-dark); border-color: var(--bs-gray-700); }
+        [data-theme="dark"] .card-header.bg-light { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] .list-group-item { background-color: var(--bs-gray-800); color: var(--bs-light); border-color: var(--bs-gray-700); }
+        [data-theme="dark"] .border { border-color: var(--bs-gray-700) !important; }
+    </style>
+}

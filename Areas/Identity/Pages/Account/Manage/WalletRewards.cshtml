@@ -1,0 +1,983 @@
+@page
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@model WalletRewardsModel
+@{
+    ViewData["Title"] = Localizer["WalletRewards"].Value;
+    ViewData["ActivePage"] = ManageNavPages.WalletRewards;
+}
+
+<div class="wallet-rewards-page">
+    <partial name="_StatusMessage" for="StatusMessage" />
+
+    <!-- Header -->
+    <div class="page-header mb-4">
+        <h4 class="mb-1">
+            <i class="fas fa-wallet text-purple me-2"></i>@Localizer["WalletRewards"]
+        </h4>
+        <p class="text-muted mb-0">@Localizer["WalletRewardsDescription"]</p>
+    </div>
+
+    <!-- Premium Member Banner -->
+    @if (Model.IsPremiumMember)
+    {
+        <div class="premium-banner mb-4">
+            <div class="premium-content">
+                <div class="premium-icon">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <div class="premium-info">
+                    <h5>@Localizer["PremiumMember"]</h5>
+                    <div class="premium-benefits mb-1">
+                        <span><i class="fas fa-truck me-1"></i>@Localizer["FreeShipping"]</span>
+                        <span class="mx-2">|</span>
+                        <span><i class="fas fa-coins me-1"></i>@Localizer["2xPoints"]</span>
+                        @if (Model.HasActivePremiumDiscount)
+                        {
+                            <span class="mx-2">|</span>
+                            <span><i class="fas fa-percent me-1"></i>@Localizer["5PercentDiscount"]</span>
+                        }
+                    </div>
+                    @if (Model.PremiumExpiresAt.HasValue)
+                    {
+                        <small class="text-warning-light">@Localizer["MembershipExpires"]: @Model.PremiumExpiresAt.Value.ToString("d")</small>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card wallet-card">
+                <div class="stat-icon">
+                    <i class="fas fa-wallet"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">@Localizer["WalletBalance"]</span>
+                    <h3 class="stat-value">৳@Model.WalletBalance.ToString("N0")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card points-card">
+                <div class="stat-icon">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">@Localizer["RewardPoints"]</span>
+                    <h3 class="stat-value">@Model.RewardPoints.ToString("N0")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card orders-card">
+                <div class="stat-icon">
+                    <i class="fas fa-shopping-bag"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">@Localizer["TotalOrders"]</span>
+                    <h3 class="stat-value">@Model.TotalOrders</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card spent-card">
+                <div class="stat-icon">
+                    <i class="fas fa-credit-card"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">@Localizer["TotalSpent"]</span>
+                    <h3 class="stat-value">৳@Model.TotalSpent.ToString("N0")</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Convert Points to Wallet -->
+    @if (Model.RewardPoints >= 100)
+    {
+        <div class="convert-section mb-4">
+            <div class="section-header">
+                <h5><i class="fas fa-exchange-alt me-2"></i>@Localizer["ConvertPointsToWallet"]</h5>
+                <span class="badge bg-info">@(Model.IsPremiumMember ? "50" : "100") pts = ৳1</span>
+            </div>
+            <div class="convert-body">
+                <form method="post" asp-page-handler="ConvertToWallet" class="d-flex align-items-center gap-3 flex-wrap">
+                    <div class="input-group" style="max-width: 200px;">
+                        <input type="number" name="points" id="convert-points" class="form-control"
+                               min="@(Model.IsPremiumMember ? 50 : 100)"
+                               max="@Model.RewardPoints"
+                               step="@(Model.IsPremiumMember ? 50 : 100)"
+                               value="@(Model.IsPremiumMember ? Math.Min(500, Model.RewardPoints / 50 * 50) : Math.Min(1000, Model.RewardPoints / 100 * 100))"
+                               placeholder="Points" />
+                        <span class="input-group-text">pts</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-arrow-right text-muted"></i>
+                        <span class="convert-result fw-bold text-success" id="wallet-result">
+                            ৳<span id="wallet-amount">@((int)Math.Round((decimal)(Model.IsPremiumMember ? Math.Min(500, Model.RewardPoints / 50 * 50) / 50 : Math.Min(1000, Model.RewardPoints / 100 * 100) / 100)))</span>
+                        </span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sync-alt me-1"></i>@Localizer["Convert"]
+                    </button>
+                </form>
+                <small class="text-muted mt-2 d-block">
+                    @if (Model.IsPremiumMember)
+                    {
+                        <span class="text-success"><i class="fas fa-crown me-1"></i>@Localizer["PremiumRate50Points"]</span>
+                    }
+                    else
+                    {
+                        <span>@Localizer["StandardRate100Points"] | <span class="text-warning">@Localizer["PremiumMembersGet50"]</span></span>
+                    }
+                </small>
+            </div>
+        </div>
+    }
+
+    <div class="row g-4">
+        <!-- Available Rewards -->
+        <div class="col-lg-7">
+            <div class="rewards-section">
+                <div class="section-header">
+                    <h5><i class="fas fa-gift me-2"></i>@Localizer["AvailableRewards"]</h5>
+                    <span class="badge bg-primary">@Model.RewardPoints @Localizer["PointsAvailable"]</span>
+                </div>
+                <div class="rewards-grid">
+                    @foreach (var reward in Model.AvailableRewards)
+                    {
+                        <div class="reward-card @(reward.CanRedeem ? "" : "locked")">
+                            <div class="reward-icon">
+                                <i class="@reward.Icon"></i>
+                            </div>
+                            <div class="reward-content">
+                                <h6>@reward.Name</h6>
+                                <p>@reward.Description</p>
+                                <div class="reward-points">
+                                    <i class="fas fa-coins me-1"></i>@reward.PointsRequired @Localizer["points"]
+                                </div>
+                            </div>
+                            @if (reward.CanRedeem)
+                            {
+                                <form method="post" asp-page-handler="Redeem" style="display: inline;">
+                                    <input type="hidden" name="rewardId" value="@reward.Id" />
+                                    <input type="hidden" name="pointsRequired" value="@reward.PointsRequired" />
+                                    <input type="hidden" name="rewardName" value="@reward.Name" />
+                                    <button type="submit" class="btn btn-primary btn-sm">@Localizer["Redeem"]</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <button class="btn btn-secondary btn-sm" disabled>@Localizer["Locked"]</button>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- My Vouchers -->
+            @if (Model.TotalVouchers > 0)
+            {
+                <div class="vouchers-section mt-4">
+                    <div class="section-header">
+                        <h5><i class="fas fa-ticket-alt me-2"></i>@Localizer["MyVouchers"]</h5>
+                        <span class="badge bg-secondary">@Model.TotalVouchers @Localizer["total"]</span>
+                    </div>
+                    <div class="vouchers-grid">
+                        @foreach (var voucher in Model.RedeemedVouchers)
+                        {
+                            <div class="voucher-card @voucher.Status.ToLower()">
+                                <div class="voucher-icon">
+                                    <i class="@voucher.Icon"></i>
+                                </div>
+                                <div class="voucher-content">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">@voucher.Name</h6>
+                                            @if (voucher.DiscountAmount.HasValue)
+                                            {
+                                                <span class="voucher-value">৳@voucher.DiscountAmount.Value.ToString("N0") OFF</span>
+                                            }
+                                        </div>
+                                        <span class="badge bg-@voucher.StatusClass">@voucher.Status</span>
+                                    </div>
+                                    <div class="voucher-dates">
+                                        <small class="text-muted">
+                                            @Localizer["Redeemed"]: @voucher.RedeemedAt.ToBangladeshString("MMM dd")
+                                            @if (voucher.Status == "Available")
+                                            {
+                                                <span class="mx-1">|</span>
+                                                <span>@Localizer["Expires"]: @voucher.ExpiresAt.ToBangladeshString("MMM dd")</span>
+                                            }
+                                            @if (voucher.UsedAt.HasValue)
+                                            {
+                                                <span class="mx-1">|</span>
+                                                <span>@Localizer["Used"]: @voucher.UsedAt.Value.ToBangladeshString("MMM dd")</span>
+                                            }
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Voucher Pagination -->
+                    @if (Model.VoucherTotalPages > 1)
+                    {
+                        <div class="pagination-wrapper">
+                            <nav aria-label="Voucher pagination">
+                                <ul class="pagination pagination-sm justify-content-center mb-0">
+                                    <!-- Previous Button -->
+                                    <li class="page-item @(Model.VoucherCurrentPage == 1 ? "disabled" : "")">
+                                        <a class="page-link" asp-page="./WalletRewards" asp-route-tpage="@Model.CurrentPage" asp-route-vpage="@(Model.VoucherCurrentPage - 1)" aria-label="Previous">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                    </li>
+
+                                    @{
+                                        int vStartPage = Math.Max(1, Model.VoucherCurrentPage - 2);
+                                        int vEndPage = Math.Min(Model.VoucherTotalPages, Model.VoucherCurrentPage + 2);
+
+                                        if (vEndPage - vStartPage < 4)
+                                        {
+                                            if (vStartPage == 1)
+                                            {
+                                                vEndPage = Math.Min(Model.VoucherTotalPages, 5);
+                                            }
+                                            else if (vEndPage == Model.VoucherTotalPages)
+                                            {
+                                                vStartPage = Math.Max(1, Model.VoucherTotalPages - 4);
+                                            }
+                                        }
+                                    }
+
+                                    @if (vStartPage > 1)
+                                    {
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./WalletRewards" asp-route-tpage="@Model.CurrentPage" asp-route-vpage="1">1</a>
+                                        </li>
+                                        @if (vStartPage > 2)
+                                        {
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        }
+                                    }
+
+                                    @for (int i = vStartPage; i <= vEndPage; i++)
+                                    {
+                                        <li class="page-item @(i == Model.VoucherCurrentPage ? "active" : "")">
+                                            <a class="page-link" asp-page="./WalletRewards" asp-route-tpage="@Model.CurrentPage" asp-route-vpage="@i">@i</a>
+                                        </li>
+                                    }
+
+                                    @if (vEndPage < Model.VoucherTotalPages)
+                                    {
+                                        @if (vEndPage < Model.VoucherTotalPages - 1)
+                                        {
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        }
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./WalletRewards" asp-route-tpage="@Model.CurrentPage" asp-route-vpage="@Model.VoucherTotalPages">@Model.VoucherTotalPages</a>
+                                        </li>
+                                    }
+
+                                    <!-- Next Button -->
+                                    <li class="page-item @(Model.VoucherCurrentPage == Model.VoucherTotalPages ? "disabled" : "")">
+                                        <a class="page-link" asp-page="./WalletRewards" asp-route-tpage="@Model.CurrentPage" asp-route-vpage="@(Model.VoucherCurrentPage + 1)" aria-label="Next">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
+                            <div class="text-center mt-2">
+                                <small class="text-muted">@Localizer["Page"] @Model.VoucherCurrentPage @Localizer["of"] @Model.VoucherTotalPages</small>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="col-lg-5">
+            <div class="transactions-section">
+                <div class="section-header">
+                    <h5><i class="fas fa-history me-2"></i>@Localizer["RecentActivity"]</h5>
+                    @if (Model.TotalTransactions > 0)
+                    {
+                        <span class="badge bg-secondary">@Model.TotalTransactions @Localizer["total"]</span>
+                    }
+                </div>
+                @if (Model.RecentTransactions.Any())
+                {
+                    <div class="transactions-list">
+                        @foreach (var tx in Model.RecentTransactions)
+                        {
+                            <div class="transaction-item">
+                                <div class="transaction-icon @(tx.IsCredit ? "credit" : "debit")">
+                                    <i class="fas @(tx.IsCredit ? "fa-plus" : "fa-minus")"></i>
+                                </div>
+                                <div class="transaction-content">
+                                    <span class="transaction-type">@tx.Type</span>
+                                    <span class="transaction-desc">@tx.Description</span>
+                                    <span class="transaction-date">@tx.Date.ToBangladeshShortDateString()</span>
+                                </div>
+                                <div class="transaction-amount @(tx.IsCredit ? "credit" : "debit")">
+                                    @(tx.IsCredit ? "+" : "-")@tx.Amount
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Pagination -->
+                    @if (Model.TotalPages > 1)
+                    {
+                        <div class="pagination-wrapper">
+                            <nav aria-label="Transaction pagination">
+                                <ul class="pagination pagination-sm justify-content-center mb-0">
+                                    <!-- Previous Button -->
+                                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                                        <a class="page-link" asp-page="./WalletRewards" asp-route-tpage="@(Model.CurrentPage - 1)" asp-route-vpage="@Model.VoucherCurrentPage" aria-label="Previous">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                    </li>
+
+                                    @{
+                                        int startPage = Math.Max(1, Model.CurrentPage - 2);
+                                        int endPage = Math.Min(Model.TotalPages, Model.CurrentPage + 2);
+
+                                        // Ensure we show at least 5 pages if available
+                                        if (endPage - startPage < 4)
+                                        {
+                                            if (startPage == 1)
+                                            {
+                                                endPage = Math.Min(Model.TotalPages, 5);
+                                            }
+                                            else if (endPage == Model.TotalPages)
+                                            {
+                                                startPage = Math.Max(1, Model.TotalPages - 4);
+                                            }
+                                        }
+                                    }
+
+                                    @if (startPage > 1)
+                                    {
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./WalletRewards" asp-route-tpage="1" asp-route-vpage="@Model.VoucherCurrentPage">1</a>
+                                        </li>
+                                        @if (startPage > 2)
+                                        {
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        }
+                                    }
+
+                                    @for (int i = startPage; i <= endPage; i++)
+                                    {
+                                        <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                                            <a class="page-link" asp-page="./WalletRewards" asp-route-tpage="@i" asp-route-vpage="@Model.VoucherCurrentPage">@i</a>
+                                        </li>
+                                    }
+
+                                    @if (endPage < Model.TotalPages)
+                                    {
+                                        @if (endPage < Model.TotalPages - 1)
+                                        {
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        }
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./WalletRewards" asp-route-tpage="@Model.TotalPages" asp-route-vpage="@Model.VoucherCurrentPage">@Model.TotalPages</a>
+                                        </li>
+                                    }
+
+                                    <!-- Next Button -->
+                                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                                        <a class="page-link" asp-page="./WalletRewards" asp-route-tpage="@(Model.CurrentPage + 1)" asp-route-vpage="@Model.VoucherCurrentPage" aria-label="Next">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
+                            <div class="text-center mt-2">
+                                <small class="text-muted">@Localizer["Page"] @Model.CurrentPage @Localizer["of"] @Model.TotalPages</small>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="empty-transactions">
+                        <i class="fas fa-inbox"></i>
+                        <p>@Localizer["NoTransactionsYet"]</p>
+                        <span>@Localizer["StartShoppingToEarn"]</span>
+                    </div>
+                }
+            </div>
+
+            <!-- How to Earn -->
+            <div class="how-to-earn mt-4">
+                <div class="section-header">
+                    <h5><i class="fas fa-lightbulb me-2"></i>@Localizer["HowToEarn"]</h5>
+                </div>
+                <div class="earn-methods">
+                    <div class="earn-item">
+                        <div class="earn-icon"><i class="fas fa-shopping-cart"></i></div>
+                        <div class="earn-content">
+                            <strong>@Localizer["ShopAndEarn"]</strong>
+                            <span>@Localizer["ShopAndEarnDescription"]</span>
+                        </div>
+                    </div>
+                    <div class="earn-item">
+                        <div class="earn-icon"><i class="fas fa-star"></i></div>
+                        <div class="earn-content">
+                            <strong>@Localizer["ProductReviews"]</strong>
+                            <span>@Localizer["ProductReviewsDescription"]</span>
+                        </div>
+                    </div>
+                    <div class="earn-item">
+                        <div class="earn-icon"><i class="fas fa-comment-dots"></i></div>
+                        <div class="earn-content">
+                            <strong>@Localizer["PlatformReview"]</strong>
+                            <span>@Localizer["PlatformReviewDescription"]</span>
+                        </div>
+                    </div>
+                    <div class="earn-item">
+                        <div class="earn-icon"><i class="fas fa-user-plus"></i></div>
+                        <div class="earn-content">
+                            <strong>@Localizer["ReferFriends"]</strong>
+                            <span>@Localizer["ReferFriendsDescription"]</span>
+                        </div>
+                    </div>
+                    <div class="earn-item">
+                        <div class="earn-icon"><i class="fas fa-gift"></i></div>
+                        <div class="earn-content">
+                            <strong>@Localizer["UseReferralCode"]</strong>
+                            <span>@Localizer["UseReferralCodeDescription"]</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 text-center">
+                    <a asp-page="./Referrals" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-share-alt me-1"></i>@Localizer["ManageReferrals"]
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .wallet-rewards-page .page-header h4 {
+        font-weight: 600;
+    }
+
+    .text-purple {
+        color: #8b5cf6 !important;
+    }
+
+    /* Premium Banner */
+    .premium-banner {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    }
+
+    .premium-content {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+    }
+
+    .premium-icon {
+        width: 60px;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        color: #78350f;
+    }
+
+    .premium-info h5 {
+        margin: 0 0 0.25rem;
+        font-weight: 700;
+        color: #78350f;
+    }
+
+    .premium-info p {
+        color: #92400e;
+        font-size: 0.9rem;
+    }
+
+    .text-warning-light {
+        color: rgba(120, 53, 15, 0.75) !important;
+    }
+
+    /* Convert Section */
+    .convert-section {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .convert-body {
+        padding: 1.25rem 1.5rem;
+    }
+
+    .convert-result {
+        font-size: 1.25rem;
+    }
+
+    /* Vouchers Section */
+    .vouchers-section {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .vouchers-grid {
+        padding: 1rem;
+    }
+
+    .voucher-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 0.875rem;
+        border-radius: 10px;
+        background: #f9fafb;
+        margin-bottom: 0.5rem;
+        border-left: 4px solid #10b981;
+    }
+
+    .voucher-card.used {
+        border-left-color: #9ca3af;
+        opacity: 0.7;
+    }
+
+    .voucher-card.expired {
+        border-left-color: #ef4444;
+        opacity: 0.6;
+    }
+
+    .voucher-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .voucher-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .voucher-content h6 {
+        margin: 0;
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 0.9rem;
+    }
+
+    .voucher-value {
+        font-weight: 700;
+        color: #10b981;
+        font-size: 0.8rem;
+    }
+
+    .voucher-dates {
+        margin-top: 0.35rem;
+    }
+
+    /* Stat Cards */
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+
+    .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+    }
+
+    .wallet-card .stat-icon { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+    .points-card .stat-icon { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .orders-card .stat-icon { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+    .spent-card .stat-icon { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: #6b7280;
+        display: block;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0;
+    }
+
+    /* Sections */
+    .rewards-section, .transactions-section, .how-to-earn {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .section-header {
+        padding: 1rem 1.5rem;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-header h5 {
+        margin: 0;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    /* Rewards Grid */
+    .rewards-grid {
+        padding: 1rem;
+    }
+
+    .reward-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 12px;
+        background: #f9fafb;
+        margin-bottom: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .reward-card:last-child {
+        margin-bottom: 0;
+    }
+
+    .reward-card:hover:not(.locked) {
+        background: linear-gradient(135deg, #ede9fe 0%, #fae8ff 100%);
+    }
+
+    .reward-card.locked {
+        opacity: 0.6;
+    }
+
+    .reward-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .reward-content {
+        flex: 1;
+    }
+
+    .reward-content h6 {
+        margin: 0 0 0.25rem;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .reward-content p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+
+    .reward-points {
+        font-size: 0.75rem;
+        color: #f59e0b;
+        font-weight: 600;
+        margin-top: 0.25rem;
+    }
+
+    /* Transactions */
+    .transactions-list {
+        padding: 1rem;
+    }
+
+    .transaction-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem;
+        border-radius: 10px;
+        margin-bottom: 0.5rem;
+        background: #f9fafb;
+    }
+
+    .transaction-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        color: white;
+    }
+
+    .transaction-icon.credit { background: #10b981; }
+    .transaction-icon.debit { background: #ef4444; }
+
+    .transaction-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .transaction-type {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #1f2937;
+    }
+
+    .transaction-desc {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    .transaction-date {
+        font-size: 0.7rem;
+        color: #9ca3af;
+    }
+
+    .transaction-amount {
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    .transaction-amount.credit { color: #10b981; }
+    .transaction-amount.debit { color: #ef4444; }
+
+    .empty-transactions {
+        padding: 3rem;
+        text-align: center;
+        color: #9ca3af;
+    }
+
+    .empty-transactions i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .empty-transactions p {
+        font-weight: 600;
+        color: #6b7280;
+        margin-bottom: 0.25rem;
+    }
+
+    /* How to Earn */
+    .earn-methods {
+        padding: 1rem;
+    }
+
+    .earn-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem;
+        border-radius: 10px;
+        background: #f9fafb;
+        margin-bottom: 0.5rem;
+    }
+
+    .earn-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+
+    .earn-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .earn-content strong {
+        font-size: 0.9rem;
+        color: #1f2937;
+    }
+
+    .earn-content span {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] .stat-card,
+    [data-theme="dark"] .rewards-section,
+    [data-theme="dark"] .transactions-section,
+    [data-theme="dark"] .how-to-earn {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .section-header {
+        background: #111827;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .section-header h5,
+    [data-theme="dark"] .stat-value,
+    [data-theme="dark"] .reward-content h6,
+    [data-theme="dark"] .transaction-type,
+    [data-theme="dark"] .earn-content strong {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .reward-card,
+    [data-theme="dark"] .transaction-item,
+    [data-theme="dark"] .earn-item {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .reward-card:hover:not(.locked) {
+        background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%);
+    }
+
+    /* Dark Mode - New Sections */
+    [data-theme="dark"] .convert-section,
+    [data-theme="dark"] .vouchers-section {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .voucher-card {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .voucher-content h6 {
+        color: #f3f4f6;
+    }
+
+    /* Pagination */
+    .pagination-wrapper {
+        padding: 1rem;
+        border-top: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+
+    .pagination-wrapper .pagination {
+        gap: 0.25rem;
+    }
+
+    .pagination-wrapper .page-link {
+        border-radius: 8px;
+        border: none;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+        color: #6b7280;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .pagination-wrapper .page-link:hover {
+        background: #e5e7eb;
+        color: #1f2937;
+    }
+
+    .pagination-wrapper .page-item.active .page-link {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+    }
+
+    .pagination-wrapper .page-item.disabled .page-link {
+        background: #f3f4f6;
+        color: #9ca3af;
+        box-shadow: none;
+    }
+
+    [data-theme="dark"] .pagination-wrapper {
+        background: #111827;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .pagination-wrapper .page-link {
+        background: #374151;
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .pagination-wrapper .page-link:hover {
+        background: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .pagination-wrapper .page-item.disabled .page-link {
+        background: #1f2937;
+        color: #6b7280;
+    }
+</style>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const convertInput = document.getElementById('convert-points');
+        const walletAmount = document.getElementById('wallet-amount');
+        const isPremium = @(Model.IsPremiumMember ? "true" : "false");
+        const conversionRate = isPremium ? 50 : 100;
+
+        if (convertInput && walletAmount) {
+            convertInput.addEventListener('input', function() {
+                const points = parseInt(this.value) || 0;
+                const wallet = Math.round(points / conversionRate);
+                walletAmount.textContent = wallet;
+            });
+        }
+    });
+</script>
+}

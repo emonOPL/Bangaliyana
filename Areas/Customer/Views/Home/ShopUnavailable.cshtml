@@ -1,0 +1,69 @@
+@model Bangaliyana.Models.Seller
+@{
+    ViewData["Title"] = Localizer["ShopUnavailable"].Value;
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-0 shadow-lg text-center">
+                <div class="card-body p-5">
+                    <!-- Shop Logo/Icon -->
+                    <div class="mb-4">
+                        @if (!string.IsNullOrEmpty(Model.ShopLogoUrl))
+                        {
+                            <img src="@Model.ShopLogoUrl" alt="@Model.ShopName"
+                                 class="rounded-circle" style="width: 100px; height: 100px; object-fit: cover; opacity: 0.5;" />
+                        }
+                        else
+                        {
+                            <div class="bg-secondary bg-opacity-25 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                 style="width: 100px; height: 100px;">
+                                <i class="fas fa-store text-secondary" style="font-size: 2.5rem;"></i>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Status Icon -->
+                    <div class="mb-4">
+                        <div class="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center"
+                             style="width: 80px; height: 80px;">
+                            <i class="fas fa-pause-circle text-warning" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+
+                    <!-- Message -->
+                    <h3 class="fw-bold mb-3">@Localizer["ShopCurrentlyUnavailable"]</h3>
+                    <p class="text-muted mb-4">
+                        <strong>@Model.ShopName</strong> @Localizer["ShopNotAvailableMessage"]
+                    </p>
+
+                    <!-- Actions -->
+                    <div class="d-flex flex-column flex-sm-row justify-content-center gap-2">
+                        <a href="@Url.Action("Index", "Home", new { Area = "Customer" })" class="btn btn-primary">
+                            <i class="fas fa-home me-2"></i>@Localizer["GoToHomepage"]
+                        </a>
+                        <a href="@Url.Action("AllCategories", "Home", new { Area = "Customer" })" class="btn btn-outline-secondary">
+                            <i class="fas fa-store me-2"></i>@Localizer["BrowseOtherShops"]
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Info -->
+            <div class="text-center mt-4">
+                <p class="text-muted small mb-0">
+                    <i class="fas fa-info-circle me-1"></i>
+                    @Localizer["ContactSupportIfError"]
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+</style>

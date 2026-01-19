@@ -1,0 +1,148 @@
+@model Bangaliyana.Models.SellerMonthlyReport
+@using Bangaliyana.Extensions
+@{
+    Layout = null;
+    var reportItems = ViewBag.ReportItems as IEnumerable<Bangaliyana.Models.MonthlyReportOrderItem>;
+    var printDate = (DateTime)ViewBag.PrintDate;
+    var generatedBy = ViewBag.GeneratedBy as string;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Report @Model.ReportNumber - @(new DateTime(Model.Year, Model.Month, 1).ToString("MMMM yyyy"))</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .header h1 { margin: 0; font-size: 18px; }
+        .header p { margin: 5px 0; color: #666; }
+        .info-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .info-box { width: 48%; }
+        .info-box h3 { font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        .info-box table { width: 100%; }
+        .info-box td { padding: 3px 0; }
+        .info-box td:first-child { color: #666; }
+        .info-box td:last-child { text-align: right; font-weight: bold; }
+        .summary-box { background: #f5f5f5; padding: 15px; margin-bottom: 20px; }
+        .summary-box h3 { margin-top: 0; font-size: 14px; }
+        .summary-table { width: 100%; }
+        .summary-table td { padding: 5px 0; }
+        .summary-table .label { color: #666; }
+        .summary-table .value { text-align: right; }
+        .summary-table .total { font-weight: bold; font-size: 14px; background: #e8f5e9; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .items-table th { background: #f5f5f5; }
+        .items-table .text-end { text-align: right; }
+        .items-table .text-center { text-align: center; }
+        .items-table .text-danger { color: #dc3545; }
+        .items-table .text-success { color: #198754; }
+        .footer { margin-top: 30px; font-size: 10px; color: #666; text-align: center; border-top: 1px solid #ddd; padding-top: 10px; }
+        .status-badge { padding: 3px 8px; border-radius: 3px; font-size: 10px; }
+        .bg-success { background: #198754; color: white; }
+        .bg-danger { background: #dc3545; color: white; }
+        .bg-warning { background: #ffc107; color: #333; }
+        @@media print { body { margin: 0; } .no-print { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="margin-bottom: 20px;">
+        <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer;">Print Report</button>
+        <button onclick="window.close()" style="padding: 10px 20px; cursor: pointer; margin-left: 10px;">Close</button>
+    </div>
+
+    <div class="header">
+        <h1>Monthly Seller Report</h1>
+        <p>@Model.ReportNumber | @(new DateTime(Model.Year, Model.Month, 1).ToString("MMMM yyyy"))</p>
+    </div>
+
+    <div class="info-section">
+        <div class="info-box">
+            <h3>Seller Information</h3>
+            <table>
+                <tr><td>Shop Name:</td><td>@Model.Seller?.ShopName</td></tr>
+                <tr><td>Email:</td><td>@Model.Seller?.User?.Email</td></tr>
+                <tr><td>Commission Rate:</td><td>@Model.CommissionRate%</td></tr>
+            </table>
+        </div>
+        <div class="info-box">
+            <h3>Report Details</h3>
+            <table>
+                <tr><td>Report Number:</td><td>@Model.ReportNumber</td></tr>
+                <tr><td>Period:</td><td>@Model.PeriodStart.ToString("dd MMM") - @Model.PeriodEnd.ToString("dd MMM yyyy")</td></tr>
+                <tr><td>Status:</td><td>@Model.Status.GetDisplayName()</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="summary-box">
+        <h3>Financial Summary</h3>
+        <table class="summary-table">
+            <tr><td class="label">Total Sales:</td><td class="value">@Model.TotalSales.ToString("N0") BDT</td></tr>
+            <tr><td class="label">Commission (@Model.CommissionRate%):</td><td class="value text-danger">-@Model.CommissionAmount.ToString("N0") BDT</td></tr>
+            @if (Model.RefundDeductions > 0)
+            {
+                <tr><td class="label">Refund Deductions:</td><td class="value text-danger">-@Model.RefundDeductions.ToString("N0") BDT</td></tr>
+            }
+            @if (Model.ReturnDeductions > 0)
+            {
+                <tr><td class="label">Return Deductions:</td><td class="value text-danger">-@Model.ReturnDeductions.ToString("N0") BDT</td></tr>
+            }
+            @if (Model.Adjustments != 0)
+            {
+                <tr><td class="label">Adjustments:</td><td class="value">@(Model.Adjustments >= 0 ? "+" : "")@Model.Adjustments.ToString("N0") BDT</td></tr>
+            }
+            @if (Model.CarryForwardFromPrevious > 0)
+            {
+                <tr><td class="label">Carry Forward (Previous):</td><td class="value">+@Model.CarryForwardFromPrevious.ToString("N0") BDT</td></tr>
+            }
+            <tr class="total"><td class="label">Net Payable:</td><td class="value">@Model.NetPayable.ToString("N0") BDT</td></tr>
+        </table>
+    </div>
+
+    <h3>Order Items (@(reportItems?.Count() ?? 0))</h3>
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>Order #</th>
+                <th>Product</th>
+                <th class="text-end">Amount</th>
+                <th class="text-end">Commission</th>
+                <th class="text-end">Net</th>
+                <th class="text-center">Status</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (reportItems?.Any() == true)
+            {
+                foreach (var item in reportItems)
+                {
+                    <tr>
+                        <td>#@item.OrderId</td>
+                        <td>@(item.OrderItem?.Product?.Name ?? "N/A")</td>
+                        <td class="text-end">@item.ItemAmount.ToString("N0")</td>
+                        <td class="text-end text-danger">-@item.CommissionAmount.ToString("N0")</td>
+                        <td class="text-end text-success">@item.NetAmount.ToString("N0")</td>
+                        <td class="text-center">
+                            <span class="status-badge @(item.Status == ReportItemStatus.Delivered ? "bg-success" : item.Status == ReportItemStatus.Returned ? "bg-danger" : "bg-warning")">
+                                @item.Status
+                            </span>
+                        </td>
+                        <td>@item.DeliveredAt?.ToString("dd MMM yyyy")</td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr><td colspan="7" style="text-align: center; padding: 20px;">No order items in this report.</td></tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <p>Generated on @printDate.ToString("dd MMMM yyyy, hh:mm tt") by @generatedBy</p>
+        <p>This is a computer-generated document. No signature required.</p>
+    </div>
+</body>
+</html>

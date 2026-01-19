@@ -1,0 +1,100 @@
+@model List<Bangaliyana.Models.PageContent>
+@{ ViewData["Title"] = "Pages"; }
+
+<div class="container px-4">
+    <h1 class="mt-4"><i class="fas fa-file-alt me-2"></i>Pages</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a asp-action="Index">Site Settings</a></li>
+        <li class="breadcrumb-item active">Pages</li>
+    </ol>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-table me-1"></i> All Pages</span>
+            <a asp-action="CreatePage" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> Add Page</a>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr><th>Title</th><th>Slug</th><th>Show In</th><th>Order</th><th>Status</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model)
+                    {
+                        <tr>
+                            <td><strong>@p.Title</strong></td>
+                            <td><code>/@p.Slug</code></td>
+                            <td>
+                                @if (p.ShowInHeader) { <span class="badge bg-primary me-1">Header</span> }
+                                @if (p.ShowInFooter) { <span class="badge bg-secondary">Footer</span> }
+                            </td>
+                            <td>@p.DisplayOrder</td>
+                            <td>@(p.IsActive ? Html.Raw("<span class='badge bg-success'>Active</span>") : Html.Raw("<span class='badge bg-secondary'>Draft</span>"))</td>
+                            <td>
+                                <a asp-action="EditPage" asp-route-id="@p.Id" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+                                <a asp-area="Customer" asp-controller="Home" asp-action="Page" asp-route-slug="@p.Slug" target="_blank" class="btn btn-sm btn-outline-info"><i class="fas fa-eye"></i></a>
+                                <form asp-action="DeletePage" asp-route-id="@p.Id" method="post" class="d-inline delete-form">
+                                    @Html.AntiForgeryToken()
+                                    <button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="fas fa-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (!Model.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No pages found.</p>
+                    <a asp-action="CreatePage" class="btn btn-primary"><i class="fas fa-plus me-1"></i> Add Page</a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="delete-icon-wrapper mb-3"><div class="delete-icon-circle"><i class="fas fa-trash-alt text-danger"></i></div></div>
+                <h4 class="modal-title fw-bold mb-2">Delete Page?</h4>
+                <p class="text-muted mb-0">Are you sure you want to delete this page?</p>
+                <p class="text-muted small">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i> Cancel</button>
+                <button type="button" class="btn btn-danger px-4" id="confirmDeleteBtn"><i class="fas fa-check me-1"></i> Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .delete-icon-wrapper { display: flex; justify-content: center; }
+    .delete-icon-circle { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); display: flex; align-items: center; justify-content: center; animation: pulse-danger 2s infinite; }
+    .delete-icon-circle i { font-size: 2.5rem; }
+    @@keyframes pulse-danger { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
+    #deleteModal .modal-content { border-radius: 1rem; }
+    #deleteModal .btn { border-radius: 0.5rem; font-weight: 500; }
+    [data-theme="dark"] #deleteModal .modal-content { background-color: #252538; }
+    [data-theme="dark"] #deleteModal .modal-title { color: #e0e0e0; }
+    [data-theme="dark"] #deleteModal .text-muted { color: #a0a0a0 !important; }
+    [data-theme="dark"] .delete-icon-circle { background: linear-gradient(135deg, #3d2020 0%, #4a2525 100%); }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let currentForm = null;
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            document.querySelectorAll('.delete-btn').forEach(btn => { btn.addEventListener('click', function(e) { e.preventDefault(); currentForm = this.closest('.delete-form'); deleteModal.show(); }); });
+            document.getElementById('confirmDeleteBtn')?.addEventListener('click', function() { if (currentForm) { deleteModal.hide(); currentForm.submit(); } });
+        });
+    </script>
+}

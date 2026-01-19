@@ -1,0 +1,299 @@
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@model IEnumerable<Order>
+@{
+    ViewData["Title"] = "Refund Requests";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-undo text-warning me-2"></i>Refund Requests</h1>
+            <p class="text-muted mb-0">Manage customer refund requests and process refunds</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="CreateRefund" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i>Create Manual Refund
+            </a>
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="fas fa-exchange-alt me-1"></i>All Transactions
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-secondary bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-list text-secondary fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.TotalRefunds</h5>
+                    <small class="text-muted">Total</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-warning bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-clock text-warning fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.PendingRefunds</h5>
+                    <small class="text-muted">Pending</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-info bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-thumbs-up text-info fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.ApprovedRefunds</h5>
+                    <small class="text-muted">Approved</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-primary bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-spinner text-primary fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.InProgressRefunds</h5>
+                    <small class="text-muted">In Progress</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-success bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-check-double text-success fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.CompletedRefunds</h5>
+                    <small class="text-muted">Completed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2">
+            <div class="card border-0 shadow-sm h-100 bg-danger bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-money-bill-wave text-danger fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">৳@(((decimal)ViewBag.TotalRefundAmount).ToString("N0"))</h5>
+                    <small class="text-muted">Total Refunded</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Tabs & Search -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <ul class="nav nav-pills">
+                        <li class="nav-item">
+                            <a class="nav-link @(string.IsNullOrEmpty(ViewBag.CurrentStatus) ? "active" : "")" asp-action="RefundRequests">All</a>
+                        </li>
+                        @foreach (var status in (List<RefundStatus>)ViewBag.RefundStatuses)
+                        {
+                            var statusClass = status switch
+                            {
+                                RefundStatus.Pending => "warning",
+                                RefundStatus.Reviewing => "info",
+                                RefundStatus.InProgress => "primary",
+                                RefundStatus.Approved => "success",
+                                RefundStatus.Rejected => "danger",
+                                RefundStatus.Completed => "success",
+                                _ => "secondary"
+                            };
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewBag.CurrentStatus == status.ToString() ? "active" : "")"
+                                   asp-action="RefundRequests" asp-route-status="@status">
+                                    @status.GetDisplayName()
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+                <div class="col-md-4 mt-3 mt-md-0">
+                    <form method="get" class="d-flex gap-2">
+                        <input type="hidden" name="status" value="@ViewBag.CurrentStatus">
+                        <input type="text" name="search" class="form-control" placeholder="Search order #, customer..." value="@ViewBag.CurrentSearch">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Refund Requests Table -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Order</th>
+                                <th>Customer</th>
+                                <th class="text-end">Order Total</th>
+                                <th class="text-end">Approved Amount</th>
+                                <th class="text-center">Refund Status</th>
+                                <th>Refund Method</th>
+                                <th>Date</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model)
+                            {
+                                var statusClass = order.RefundStatus switch
+                                {
+                                    RefundStatus.Pending => "bg-warning text-dark",
+                                    RefundStatus.Reviewing => "bg-info",
+                                    RefundStatus.InProgress => "bg-primary",
+                                    RefundStatus.Approved => "bg-success",
+                                    RefundStatus.Rejected => "bg-danger",
+                                    RefundStatus.Completed => "bg-success",
+                                    _ => "bg-secondary"
+                                };
+                                <tr>
+                                    <td>
+                                        <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="text-decoration-none fw-bold">
+                                            #@order.OrderNumber
+                                        </a>
+                                        <br>
+                                        <small class="text-muted">@order.Status</small>
+                                    </td>
+                                    <td>
+                                        @if (order.User != null)
+                                        {
+                                            <span>@order.User.FirstName @order.User.LastName</span>
+                                            <br>
+                                            <small class="text-muted">@order.User.Email</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="fw-bold">৳@order.TotalAmount.ToString("N0")</span>
+                                    </td>
+                                    <td class="text-end">
+                                        @if (order.ApprovedRefundAmount.HasValue)
+                                        {
+                                            <span class="text-danger fw-bold">৳@order.ApprovedRefundAmount.Value.ToString("N0")</span>
+                                        }
+                                        else if (order.RefundPaidAmount.HasValue)
+                                        {
+                                            <span class="text-success fw-bold">৳@order.RefundPaidAmount.Value.ToString("N0")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge @statusClass">@order.RefundStatus.GetDisplayName()</span>
+                                    </td>
+                                    <td>
+                                        @if (order.PreferredRefundMethod.HasValue)
+                                        {
+                                            <small>@order.PreferredRefundMethod</small>
+                                        }
+                                        else if (order.RefundPaymentMethod.HasValue)
+                                        {
+                                            <small class="text-success">@order.RefundPaymentMethod</small>
+                                        }
+                                        else
+                                        {
+                                            <small class="text-muted">Not specified</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (order.RefundStatusChangedAt.HasValue)
+                                        {
+                                            <span>@order.RefundStatusChangedAt.Value.ToString("dd MMM yyyy")</span>
+                                            <br>
+                                            <small class="text-muted">@order.RefundStatusChangedAt.Value.ToString("hh:mm tt")</small>
+                                        }
+                                        else if (order.ReferredToAccountingAt.HasValue)
+                                        {
+                                            <span>@order.ReferredToAccountingAt.Value.ToString("dd MMM yyyy")</span>
+                                            <br>
+                                            <small class="text-muted">@order.ReferredToAccountingAt.Value.ToString("hh:mm tt")</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            @if (order.RefundStatus == RefundStatus.Completed)
+                                            {
+                                                <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id"
+                                                   class="btn btn-outline-primary" title="View Order">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <a asp-action="ProcessRefund" asp-route-id="@order.Id"
+                                                   class="btn btn-primary" title="Process Refund">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if ((int)ViewBag.TotalPages > 1)
+                {
+                    <div class="card-footer bg-white">
+                        <nav aria-label="Refund pagination">
+                            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                                <li class="page-item @((int)ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                                    <a class="page-link" asp-action="RefundRequests" asp-route-page="@((int)ViewBag.CurrentPage - 1)"
+                                       asp-route-status="@ViewBag.CurrentStatus" asp-route-search="@ViewBag.CurrentSearch">Previous</a>
+                                </li>
+                                @for (int i = 1; i <= (int)ViewBag.TotalPages; i++)
+                                {
+                                    if (i == 1 || i == (int)ViewBag.TotalPages || (i >= (int)ViewBag.CurrentPage - 2 && i <= (int)ViewBag.CurrentPage + 2))
+                                    {
+                                        <li class="page-item @(i == (int)ViewBag.CurrentPage ? "active" : "")">
+                                            <a class="page-link" asp-action="RefundRequests" asp-route-page="@i"
+                                               asp-route-status="@ViewBag.CurrentStatus" asp-route-search="@ViewBag.CurrentSearch">@i</a>
+                                        </li>
+                                    }
+                                    else if (i == 2 || i == (int)ViewBag.TotalPages - 1)
+                                    {
+                                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                                    }
+                                }
+                                <li class="page-item @((int)ViewBag.CurrentPage == (int)ViewBag.TotalPages ? "disabled" : "")">
+                                    <a class="page-link" asp-action="RefundRequests" asp-route-page="@((int)ViewBag.CurrentPage + 1)"
+                                       asp-route-status="@ViewBag.CurrentStatus" asp-route-search="@ViewBag.CurrentSearch">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-undo fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No refund requests found</h5>
+                    <p class="text-muted mb-3">There are no refund requests matching your criteria</p>
+                    <a asp-action="CreateRefund" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Create Manual Refund
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>

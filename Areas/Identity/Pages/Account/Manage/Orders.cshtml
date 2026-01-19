@@ -1,0 +1,375 @@
+@page
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@model OrdersModel
+@{
+    ViewData["Title"] = Localizer["MyOrders"].Value;
+    ViewData["ActivePage"] = ManageNavPages.Orders;
+}
+
+<style>
+    /* Dark mode styles for Orders page */
+    [data-theme="dark"] .table {
+        --bs-table-bg: #1e1e2d;
+        --bs-table-color: #e0e0e0;
+        --bs-table-border-color: #3d3d5c;
+        --bs-table-striped-bg: #252538;
+        --bs-table-striped-color: #e0e0e0;
+        --bs-table-hover-bg: #2a2a40;
+        --bs-table-hover-color: #fff;
+    }
+
+    [data-theme="dark"] .table thead th {
+        background-color: #252538;
+        color: #e0e0e0;
+        border-color: #3d3d5c;
+    }
+
+    [data-theme="dark"] .table tbody tr {
+        border-color: #3d3d5c;
+    }
+
+    [data-theme="dark"] .table tbody td {
+        color: #e0e0e0;
+        border-color: #3d3d5c;
+    }
+
+    [data-theme="dark"] .table-light {
+        --bs-table-bg: #2a2a40 !important;
+        --bs-table-color: #e0e0e0 !important;
+    }
+
+    [data-theme="dark"] .table-info {
+        --bs-table-bg: #1a3a4a !important;
+        --bs-table-color: #e0e0e0 !important;
+    }
+
+    [data-theme="dark"] .card {
+        background-color: #252538;
+        border-color: #3d3d5c;
+    }
+
+    [data-theme="dark"] .card-body {
+        background-color: #252538;
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .card-body h6 {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .card-body strong {
+        color: #fff;
+    }
+
+    [data-theme="dark"] .text-muted {
+        color: #a0a0a0 !important;
+    }
+
+    [data-theme="dark"] .collapse .card {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="dark"] h3 {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .btn-outline-primary {
+        color: #6c8cff;
+        border-color: #6c8cff;
+    }
+
+    [data-theme="dark"] .btn-outline-primary:hover {
+        background-color: #6c8cff;
+        color: #fff;
+    }
+
+    [data-theme="dark"] .btn-outline-danger {
+        color: #ff6b6b;
+        border-color: #ff6b6b;
+    }
+
+    [data-theme="dark"] .btn-outline-danger:hover {
+        background-color: #ff6b6b;
+        color: #fff;
+    }
+
+    [data-theme="dark"] .alert-info {
+        background-color: #1a3a4a;
+        border-color: #2a5a6a;
+        color: #8ec8e8;
+    }
+</style>
+
+<h3>@ViewData["Title"]</h3>
+<partial name="_StatusMessage" for="StatusMessage" />
+
+@if (Model.Orders.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="fa fa-info-circle"></i> @Localizer["NoOrdersYet"]
+    </div>
+    <a asp-area="Customer" asp-controller="Home" asp-action="Index" class="btn btn-primary">@Localizer["StartShopping"]</a>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>@Localizer["OrderNumber"]</th>
+                    <th>@Localizer["Date"]</th>
+                    <th>@Localizer["Items"]</th>
+                    <th>@Localizer["Total"]</th>
+                    <th>@Localizer["Status"]</th>
+                    <th>@Localizer["Payment"]</th>
+                    <th>@Localizer["Actions"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Model.Orders)
+                {
+                    <tr>
+                        <td><strong>#@order.Id</strong></td>
+                        <td>@order.OrderDate.ToBangladeshShortDateString()</td>
+                        <td>@order.OrderItems.Count @Localizer["ItemsCount"]</td>
+                        <td>৳@((int)Math.Round(order.TotalAmount))</td>
+                        <td>
+                            @switch (order.Status)
+                            {
+                                case OrderStatus.Pending:
+                                    <span class="badge bg-warning">@Localizer["StatusPending"]</span>
+                                    break;
+                                case OrderStatus.Paid:
+                                    <span class="badge bg-info">@Localizer["StatusPaid"]</span>
+                                    break;
+                                case OrderStatus.Shipped:
+                                    <span class="badge bg-success">@Localizer["StatusShipped"]</span>
+                                    break;
+                                case OrderStatus.Cancelled:
+                                    <span class="badge bg-danger">@Localizer["StatusCancelled"]</span>
+                                    break;
+                            }
+                        </td>
+                        <td>
+                            @if (order.IsPaymentReceived)
+                            {
+                                <span class="text-success"><i class="fa fa-check-circle"></i> @Localizer["PaymentReceived"]</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">@order.PaymentMethod.GetDisplayName()</span>
+                            }
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#order-@order.Id">
+                                <i class="fa fa-eye"></i> @Localizer["Details"]
+                            </button>
+                            @if (order.Status == OrderStatus.Pending)
+                            {
+                                <form method="post" asp-page-handler="CancelOrder" asp-route-orderId="@order.Id" class="d-inline cancel-order-form">
+                                    <button type="button" class="btn btn-sm btn-outline-danger cancel-order-btn" data-order-id="@order.Id">
+                                        <i class="fa fa-times"></i> @Localizer["Cancel"]
+                                    </button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="7" class="p-0 border-0">
+                            <div class="collapse" id="order-@order.Id">
+                                <div class="card card-body m-3">
+                                    <h6>@Localizer["OrderDetails"]</h6>
+                                    <div class="row mb-2">
+                                        <div class="col-md-6">
+                                            <strong>@Localizer["DeliveryAddress"]:</strong><br />
+                                            @order.CustomerName<br />
+                                            @order.Address
+                                            @if (!string.IsNullOrEmpty(order.PostalCode))
+                                            {
+                                                <br /><span>@Localizer["PostalCode"]: @order.PostalCode</span>
+                                            }
+                                            <br />@Localizer["Phone"]: @order.Phone
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>@Localizer["PaymentInformation"]:</strong><br />
+                                            @Localizer["Method"]: @order.PaymentMethod.GetDisplayName()<br />
+                                            @if (!string.IsNullOrEmpty(order.TransactionId))
+                                            {
+                                                <span>@Localizer["TransactionId"]: @order.TransactionId</span><br />
+                                            }
+                                            @Localizer["DeliveryCharge"]: ৳@((int)Math.Round(order.DeliveryCharge))
+                                        </div>
+                                    </div>
+                                    
+                                    <h6 class="mt-3">@Localizer["ItemsOrdered"]</h6>
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>@Localizer["Product"]</th>
+                                                <th>@Localizer["UnitPrice"]</th>
+                                                <th>@Localizer["Quantity"]</th>
+                                                <th>@Localizer["Total"]</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in order.OrderItems)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        @item.ProductName
+                                                        @if (!string.IsNullOrEmpty(item.VariantInfo))
+                                                        {
+                                                            <br /><small class="text-info"><i class="fas fa-tag me-1"></i>@item.VariantInfo</small>
+                                                        }
+                                                    </td>
+                                                    <td>৳@((int)Math.Round(item.UnitPrice))</td>
+                                                    <td>@item.Quantity</td>
+                                                    <td>৳@((int)Math.Round(item.TotalPrice))</td>
+                                                </tr>
+                                            }
+                                            <tr class="table-light">
+                                                <td colspan="3" class="text-end"><strong>@Localizer["Subtotal"]:</strong></td>
+                                                <td><strong>৳@((int)Math.Round(order.SubTotal))</strong></td>
+                                            </tr>
+                                            @if (order.DiscountAmount > 0)
+                                            {
+                                                <tr class="table-light text-success">
+                                                    <td colspan="3" class="text-end"><strong>@Localizer["Discount"]:</strong></td>
+                                                    <td><strong>-৳@((int)Math.Round(order.DiscountAmount))</strong></td>
+                                                </tr>
+                                            }
+                                            @if (order.RewardDiscountAmount > 0)
+                                            {
+                                                <tr class="table-light text-success">
+                                                    <td colspan="3" class="text-end"><strong>@Localizer["RewardDiscount"]:</strong></td>
+                                                    <td><strong>-৳@((int)Math.Round(order.RewardDiscountAmount))</strong></td>
+                                                </tr>
+                                            }
+                                            @if (order.PremiumDiscountAmount > 0)
+                                            {
+                                                <tr class="table-light text-success">
+                                                    <td colspan="3" class="text-end"><strong>@Localizer["PremiumDiscount"]:</strong></td>
+                                                    <td><strong>-৳@((int)Math.Round(order.PremiumDiscountAmount))</strong></td>
+                                                </tr>
+                                            }
+                                            <tr class="table-light">
+                                                <td colspan="3" class="text-end"><strong>@Localizer["DeliveryCharge"]:</strong></td>
+                                                <td><strong>৳@((int)Math.Round(order.DeliveryCharge))</strong></td>
+                                            </tr>
+                                            <tr class="table-info">
+                                                <td colspan="3" class="text-end"><strong>@Localizer["GrandTotal"]:</strong></td>
+                                                <td><strong>৳@((int)Math.Round(order.TotalAmount))</strong></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<!-- Cancel Order Confirmation Modal -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="cancel-icon-wrapper mb-3">
+                    <div class="cancel-icon-circle">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="cancelOrderModalLabel">@Localizer["CancelOrderQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["ConfirmCancelOrder"]</p>
+                <p class="text-muted small">@Localizer["ActionCannotBeUndone"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["NoKeepIt"]
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmCancelBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesCancelOrder"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .cancel-icon-wrapper {
+        display: flex;
+        justify-content: center;
+    }
+    .cancel-icon-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: pulse-warning 2s infinite;
+    }
+    .cancel-icon-circle i {
+        font-size: 2.5rem;
+    }
+    @@keyframes pulse-warning {
+        0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+        70% { box-shadow: 0 0 0 15px rgba(255, 193, 7, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+    }
+    #cancelOrderModal .modal-content {
+        border-radius: 1rem;
+    }
+    #cancelOrderModal .btn {
+        border-radius: 0.5rem;
+        font-weight: 500;
+    }
+    [data-theme="dark"] #cancelOrderModal .modal-content {
+        background-color: #252538;
+    }
+    [data-theme="dark"] #cancelOrderModal .modal-title {
+        color: #e0e0e0;
+    }
+    [data-theme="dark"] #cancelOrderModal .text-muted {
+        color: #a0a0a0 !important;
+    }
+    [data-theme="dark"] .cancel-icon-circle {
+        background: linear-gradient(135deg, #3d3a20 0%, #4a4520 100%);
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const cancelModal = new bootstrap.Modal(document.getElementById('cancelOrderModal'));
+            let currentForm = null;
+
+            // Handle cancel button clicks
+            document.querySelectorAll('.cancel-order-btn').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    currentForm = this.closest('.cancel-order-form');
+                    cancelModal.show();
+                });
+            });
+
+            // Handle confirm cancel button
+            document.getElementById('confirmCancelBtn').addEventListener('click', function () {
+                if (currentForm) {
+                    cancelModal.hide();
+                    currentForm.submit();
+                }
+            });
+        });
+    </script>
+}

@@ -1,0 +1,619 @@
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@model Order
+
+@{
+    ViewData["Title"] = $"Order #{Model.Id} Details";
+}
+
+@Html.AntiForgeryToken()
+
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="display-6">Order #@Model.Id Details</h2>
+                    <p class="lead">Order placed on @Model.OrderDate.ToBangladeshString()</p>
+                </div>
+                <div>
+                    @{
+                        // Check if shipping slip can be printed
+                        bool canPrintSlip = false;
+                        if (Model.PaymentMethod == PaymentMethod.CashOnDelivery)
+                        {
+                            canPrintSlip = Model.Status == OrderStatus.Confirmed ||
+                                           Model.Status == OrderStatus.Paid ||
+                                           Model.Status == OrderStatus.Shipped ||
+                                           Model.Status == OrderStatus.Delivered;
+                        }
+                        else
+                        {
+                            canPrintSlip = (Model.Status == OrderStatus.Paid ||
+                                            Model.Status == OrderStatus.Shipped ||
+                                            Model.Status == OrderStatus.Delivered) ||
+                                           (Model.Status == OrderStatus.Confirmed && Model.PaymentStatus == PaymentStatus.Completed);
+                        }
+                    }
+                    @if (canPrintSlip)
+                    {
+                        <a asp-action="PrintShippingSlip" asp-route-id="@Model.Id" class="btn btn-success me-2" target="_blank">
+                            <i class="fas fa-print"></i> Print Shipping Slip
+                        </a>
+                    }
+                    @if (ViewBag.IsAdmin == true)
+                    {
+                        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary me-2">
+                            <i class="fas fa-edit"></i> Edit Order
+                        </a>
+                    }
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Orders
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Order Summary -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-receipt"></i> Order Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Order ID:</dt>
+                        <dd class="col-sm-8"><strong>#@Model.Id</strong></dd>
+
+                        <dt class="col-sm-4">Status:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge @GetStatusBadgeClass(Model.Status) fs-6">
+                                @Model.Status.GetDisplayName()
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-4">Total Amount:</dt>
+                        <dd class="col-sm-8">
+                            <strong class="text-success">৳@((int)Math.Round(Model.TotalAmount))</strong>
+                        </dd>
+
+                        <dt class="col-sm-4">Delivery Charge:</dt>
+                        <dd class="col-sm-8">৳@((int)Math.Round(Model.DeliveryCharge))</dd>
+
+                        <dt class="col-sm-4">Payment Method:</dt>
+                        <dd class="col-sm-8">@FormatEnumName(Model.PaymentMethod.ToString())</dd>
+
+                        <dt class="col-sm-4">Payment Status:</dt>
+                        <dd class="col-sm-8">
+                            @if (Model.IsPaymentReceived)
+                            {
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check"></i> Paid
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-clock"></i> Pending
+                                </span>
+                            }
+                        </dd>
+
+                        @if (!string.IsNullOrEmpty(Model.TransactionId))
+                        {
+                            <dt class="col-sm-4">Transaction ID:</dt>
+                            <dd class="col-sm-8"><code>@Model.TransactionId</code></dd>
+                        }
+
+                        @if (!string.IsNullOrEmpty(Model.SenderMobileNumber))
+                        {
+                            <dt class="col-sm-4">Payment Number:</dt>
+                            <dd class="col-sm-8"><code>@Model.SenderMobileNumber</code></dd>
+                        }
+
+                        @if (Model.User != null)
+                        {
+                            <dt class="col-sm-4">User Account:</dt>
+                            <dd class="col-sm-8">
+                                <strong>@Model.User.FullName</strong><br>
+                                <small class="text-muted">@Model.User.Email</small>
+                            </dd>
+                        }
+                    </dl>
+
+                    @if (!string.IsNullOrEmpty(Model.CouponCode) || Model.DiscountAmount > 0 || Model.RewardDiscountAmount > 0 || Model.WalletAmountUsed > 0 || Model.PremiumDiscountAmount > 0 || Model.FreeShippingApplied || Model.AppliedReward != null || Model.AppliedFreeShippingReward != null)
+                    {
+                        <hr />
+                        <h6 class="text-muted mb-3"><i class="fas fa-tags me-2"></i>Discounts & Coupons</h6>
+                        <dl class="row mb-0">
+                            @if (!string.IsNullOrEmpty(Model.CouponCode))
+                            {
+                                <dt class="col-sm-4">Coupon Code:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-info"><i class="fas fa-ticket-alt me-1"></i>@Model.CouponCode</span>
+                                </dd>
+                            }
+                            @if (Model.DiscountAmount > 0)
+                            {
+                                <dt class="col-sm-4">Coupon Discount:</dt>
+                                <dd class="col-sm-8 text-danger">-৳@((int)Math.Round(Model.DiscountAmount))</dd>
+                            }
+                            @if (Model.AppliedReward != null)
+                            {
+                                <dt class="col-sm-4">Voucher Used:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-purple" style="background-color: #6f42c1;"><i class="fas fa-gift me-1"></i>@Model.AppliedReward.RewardName</span>
+                                </dd>
+                            }
+                            @if (Model.RewardDiscountAmount > 0)
+                            {
+                                <dt class="col-sm-4">Voucher Discount:</dt>
+                                <dd class="col-sm-8 text-danger">-৳@((int)Math.Round(Model.RewardDiscountAmount))</dd>
+                            }
+                            @if (Model.AppliedFreeShippingReward != null)
+                            {
+                                <dt class="col-sm-4">Free Shipping Voucher:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-success"><i class="fas fa-gift me-1"></i>@Model.AppliedFreeShippingReward.RewardName</span>
+                                </dd>
+                            }
+                            @if (Model.FreeShippingApplied && Model.AppliedFreeShippingReward == null)
+                            {
+                                <dt class="col-sm-4">Free Shipping:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-success"><i class="fas fa-truck me-1"></i>Applied</span>
+                                </dd>
+                            }
+                            @if (Model.WalletAmountUsed > 0)
+                            {
+                                <dt class="col-sm-4">Wallet Used:</dt>
+                                <dd class="col-sm-8 text-danger">-৳@((int)Math.Round(Model.WalletAmountUsed))</dd>
+                            }
+                            @if (Model.PremiumDiscountAmount > 0)
+                            {
+                                <dt class="col-sm-4">Premium Discount:</dt>
+                                <dd class="col-sm-8 text-danger">-৳@((int)Math.Round(Model.PremiumDiscountAmount))</dd>
+                            }
+                        </dl>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Information -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user"></i> Customer Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Name:</dt>
+                        <dd class="col-sm-8">@Model.CustomerName</dd>
+
+                        <dt class="col-sm-4">Email:</dt>
+                        <dd class="col-sm-8">
+                            <a href="mailto:@Model.Email">@Model.Email</a>
+                        </dd>
+
+                        <dt class="col-sm-4">Phone:</dt>
+                        <dd class="col-sm-8">
+                            <a href="tel:@Model.Phone">@Model.Phone</a>
+                        </dd>
+
+                        <dt class="col-sm-4">Address:</dt>
+                        <dd class="col-sm-8">
+                            @Model.Address
+                            @if (!string.IsNullOrEmpty(Model.PostalCode))
+                            {
+                                <br><small class="text-muted">Postal Code: @Model.PostalCode</small>
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Items -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shopping-cart"></i> Order Items
+                        <span class="badge bg-info ms-2">@Model.OrderItems.Count items</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.OrderItems.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Product</th>
+                                        <th class="text-end">Unit Price</th>
+                                        <th class="text-center">Quantity</th>
+                                        <th class="text-end">Total Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{
+                                        decimal itemsSubtotal = 0;
+                                    }
+                                    @foreach (var item in Model.OrderItems)
+                                    {
+                                        itemsSubtotal += item.TotalPrice;
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    @if (item.Product != null && !string.IsNullOrEmpty(item.Product.ImageUrl))
+                                                    {
+                                                        <img src="/@item.Product.ImageUrl" alt="@item.ProductName" class="me-3" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="me-3 bg-light d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; border-radius: 4px;">
+                                                            <i class="fas fa-box text-muted"></i>
+                                                        </div>
+                                                    }
+                                                    <div>
+                                                        <strong>@item.ProductName</strong>
+                                                        @if (!string.IsNullOrEmpty(item.VariantInfo))
+                                                        {
+                                                            <br><small class="text-info"><i class="fas fa-tag me-1"></i>@item.VariantInfo</small>
+                                                        }
+                                                        @if (item.Product != null)
+                                                        {
+                                                            <br><small class="text-muted">ID: @item.ProductId</small>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-end">৳@((int)Math.Round(item.UnitPrice))</td>
+                                            <td class="text-center">
+                                                <span class="badge bg-secondary">@item.Quantity</span>
+                                            </td>
+                                            <td class="text-end">
+                                                <strong>৳@((int)Math.Round(item.TotalPrice))</strong>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th colspan="3" class="text-end">Items Subtotal:</th>
+                                        <th class="text-end">৳@((int)Math.Round(itemsSubtotal))</th>
+                                    </tr>
+                                    <tr>
+                                        <th colspan="3" class="text-end">Delivery Charge:</th>
+                                        <th class="text-end">
+                                            @if (Model.FreeShippingApplied)
+                                            {
+                                                <span class="text-success">Free</span>
+                                            }
+                                            else
+                                            {
+                                                @:৳@((int)Math.Round(Model.DeliveryCharge))
+                                            }
+                                        </th>
+                                    </tr>
+                                    @if (Model.DiscountAmount > 0)
+                                    {
+                                        <tr>
+                                            <th colspan="3" class="text-end">Coupon Discount @(!string.IsNullOrEmpty(Model.CouponCode) ? $"({Model.CouponCode})" : ""):</th>
+                                            <th class="text-end text-danger">-৳@((int)Math.Round(Model.DiscountAmount))</th>
+                                        </tr>
+                                    }
+                                    @if (Model.RewardDiscountAmount > 0)
+                                    {
+                                        <tr>
+                                            <th colspan="3" class="text-end">Voucher Discount @(Model.AppliedReward != null ? $"({Model.AppliedReward.RewardName})" : ""):</th>
+                                            <th class="text-end text-danger">-৳@((int)Math.Round(Model.RewardDiscountAmount))</th>
+                                        </tr>
+                                    }
+                                    @if (Model.WalletAmountUsed > 0)
+                                    {
+                                        <tr>
+                                            <th colspan="3" class="text-end">Wallet Used:</th>
+                                            <th class="text-end text-danger">-৳@((int)Math.Round(Model.WalletAmountUsed))</th>
+                                        </tr>
+                                    }
+                                    @if (Model.PremiumDiscountAmount > 0)
+                                    {
+                                        <tr>
+                                            <th colspan="3" class="text-end">Premium Discount:</th>
+                                            <th class="text-end text-danger">-৳@((int)Math.Round(Model.PremiumDiscountAmount))</th>
+                                        </tr>
+                                    }
+                                    <tr class="table-primary">
+                                        <th colspan="3" class="text-end">Total Amount:</th>
+                                        <th class="text-end">৳@((int)Math.Round(Model.TotalAmount))</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No items found for this order.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs"></i> Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-toolbar" role="toolbar">
+                        @if (ViewBag.IsAdmin == true)
+                        {
+                            <div class="btn-group me-2" role="group">
+                                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                                    <i class="fas fa-edit"></i> Edit Order
+                                </a>
+                            </div>
+                        }
+                        
+                        @if (Model.Status == OrderStatus.Pending)
+                        {
+                            <div class="btn-group me-2" role="group">
+                                <button type="button" class="btn btn-success" onclick="updateOrderStatus(@Model.Id, 'Confirmed')">
+                                    <i class="fas fa-check"></i> Confirm Order
+                                </button>
+                            </div>
+                        }
+                        
+                        @if (Model.Status == OrderStatus.Confirmed || Model.Status == OrderStatus.Paid)
+                        {
+                            <div class="btn-group me-2" role="group">
+                                <button type="button" class="btn btn-primary" onclick="updateOrderStatus(@Model.Id, 'Shipped')">
+                                    <i class="fas fa-shipping-fast"></i> Mark as Shipped
+                                </button>
+                            </div>
+                        }
+                        
+                        @if (Model.Status != OrderStatus.Cancelled && Model.Status != OrderStatus.Shipped)
+                        {
+                            <div class="btn-group me-2" role="group">
+                                <button type="button" class="btn btn-danger" onclick="updateOrderStatus(@Model.Id, 'Cancelled')">
+                                    <i class="fas fa-times"></i> Cancel Order
+                                </button>
+                            </div>
+                        }
+
+                        @if (!Model.IsPaymentReceived && Model.Status != OrderStatus.Cancelled)
+                        {
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#verifyPaymentModal">
+                                    <i class="fas fa-money-check-alt"></i> Verify Payment
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private string FormatEnumName(string enumName)
+    {
+        return System.Text.RegularExpressions.Regex.Replace(enumName, "([a-z])([A-Z])", "$1 $2");
+    }
+
+    private string GetStatusBadgeClass(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Pending => "bg-warning text-dark",
+            OrderStatus.Confirmed => "bg-info text-white",
+            OrderStatus.Paid => "bg-success text-white",
+            OrderStatus.Shipped => "bg-primary text-white",
+            OrderStatus.Cancelled => "bg-danger text-white",
+            _ => "bg-secondary text-white"
+        };
+    }
+}
+
+@section Styles {
+    <style>
+        /* Dark mode fixes for order details table */
+        [data-theme="dark"] tfoot.table-light,
+        [data-theme="dark"] tfoot.table-light tr,
+        [data-theme="dark"] tfoot.table-light tr th,
+        [data-theme="dark"] tfoot.table-light tr td {
+            background-color: #374151 !important;
+            color: #e5e7eb !important;
+            --bs-table-bg: #374151 !important;
+            --bs-table-color: #e5e7eb !important;
+        }
+        [data-theme="dark"] tr.table-primary,
+        [data-theme="dark"] tr.table-primary th,
+        [data-theme="dark"] tr.table-primary td {
+            background-color: #1e3a5f !important;
+            color: #e5e7eb !important;
+            --bs-table-bg: #1e3a5f !important;
+            --bs-table-color: #e5e7eb !important;
+        }
+        [data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+    </style>
+}
+
+<!-- Status Change Confirmation Modal -->
+<div class="modal fade" id="statusChangeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-info">
+                        <i class="fas fa-exchange-alt" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">Change Order Status?</h4>
+                <p class="text-muted mb-1" id="statusChangeMessage">Are you sure you want to change the status?</p>
+                <p class="text-muted small mb-0">This will update the order status.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary px-4" id="confirmStatusChangeBtn">
+                    <i class="fas fa-check me-1"></i> Yes, Change
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Verify Payment Confirmation Modal -->
+<div class="modal fade" id="verifyPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-success">
+                        <i class="fas fa-money-check-alt" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">Verify Payment?</h4>
+                <p class="text-muted mb-1">Are you sure you want to mark this payment as received?</p>
+                <p class="text-muted small mb-3">This action will confirm the payment for Order #@Model.Id</p>
+                <div class="text-start">
+                    <label for="paymentNotes" class="form-label small text-muted">Notes (Optional)</label>
+                    <textarea id="paymentNotes" class="form-control" rows="2" placeholder="Add any notes about this payment verification..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-success px-4" id="confirmVerifyPaymentBtn">
+                    <i class="fas fa-check me-1"></i> Yes, Verify
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var pendingOrderId = null;
+        var pendingNewStatus = null;
+        var statusChangeModal = null;
+
+        function updateOrderStatus(orderId, newStatus) {
+            pendingOrderId = orderId;
+            pendingNewStatus = newStatus;
+            document.getElementById('statusChangeMessage').textContent =
+                'Are you sure you want to change this order status to ' + newStatus + '?';
+            statusChangeModal.show();
+        }
+
+        function executeStatusChange() {
+            if (!pendingOrderId || !pendingNewStatus) return;
+
+            $.ajax({
+                url: '@Url.Action("UpdateStatus")',
+                type: 'POST',
+                data: {
+                    id: pendingOrderId,
+                    status: pendingNewStatus,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alertify.success(response.message);
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        alertify.error(response.message);
+                    }
+                },
+                error: function () {
+                    alertify.error('An error occurred while updating the status.');
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            statusChangeModal = new bootstrap.Modal(document.getElementById('statusChangeModal'));
+
+            document.getElementById('confirmStatusChangeBtn').addEventListener('click', function() {
+                statusChangeModal.hide();
+                executeStatusChange();
+            });
+
+            // Verify Payment handler
+            var verifyPaymentModal = new bootstrap.Modal(document.getElementById('verifyPaymentModal'));
+
+            document.getElementById('confirmVerifyPaymentBtn').addEventListener('click', function() {
+                var notes = document.getElementById('paymentNotes').value;
+
+                $.ajax({
+                    url: '@Url.Action("VerifyPayment")',
+                    type: 'POST',
+                    data: {
+                        orderId: @Model.Id,
+                        notes: notes,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        verifyPaymentModal.hide();
+                        if (response.success) {
+                            alertify.success(response.message);
+                            setTimeout(function () {
+                                location.reload();
+                            }, 1000);
+                        } else {
+                            alertify.error(response.message);
+                        }
+                    },
+                    error: function () {
+                        verifyPaymentModal.hide();
+                        alertify.error('An error occurred while verifying the payment.');
+                    }
+                });
+            });
+
+            // Reset verify payment modal on close
+            document.getElementById('verifyPaymentModal').addEventListener('hidden.bs.modal', function () {
+                document.getElementById('paymentNotes').value = '';
+            });
+
+            // Show success/error messages from TempData
+            @if (TempData["success"] != null)
+            {
+                <text>alertify.success('@Html.Raw(TempData["success"])');</text>
+            }
+            @if (TempData["error"] != null)
+            {
+                <text>alertify.error('@Html.Raw(TempData["error"])');</text>
+            }
+        });
+    </script>
+}

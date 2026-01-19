@@ -1,0 +1,368 @@
+@model List<Bangaliyana.Models.DistrictDeliveryCharge>
+@{
+    ViewData["Title"] = Localizer["DeliveryChargeManagement"];
+    var siteSettings = ViewBag.SiteSettings as Bangaliyana.Models.SiteSettings;
+    var availableDistricts = ViewBag.AvailableDistricts as SelectList;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-truck me-2"></i>@Localizer["DeliveryChargeManagement"]</h2>
+            <p class="text-muted mb-0">@Localizer["ConfigureDeliveryChargesForDistricts"]</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Default Settings Card -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="fas fa-cog me-2"></i>@Localizer["DefaultSettings"]</h6>
+                </div>
+                <div class="card-body">
+                    <form asp-action="UpdateDefault" method="post">
+                        <div class="mb-3">
+                            <label class="form-label">@Localizer["DefaultDeliveryCharge"] <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">৳</span>
+                                <input type="number" name="defaultCharge" class="form-control" step="1" min="0"
+                                       value="@((int)(siteSettings?.DefaultDeliveryCharge ?? 100))" required>
+                            </div>
+                            <small class="text-muted">@Localizer["AppliedToDistrictsNotInList"]</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">@Localizer["FreeDeliveryThreshold"]</label>
+                            <div class="input-group">
+                                <span class="input-group-text">৳</span>
+                                <input type="number" name="freeThreshold" class="form-control" step="1" min="0"
+                                       value="@(siteSettings?.FreeDeliveryThreshold.HasValue == true ? (int)siteSettings.FreeDeliveryThreshold.Value : null)">
+                            </div>
+                            <small class="text-muted">@Localizer["OrdersAboveGetFreeDelivery"]</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-save me-1"></i>@Localizer["UpdateDefaultSettings"]
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add New District Card -->
+        <div class="col-lg-8 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="fas fa-plus me-2"></i>@Localizer["AddDistrictDeliveryCharge"]</h6>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Add" method="post" class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">@Localizer["District"] <span class="text-danger">*</span></label>
+                            <select name="districtId" id="districtSelect" class="form-select" required>
+                                <option value="">@Localizer["SelectDistrict"]</option>
+                                @if (availableDistricts != null)
+                                {
+                                    @foreach (var item in availableDistricts)
+                                    {
+                                        <option value="@item.Value">@item.Text</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">@Localizer["DeliveryCharge"] <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">৳</span>
+                                <input type="number" name="deliveryCharge" class="form-control" step="1" min="0" value="50" required>
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-plus me-1"></i>@Localizer["Add"]
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <!-- Quick Add for Common Districts -->
+                    <div>
+                        <h6 class="mb-3"><i class="fas fa-bolt me-2"></i>@Localizer["QuickAddCommonDistricts"]</h6>
+                        <form asp-action="BulkAdd" method="post" id="bulkAddForm">
+                            <input type="hidden" name="deliveryCharge" value="50" id="bulkChargeInput">
+                            <div class="row g-2 mb-3">
+                                @{
+                                    var commonDistricts = new[] { "Dhaka", "Narayanganj", "Gazipur", "Gaibandha", "Rangpur" };
+                                }
+                                @if (availableDistricts != null)
+                                {
+                                    foreach (var district in availableDistricts)
+                                    {
+                                        var districtName = district.Text?.Split('(')[0].Trim();
+                                        if (commonDistricts.Any(cd => districtName?.Contains(cd, StringComparison.OrdinalIgnoreCase) == true))
+                                        {
+                                            <div class="col-auto">
+                                                <div class="form-check">
+                                                    <input class="form-check-input common-district-checkbox" type="checkbox" name="districtIds" value="@district.Value" id="district_@district.Value">
+                                                    <label class="form-check-label" for="district_@district.Value">@district.Text</label>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                }
+                            </div>
+
+                            <!-- Division Districts Section (shown when a district is selected) -->
+                            <div id="divisionDistrictsSection" class="mb-3" style="display: none;">
+                                <h6 class="mb-2 text-primary"><i class="fas fa-map-marker-alt me-2"></i><span id="divisionName">@Localizer["Division"]</span> @Localizer["Districts"]</h6>
+                                <div id="divisionDistrictsList" class="row g-2">
+                                    <!-- Districts will be loaded here dynamically -->
+                                </div>
+                            </div>
+
+                            <div class="row g-2 align-items-center">
+                                <div class="col-auto">
+                                    <label class="form-label mb-0">@Localizer["Charge"]:</label>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="input-group input-group-sm" style="width: 120px;">
+                                        <span class="input-group-text">৳</span>
+                                        <input type="number" class="form-control" step="1" min="0" value="50" id="bulkChargeDisplay" onchange="document.getElementById('bulkChargeInput').value = this.value">
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-outline-success btn-sm">
+                                        <i class="fas fa-plus me-1"></i>@Localizer["AddSelected"]
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- District Charges Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="fas fa-list me-2"></i>District-Specific Delivery Charges</h6>
+            <span class="badge bg-primary">@Model.Count districts configured</span>
+        </div>
+        <div class="card-body p-0">
+            @if (!Model.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-truck text-muted mb-3" style="font-size: 3rem;"></i>
+                    <h5 class="text-muted">No District-Specific Charges</h5>
+                    <p class="text-muted mb-0">All districts will use the default delivery charge of ৳@(siteSettings?.DefaultDeliveryCharge ?? 100)</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>District</th>
+                                <th>Division</th>
+                                <th>Delivery Charge</th>
+                                <th>Status</th>
+                                <th>Last Updated</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var charge in Model)
+                            {
+                                <tr>
+                                    <td><strong>@charge.District?.Name</strong></td>
+                                    <td>@charge.District?.Division?.Name</td>
+                                    <td>
+                                        <div class="input-group input-group-sm" style="width: 120px;">
+                                            <span class="input-group-text">৳</span>
+                                            <input type="number" class="form-control charge-input" data-id="@charge.Id"
+                                                   value="@((int)charge.DeliveryCharge)" step="1" min="0">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="active_@charge.Id"
+                                                   @(charge.IsActive ? "checked" : "") onchange="toggleActive(@charge.Id)">
+                                            <label class="form-check-label" for="active_@charge.Id">
+                                                @(charge.IsActive ? "Active" : "Inactive")
+                                            </label>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">@charge.UpdatedAt.ToBangladeshShortDateString()</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="saveCharge(@charge.Id, this)">
+                                            <i class="fas fa-save"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(@charge.Id)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Info Alert -->
+    <div class="alert alert-info mt-4">
+        <h6 class="alert-heading"><i class="fas fa-info-circle me-2"></i>How Delivery Charges Work</h6>
+        <ul class="mb-0">
+            <li><strong>District-Specific:</strong> If a customer's district is in the list above with "Active" status, that charge is used.</li>
+            <li><strong>Default Charge:</strong> For all other districts, the default delivery charge (৳@(siteSettings?.DefaultDeliveryCharge ?? 100)) is applied.</li>
+            <li><strong>Free Delivery:</strong> @if(siteSettings?.FreeDeliveryThreshold.HasValue == true) { <text>Orders above ৳@siteSettings.FreeDeliveryThreshold qualify for free delivery.</text> } else { <text>Free delivery threshold is not configured.</text> }</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-trash text-danger me-2"></i>Remove District Charge</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to remove this district-specific charge? The default delivery charge will be applied to this district instead.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>Remove
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        @if (TempData["success"] != null)
+        {
+            <text>alertify.success('@TempData["success"]');</text>
+        }
+        @if (TempData["error"] != null)
+        {
+            <text>alertify.error('@TempData["error"]');</text>
+        }
+
+        // Load division districts when a district is selected
+        document.getElementById('districtSelect').addEventListener('change', function() {
+            const districtId = this.value;
+            const divisionSection = document.getElementById('divisionDistrictsSection');
+            const divisionList = document.getElementById('divisionDistrictsList');
+            const divisionNameSpan = document.getElementById('divisionName');
+
+            if (!districtId) {
+                divisionSection.style.display = 'none';
+                divisionList.innerHTML = '';
+                return;
+            }
+
+            // Fetch districts from the same division
+            fetch('@Url.Action("GetDistrictsByDivision")?districtId=' + districtId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.districts.length > 0) {
+                        divisionNameSpan.textContent = data.divisionName;
+                        divisionList.innerHTML = '';
+
+                        data.districts.forEach(district => {
+                            const col = document.createElement('div');
+                            col.className = 'col-auto';
+                            col.innerHTML = `
+                                <div class="form-check">
+                                    <input class="form-check-input division-district-checkbox" type="checkbox"
+                                           name="districtIds" value="${district.id}" id="div_district_${district.id}">
+                                    <label class="form-check-label" for="div_district_${district.id}">${district.name}</label>
+                                </div>
+                            `;
+                            divisionList.appendChild(col);
+                        });
+
+                        divisionSection.style.display = 'block';
+                    } else {
+                        divisionSection.style.display = 'none';
+                        divisionList.innerHTML = '';
+                    }
+                })
+                .catch(() => {
+                    divisionSection.style.display = 'none';
+                    divisionList.innerHTML = '';
+                });
+        });
+
+        function confirmDelete(id) {
+            document.getElementById('deleteForm').action = '@Url.Action("Delete")/' + id;
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
+
+        function saveCharge(id, btn) {
+            const input = document.querySelector('.charge-input[data-id="' + id + '"]');
+            const charge = parseInt(input.value) || 0;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            fetch('@Url.Action("Update")/' + id, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: 'deliveryCharge=' + charge
+            })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i>';
+                if (data.success) {
+                    alertify.success('Charge updated!');
+                } else {
+                    alertify.error(data.error || 'Failed to update');
+                }
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i>';
+                alertify.error('An error occurred');
+            });
+        }
+
+        function toggleActive(id) {
+            fetch('@Url.Action("ToggleActive")/' + id, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const label = document.querySelector('label[for="active_' + id + '"]');
+                    label.textContent = data.isActive ? 'Active' : 'Inactive';
+                    alertify.success('Status updated!');
+                } else {
+                    alertify.error(data.error || 'Failed to update');
+                }
+            })
+            .catch(() => alertify.error('An error occurred'));
+        }
+    </script>
+}

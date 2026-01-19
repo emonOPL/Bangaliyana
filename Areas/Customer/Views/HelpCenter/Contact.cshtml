@@ -1,0 +1,529 @@
+@model Bangaliyana.Models.ContactInquiry
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Localizer["ContactUs"].Value;
+    var siteSettings = ViewBag.SiteSettings as SiteSettings;
+    var userName = ViewBag.UserName as string;
+    var userEmail = ViewBag.UserEmail as string;
+    var userPhone = ViewBag.UserPhone as string;
+}
+
+<div class="contact-page">
+    <!-- Header -->
+    <section class="contact-header py-4 bg-gradient-primary text-white">
+        <div class="container">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb breadcrumb-light">
+                    <li class="breadcrumb-item"><a asp-area="Customer" asp-controller="Home" asp-action="Index">@Localizer["Home"]</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Index">@Localizer["HelpCenter"]</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">@Localizer["ContactUs"]</li>
+                </ol>
+            </nav>
+            <h1 class="display-5 fw-bold mb-3">
+                <i class="fas fa-envelope me-3"></i>@Localizer["ContactUs"]
+            </h1>
+            <p class="lead mb-0">@Localizer["ContactPageDescription"]</p>
+        </div>
+    </section>
+
+    <div class="container py-4">
+        <!-- Alert Messages -->
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <div class="row g-5">
+            <!-- Contact Form -->
+            <div class="col-lg-8">
+                <div class="contact-form-card">
+                    <div class="card-header-custom">
+                        <h4 class="mb-0">
+                            <i class="fas fa-paper-plane text-primary me-2"></i>@Localizer["SendUsAMessage"]
+                        </h4>
+                        <p class="text-muted mb-0 mt-1">@Localizer["ContactFormDescription"]</p>
+                    </div>
+
+                    <form asp-action="SubmitContact" method="post" class="contact-form">
+                        @Html.AntiForgeryToken()
+
+                        <div class="row g-4">
+                            <!-- Full Name -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="FullName" class="form-label">@Localizer["FullName"] *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                        <input type="text" class="form-control" id="FullName" name="FullName"
+                                               placeholder="@Localizer["EnterYourFullName"]" value="@(userName ?? Model?.FullName)" required>
+                                    </div>
+                                    <span asp-validation-for="FullName" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <!-- Email -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="Email" class="form-label">@Localizer["EmailAddress"] *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                        <input type="email" class="form-control" id="Email" name="Email"
+                                               placeholder="@Localizer["EnterYourEmail"]" value="@(userEmail ?? Model?.Email)" required>
+                                    </div>
+                                    <span asp-validation-for="Email" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <!-- Phone -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="Phone" class="form-label">@Localizer["PhoneNumberOptional"]</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                        <input type="tel" class="form-control" id="Phone" name="Phone"
+                                               placeholder="@Localizer["EnterPhoneNumber"]" value="@(userPhone ?? Model?.Phone)">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Category -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="Category" class="form-label">@Localizer["Category"] *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-tag"></i></span>
+                                        <select class="form-select" id="Category" name="Category" required>
+                                            <option value="">@Localizer["SelectACategory"]</option>
+                                            @foreach (InquiryCategory category in Enum.GetValues(typeof(InquiryCategory)))
+                                            {
+                                                <option value="@category" selected="@(Model?.Category == category)">@category</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <span asp-validation-for="Category" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <!-- Subject -->
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="Subject" class="form-label">@Localizer["Subject"] *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-heading"></i></span>
+                                        <input type="text" class="form-control" id="Subject" name="Subject"
+                                               placeholder="@Localizer["EnterSubject"]" value="@Model?.Subject" required>
+                                    </div>
+                                    <span asp-validation-for="Subject" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <!-- Message -->
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="Message" class="form-label">@Localizer["YourMessage"] *</label>
+                                    <textarea class="form-control" id="Message" name="Message" placeholder="@Localizer["DescribeYourInquiry"]"
+                                              rows="6" required>@Model?.Message</textarea>
+                                    <span asp-validation-for="Message" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary btn-lg px-5">
+                                    <i class="fas fa-paper-plane me-2"></i>@Localizer["SendMessage"]
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Contact Info Sidebar -->
+            <div class="col-lg-4">
+                <!-- Contact Information -->
+                <div class="info-card mb-4">
+                    <h5 class="info-title">
+                        <i class="fas fa-address-card text-primary me-2"></i>@Localizer["ContactInformation"]
+                    </h5>
+                    <div class="info-items">
+                        <div class="info-item">
+                            <div class="info-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="info-content">
+                                <span class="info-label">@Localizer["Email"]</span>
+                                <a href="mailto:@(siteSettings?.ContactEmail ?? "support@bangaliyana.com")">
+                                    @(siteSettings?.ContactEmail ?? "support@bangaliyana.com")
+                                </a>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-icon">
+                                <i class="fas fa-phone"></i>
+                            </div>
+                            <div class="info-content">
+                                <span class="info-label">@Localizer["Phone"]</span>
+                                <a href="tel:@(siteSettings?.ContactPhone ?? "+8801234567890")">
+                                    @(siteSettings?.ContactPhone ?? "+880 1234-567890")
+                                </a>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-icon">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </div>
+                            <div class="info-content">
+                                <span class="info-label">@Localizer["Address"]</span>
+                                <span>@(siteSettings?.ContactAddress ?? "Dhaka, Bangladesh")</span>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="info-content">
+                                <span class="info-label">@Localizer["BusinessHours"]</span>
+                                <span>@Localizer["BusinessHoursValue"]</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alternative Options -->
+                <div class="info-card mb-4">
+                    <h5 class="info-title">
+                        <i class="fas fa-bolt text-warning me-2"></i>@Localizer["FasterOptions"]
+                    </h5>
+                    <div class="alternative-options">
+                        <a asp-action="LiveChat" class="option-card">
+                            <div class="option-icon bg-info-soft">
+                                <i class="fas fa-comments text-info"></i>
+                            </div>
+                            <div class="option-content">
+                                <h6>@Localizer["LiveChat"]</h6>
+                                <p class="text-muted mb-0">@Localizer["GetInstantSupport"]</p>
+                            </div>
+                        </a>
+                        <a asp-action="FAQ" class="option-card">
+                            <div class="option-icon bg-success-soft">
+                                <i class="fas fa-question-circle text-success"></i>
+                            </div>
+                            <div class="option-content">
+                                <h6>@Localizer["FAQs"]</h6>
+                                <p class="text-muted mb-0">@Localizer["FindQuickAnswers"]</p>
+                            </div>
+                        </a>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <a asp-area="Identity" asp-page="/Account/Manage/SupportTickets" class="option-card">
+                                <div class="option-icon bg-primary-soft">
+                                    <i class="fas fa-ticket-alt text-primary"></i>
+                                </div>
+                                <div class="option-content">
+                                    <h6>@Localizer["SupportTickets"]</h6>
+                                    <p class="text-muted mb-0">@Localizer["TrackYourRequests"]</p>
+                                </div>
+                            </a>
+                        }
+                    </div>
+                </div>
+
+                <!-- Response Time -->
+                <div class="response-time-card">
+                    <div class="response-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="response-content">
+                        <h6>@Localizer["AverageResponseTime"]</h6>
+                        <p class="response-time">@Localizer["Within24Hours"]</p>
+                        <p class="text-muted small mb-0">@Localizer["ResponseTimeNote"]</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .breadcrumb-light .breadcrumb-item a {
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .breadcrumb-light .breadcrumb-item.active {
+        color: #fff;
+    }
+
+    .breadcrumb-light .breadcrumb-item + .breadcrumb-item::before {
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    .contact-form-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e5e7eb;
+    }
+
+    .card-header-custom {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .contact-form .form-group {
+        margin-bottom: 0;
+    }
+
+    .contact-form .form-label {
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .contact-form .input-group-text {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: #fff;
+    }
+
+    .contact-form .form-control,
+    .contact-form .form-select {
+        border-radius: 0 10px 10px 0;
+        border: 1px solid #e5e7eb;
+    }
+
+    .contact-form .input-group .form-control,
+    .contact-form .input-group .form-select {
+        border-left: none;
+    }
+
+    .contact-form .form-control:focus,
+    .contact-form .form-select:focus {
+        border-color: var(--bs-primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .contact-form textarea.form-control {
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .info-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e5e7eb;
+    }
+
+    .info-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .info-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .info-item:last-child {
+        border-bottom: none;
+    }
+
+    .info-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .info-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .info-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .info-content a,
+    .info-content span:not(.info-label) {
+        color: #1f2937;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .info-content a:hover {
+        color: var(--bs-primary);
+    }
+
+    .option-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 12px;
+        background: #f9fafb;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        margin-bottom: 0.75rem;
+    }
+
+    .option-card:last-child {
+        margin-bottom: 0;
+    }
+
+    .option-card:hover {
+        background: #f3f4f6;
+        transform: translateX(5px);
+    }
+
+    .option-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .bg-primary-soft { background: rgba(99, 102, 241, 0.1); }
+    .bg-success-soft { background: rgba(16, 185, 129, 0.1); }
+    .bg-info-soft { background: rgba(6, 182, 212, 0.1); }
+
+    .option-content h6 {
+        margin: 0;
+        color: #1f2937;
+    }
+
+    .response-time-card {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #fff;
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .response-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin: 0 auto 1rem;
+    }
+
+    .response-time {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] .bg-gradient-primary {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    }
+
+    [data-theme="dark"] .contact-form-card,
+    [data-theme="dark"] .info-card {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .card-header-custom {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .info-title {
+        color: #f3f4f6;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .info-item {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .info-content a,
+    [data-theme="dark"] .info-content span:not(.info-label) {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .option-card {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .option-card:hover {
+        background: #4b5563;
+    }
+
+    [data-theme="dark"] .option-content h6 {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .contact-form .form-label {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .contact-form .input-group-text {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    }
+
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .form-control::placeholder {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .response-time-card .text-muted {
+        color: rgba(255, 255, 255, 0.8) !important;
+    }
+
+    @@media (max-width: 768px) {
+        .contact-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .contact-form-card {
+            padding: 1.5rem;
+        }
+    }
+</style>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

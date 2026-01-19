@@ -1,0 +1,190 @@
+@model Bangaliyana.Models.ManualSellerPayout
+@using Bangaliyana.Models
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+
+@{
+    ViewData["Title"] = Localizer["EditPayout"].Value;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1"><i class="fas fa-edit text-warning me-2"></i>@Localizer["EditPayout"]</h4>
+            <p class="text-muted mb-0">@Localizer["Payout"] #@Model.PayoutNumber</p>
+        </div>
+        <a asp-action="SellerPaymentDetails" asp-route-id="@Model.SellerId" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>@Localizer["Cancel"]
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form asp-action="UpdatePayout" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-info-circle me-2 text-info"></i>@Localizer["PaymentInformation"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@Localizer["AmountBDT"] <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">৳</span>
+                                    <input type="number" name="Amount" class="form-control" value="@Model.Amount" step="1" required />
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@Localizer["Status"] <span class="text-danger">*</span></label>
+                                <select name="Status" class="form-select" required>
+                                    @foreach (ManualPayoutStatus status in Enum.GetValues(typeof(ManualPayoutStatus)))
+                                    {
+                                        <option value="@status" selected="@(Model.Status == status)">@status</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@Localizer["PaymentMethod"] <span class="text-danger">*</span></label>
+                                <select name="PaymentMethod" id="paymentMethod" class="form-select" required>
+                                    @foreach (ManualPayoutMethod method in Enum.GetValues(typeof(ManualPayoutMethod)))
+                                    {
+                                        <option value="@method" selected="@(Model.PaymentMethod == method)">@method</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@Localizer["PaymentDate"]</label>
+                                <input type="date" name="PaymentDate" class="form-control" value="@Model.PaymentDate?.ToString("yyyy-MM-dd")" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bank Transfer Fields -->
+                <div class="card border-0 shadow-sm mb-4" id="bankFields" style="display: @(Model.IsBankTransfer ? "block" : "none");">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-university me-2 text-primary"></i>@Localizer["BankTransferDetails"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-muted mb-3">@Localizer["SenderCompanyBank"]</h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@Localizer["SenderBankName"]</label>
+                                <input type="text" name="SenderBankName" class="form-control" value="@Model.SenderBankName" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@Localizer["SenderAccountNumber"]</label>
+                                <input type="text" name="SenderAccountNumber" class="form-control" value="@Model.SenderAccountNumber" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">@Localizer["TransactionReference"]</label>
+                                <input type="text" name="BankTransactionReference" class="form-control" value="@Model.BankTransactionReference" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Banking Fields -->
+                <div class="card border-0 shadow-sm mb-4" id="mobileFields" style="display: @(Model.IsMobileBanking ? "block" : "none");">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-mobile-alt me-2 text-success"></i>@Localizer["MobileBankingDetails"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@Localizer["SenderNumber"]</label>
+                                <input type="text" name="SenderMobileNumber" class="form-control" value="@Model.SenderMobileNumber" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@Localizer["TransactionID"]</label>
+                                <input type="text" name="MobileTransactionId" class="form-control" value="@Model.MobileTransactionId" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cash Fields -->
+                <div class="card border-0 shadow-sm mb-4" id="cashFields" style="display: @(Model.IsCash ? "block" : "none");">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-money-bill me-2 text-warning"></i>@Localizer["CashPaymentDetails"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">@Localizer["ReferenceNotes"]</label>
+                            <input type="text" name="Notes" class="form-control" value="@Model.Notes" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Notes -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-sticky-note me-2 text-warning"></i>@Localizer["AdminNotes"]</h5>
+                    </div>
+                    <div class="card-body">
+                        <textarea name="AdminNotes" class="form-control" rows="3" placeholder="@Localizer["AddAdminNotes"]">@Model.AdminNotes</textarea>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-action="SellerPaymentDetails" asp-route-id="@Model.SellerId" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-2"></i>@Localizer["Cancel"]
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>@Localizer["SaveChanges"]
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Seller Info -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="fas fa-store me-2 text-primary"></i>@Localizer["SellerInformation"]</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="fw-bold">@Model.Seller?.ShopName</h6>
+                    <p class="text-muted mb-1">@Model.Seller?.User?.Email</p>
+                    <p class="text-muted mb-0">@Model.Seller?.User?.PhoneNumber</p>
+                </div>
+            </div>
+
+            <!-- Original Values -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0"><i class="fas fa-history me-2 text-secondary"></i>@Localizer["OriginalValues"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <small class="text-muted">@Localizer["TotalSales"]</small>
+                        <p class="mb-0 fw-bold">৳@Model.TotalSales.ToString("N0")</p>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted">@Localizer["CommissionWithRate", Model.CommissionRate]</small>
+                        <p class="mb-0 text-danger">৳@Model.CommissionAmount.ToString("N0")</p>
+                    </div>
+                    <div>
+                        <small class="text-muted">@Localizer["CreatedAt"]</small>
+                        <p class="mb-0 small">@Model.CreatedAt.ToString("dd MMM yyyy HH:mm")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('paymentMethod').addEventListener('change', function() {
+            const method = this.value;
+            document.getElementById('bankFields').style.display = method === 'BankTransfer' ? 'block' : 'none';
+            document.getElementById('mobileFields').style.display = ['bKash', 'Nagad', 'Rocket', 'Upay'].includes(method) ? 'block' : 'none';
+            document.getElementById('cashFields').style.display = method === 'Cash' ? 'block' : 'none';
+        });
+    </script>
+}

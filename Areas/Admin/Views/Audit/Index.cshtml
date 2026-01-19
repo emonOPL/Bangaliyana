@@ -1,0 +1,312 @@
+@model List<Bangaliyana.Models.AuditLog>
+@using Bangaliyana.Models
+@using Bangaliyana.Services
+@using Bangaliyana.Extensions
+
+@{
+    ViewData["Title"] = "Audit Logs";
+    var stats = ViewBag.Statistics as AuditStatistics;
+    var adminUsers = ViewBag.AdminUsers as List<ApplicationUser> ?? new List<ApplicationUser>();
+    var currentPage = (int)ViewBag.CurrentPage;
+    var totalPages = (int)ViewBag.TotalPages;
+    var totalCount = (int)ViewBag.TotalCount;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-history text-info me-2"></i>Audit Logs</h1>
+            <p class="text-muted mb-0">Track all admin and staff activities</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Export" asp-route-userId="@ViewBag.UserId" asp-route-actionType="@ViewBag.ActionType"
+               asp-route-module="@ViewBag.Module" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate"
+               class="btn btn-outline-success">
+                <i class="fas fa-file-csv me-1"></i>Export CSV
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Statistics Cards -->
+    @if (stats != null)
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100 bg-primary bg-opacity-10">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-list text-primary fa-lg mb-2"></i>
+                        <h5 class="mb-0 fw-bold">@stats.TotalLogs.ToString("N0")</h5>
+                        <small class="text-muted">Total Logs</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100 bg-success bg-opacity-10">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-calendar-day text-success fa-lg mb-2"></i>
+                        <h5 class="mb-0 fw-bold">@stats.TodayLogs.ToString("N0")</h5>
+                        <small class="text-muted">Today</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100 bg-warning bg-opacity-10">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-calendar-week text-warning fa-lg mb-2"></i>
+                        <h5 class="mb-0 fw-bold">@stats.ThisWeekLogs.ToString("N0")</h5>
+                        <small class="text-muted">This Week</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100 bg-info bg-opacity-10">
+                    <div class="card-body text-center py-3">
+                        <i class="fas fa-calendar-alt text-info fa-lg mb-2"></i>
+                        <h5 class="mb-0 fw-bold">@stats.ThisMonthLogs.ToString("N0")</h5>
+                        <small class="text-muted">This Month</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Filters -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">User</label>
+                    <select name="userId" class="form-select form-select-sm">
+                        <option value="">All Users</option>
+                        @foreach (var user in adminUsers)
+                        {
+                            <option value="@user.Id" selected="@(ViewBag.UserId == user.Id)">@user.Email</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">Action Type</label>
+                    <select name="actionType" class="form-select form-select-sm">
+                        <option value="">All Actions</option>
+                        @foreach (AuditActionType action in Enum.GetValues(typeof(AuditActionType)))
+                        {
+                            <option value="@action" selected="@(ViewBag.ActionType?.ToString() == action.ToString())">@action.GetDisplayName()</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">Module</label>
+                    <select name="module" class="form-select form-select-sm">
+                        <option value="">All Modules</option>
+                        @foreach (AuditModule mod in Enum.GetValues(typeof(AuditModule)))
+                        {
+                            <option value="@mod" selected="@(ViewBag.Module?.ToString() == mod.ToString())">@mod.GetDisplayName()</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">From Date</label>
+                    <input type="date" name="fromDate" class="form-control form-control-sm" value="@ViewBag.FromDate" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">To Date</label>
+                    <input type="date" name="toDate" class="form-control form-control-sm" value="@ViewBag.ToDate" />
+                </div>
+                <div class="col-md-2">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm flex-grow-1" style="height: 31px;">
+                            <i class="fas fa-filter me-1"></i>Filter
+                        </button>
+                        <a href="@Url.Action("Index")" class="btn btn-outline-secondary btn-sm" style="height: 31px;">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>Activity Log
+                <span class="badge bg-primary ms-2">@totalCount</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 150px;">Date/Time</th>
+                                <th>User</th>
+                                <th style="width: 100px;">Action</th>
+                                <th style="width: 100px;">Module</th>
+                                <th>Description</th>
+                                <th>Entity</th>
+                                <th style="width: 80px;">Status</th>
+                                <th style="width: 80px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in Model)
+                            {
+                                var actionClass = log.ActionType switch
+                                {
+                                    AuditActionType.Create => "bg-success",
+                                    AuditActionType.Update => "bg-warning text-dark",
+                                    AuditActionType.Delete => "bg-danger",
+                                    AuditActionType.Login => "bg-info",
+                                    AuditActionType.Logout => "bg-secondary",
+                                    AuditActionType.Approve => "bg-success",
+                                    AuditActionType.Reject => "bg-danger",
+                                    _ => "bg-primary"
+                                };
+                                var moduleIcon = log.Module switch
+                                {
+                                    AuditModule.Products => "fas fa-box",
+                                    AuditModule.Orders => "fas fa-shopping-cart",
+                                    AuditModule.Users => "fas fa-users",
+                                    AuditModule.Sellers => "fas fa-store",
+                                    AuditModule.Settings => "fas fa-cog",
+                                    AuditModule.Blog => "fas fa-blog",
+                                    AuditModule.Support => "fas fa-headset",
+                                    AuditModule.Payments => "fas fa-credit-card",
+                                    AuditModule.Authentication => "fas fa-lock",
+                                    _ => "fas fa-cube"
+                                };
+                                <tr>
+                                    <td>
+                                        <small>@log.CreatedAt.ToString("dd MMM yyyy")</small><br />
+                                        <small class="text-muted">@log.CreatedAt.ToString("HH:mm:ss")</small>
+                                    </td>
+                                    <td>
+                                        <a asp-action="UserActivity" asp-route-id="@log.UserId" class="text-decoration-none">
+                                            @log.UserEmail
+                                        </a>
+                                        @if (!string.IsNullOrEmpty(log.UserRole))
+                                        {
+                                            <br /><small class="text-muted">@log.UserRole</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @actionClass">@log.ActionType.GetDisplayName()</span>
+                                    </td>
+                                    <td>
+                                        <i class="@moduleIcon text-muted me-1"></i>
+                                        <small>@log.Module.GetDisplayName()</small>
+                                    </td>
+                                    <td>
+                                        <span class="text-truncate d-inline-block" style="max-width: 250px;" title="@log.Description">
+                                            @log.Description
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(log.EntityType))
+                                        {
+                                            <small class="text-muted">@log.EntityType</small>
+                                            @if (!string.IsNullOrEmpty(log.EntityName))
+                                            {
+                                                <br /><small>@log.EntityName</small>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <small class="text-muted">-</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (log.IsSuccess)
+                                        {
+                                            <span class="badge bg-success"><i class="fas fa-check"></i></span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger" title="@log.ErrorMessage"><i class="fas fa-times"></i></span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <a asp-action="Details" asp-route-id="@log.Id" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if (totalPages > 1)
+                {
+                    <nav class="p-3">
+                        <ul class="pagination pagination-sm justify-content-center mb-0">
+                            @if (currentPage > 1)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-action="Index" asp-route-page="@(currentPage - 1)"
+                                       asp-route-userId="@ViewBag.UserId" asp-route-actionType="@ViewBag.ActionType"
+                                       asp-route-module="@ViewBag.Module" asp-route-fromDate="@ViewBag.FromDate"
+                                       asp-route-toDate="@ViewBag.ToDate" asp-route-search="@ViewBag.Search">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+                                </li>
+                            }
+                            @for (var i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                            {
+                                <li class="page-item @(i == currentPage ? "active" : "")">
+                                    <a class="page-link" asp-action="Index" asp-route-page="@i"
+                                       asp-route-userId="@ViewBag.UserId" asp-route-actionType="@ViewBag.ActionType"
+                                       asp-route-module="@ViewBag.Module" asp-route-fromDate="@ViewBag.FromDate"
+                                       asp-route-toDate="@ViewBag.ToDate" asp-route-search="@ViewBag.Search">@i</a>
+                                </li>
+                            }
+                            @if (currentPage < totalPages)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-action="Index" asp-route-page="@(currentPage + 1)"
+                                       asp-route-userId="@ViewBag.UserId" asp-route-actionType="@ViewBag.ActionType"
+                                       asp-route-module="@ViewBag.Module" asp-route-fromDate="@ViewBag.FromDate"
+                                       asp-route-toDate="@ViewBag.ToDate" asp-route-search="@ViewBag.Search">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No audit logs found</h5>
+                    <p class="text-muted mb-0">Activity logs will appear here when admin actions are performed.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        [data-theme="dark"] .card { background-color: var(--bs-dark); border-color: var(--bs-gray-700); }
+        [data-theme="dark"] .card-header.bg-light { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] .table { color: var(--bs-light); }
+        [data-theme="dark"] .table-light { background-color: var(--bs-gray-800) !important; }
+        [data-theme="dark"] .table-light th { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] .table-hover tbody tr:hover { background-color: var(--bs-gray-700) !important; }
+        [data-theme="dark"] .form-control, [data-theme="dark"] .form-select { background-color: var(--bs-gray-800); color: var(--bs-light); border-color: var(--bs-gray-600); }
+    </style>
+}

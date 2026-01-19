@@ -1,0 +1,118 @@
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    ViewData["Title"] = ViewBag.Title ?? Localizer["Error"].Value;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var statusCode = ViewBag.StatusCode ?? 500;
+    var message = ViewBag.Message ?? Localizer["SomethingWentWrong"].Value;
+    var description = ViewBag.Description ?? Localizer["UnexpectedErrorOccurred"].Value;
+    var icon = ViewBag.Icon ?? "fa-exclamation-triangle";
+    var color = ViewBag.Color ?? "danger";
+}
+
+<div class="error-page-container">
+    <div class="container">
+        <div class="row justify-content-center align-items-center">
+            <div class="col-lg-6 col-xl-5">
+                <div class="error-card text-center">
+                    <!-- Icon inside card -->
+                    <div class="error-icon-circle bg-@color bg-opacity-10 mx-auto mb-4">
+                        <i class="fas @icon text-@color"></i>
+                    </div>
+
+                    <!-- Status Code Badge -->
+                    <span class="badge bg-@color fs-5 px-3 py-2 mb-3">@statusCode</span>
+
+                    <!-- Error Message -->
+                    <h1 class="error-title mb-2">@message</h1>
+                    <p class="error-description text-muted mb-4">@description</p>
+
+                    <!-- Go Home Button Only -->
+                    <a href="/" class="btn btn-@color btn-lg px-5">
+                        <i class="fas fa-home me-2"></i>@Localizer["GoHome"]
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .error-page-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 200px);
+            padding: 20px 0;
+        }
+
+        .error-card {
+            background: var(--bs-body-bg);
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] .error-card {
+            background: var(--bs-dark);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .error-icon-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .error-icon-circle i {
+            font-size: 40px;
+        }
+
+        .error-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--bs-body-color);
+        }
+
+        .error-description {
+            font-size: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .error-card .btn {
+            border-radius: 50px;
+            font-weight: 600;
+        }
+
+        .error-card .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        @@media (max-width: 576px) {
+            .error-card {
+                padding: 30px 20px;
+                margin: 0 10px;
+            }
+
+            .error-icon-circle {
+                width: 80px;
+                height: 80px;
+            }
+
+            .error-icon-circle i {
+                font-size: 32px;
+            }
+
+            .error-title {
+                font-size: 1.25rem;
+            }
+        }
+    </style>
+}

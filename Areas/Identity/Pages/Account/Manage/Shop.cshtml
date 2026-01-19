@@ -1,0 +1,551 @@
+@page
+@model Bangaliyana.Areas.Identity.Pages.Account.Manage.ShopModel
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    ViewData["Title"] = Localizer["MyShop"].Value;
+    ViewData["ActivePage"] = ManageNavPages.Shop;
+}
+
+<h3>@ViewData["Title"]</h3>
+<partial name="_StatusMessage" for="StatusMessage" />
+
+@if (Model.Seller != null)
+{
+    <!-- Shop Status Card -->
+    <div class="card mb-4 shop-status-card">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="d-flex align-items-center">
+                        @if (!string.IsNullOrEmpty(Model.Seller.ShopLogoUrl))
+                        {
+                            <img src="@Model.Seller.ShopLogoUrl" alt="Shop Logo" class="shop-logo-preview me-3" />
+                        }
+                        else
+                        {
+                            <div class="shop-logo-placeholder me-3">
+                                <i class="fas fa-store"></i>
+                            </div>
+                        }
+                        <div>
+                            <h4 class="mb-1">@Model.Seller.ShopName</h4>
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                @if (Model.Seller.Status == Bangaliyana.Models.SellerStatus.Approved)
+                                {
+                                    <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>@Localizer["Approved"]</span>
+                                }
+                                else if (Model.Seller.Status == Bangaliyana.Models.SellerStatus.Pending)
+                                {
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>@Localizer["PendingApproval"]</span>
+                                }
+                                else if (Model.Seller.Status == Bangaliyana.Models.SellerStatus.Suspended)
+                                {
+                                    <span class="badge bg-danger"><i class="fas fa-ban me-1"></i>@Localizer["Suspended"]</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary"><i class="fas fa-times-circle me-1"></i>@Localizer["Rejected"]</span>
+                                }
+
+                                @if (Model.Seller.IsVerified)
+                                {
+                                    <span class="badge bg-info"><i class="fas fa-shield-alt me-1"></i>@Localizer["Verified"]</span>
+                                }
+
+                                <span class="badge bg-light text-dark">
+                                    <i class="fas fa-tag me-1"></i>@Model.Seller.BusinessCategory.GetDisplayName()
+                                </span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(Model.Seller.ShopSlug))
+                            {
+                                <small class="text-muted d-block mt-1">
+                                    <i class="fas fa-link me-1"></i>
+                                    <a href="/shop/@Model.Seller.ShopSlug" target="_blank">/shop/@Model.Seller.ShopSlug</a>
+                                </small>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="stat-item">
+                                <div class="stat-value">@Model.ProductCount</div>
+                                <div class="stat-label">@Localizer["Products"]</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-item">
+                                <div class="stat-value">@Model.OrderCount</div>
+                                <div class="stat-label">@Localizer["Orders"]</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-item">
+                                <div class="stat-value">@Model.Seller.Rating.ToString("F1")</div>
+                                <div class="stat-label">@Localizer["Rating"]</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shop Images -->
+    <div class="row mb-4">
+        <!-- Shop Logo -->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-image me-2"></i>@Localizer["ShopLogo"]</h6>
+                </div>
+                <div class="card-body text-center">
+                    @if (!string.IsNullOrEmpty(Model.Seller.ShopLogoUrl))
+                    {
+                        <img src="@Model.Seller.ShopLogoUrl" alt="@Localizer["ShopLogo"].Value" class="img-fluid rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        <div class="shop-logo-empty mb-3">
+                            <i class="fas fa-camera"></i>
+                            <span>@Localizer["NoLogo"]</span>
+                        </div>
+                    }
+                    <form method="post" asp-page-handler="UploadLogo" enctype="multipart/form-data" class="mb-2">
+                        <div class="input-group input-group-sm">
+                            <input type="file" name="logo" class="form-control" accept="image/*" required />
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i></button>
+                        </div>
+                    </form>
+                    @if (!string.IsNullOrEmpty(Model.Seller.ShopLogoUrl))
+                    {
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#removeLogoModal">
+                            <i class="fas fa-trash me-1"></i>@Localizer["Remove"]
+                        </button>
+                    }
+                    <small class="text-muted">@Localizer["LogoRecommendedSize"]</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shop Banner -->
+        <div class="col-md-8 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-panorama me-2"></i>@Localizer["ShopBanner"]</h6>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.Seller.ShopBannerUrl))
+                    {
+                        <img src="@Model.Seller.ShopBannerUrl" alt="@Localizer["ShopBanner"].Value" class="img-fluid rounded mb-3" style="width: 100%; max-height: 150px; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        <div class="shop-banner-empty mb-3">
+                            <i class="fas fa-image"></i>
+                            <span>@Localizer["NoBannerUploaded"]</span>
+                        </div>
+                    }
+                    <form method="post" asp-page-handler="UploadBanner" enctype="multipart/form-data" class="mb-2">
+                        <div class="input-group input-group-sm">
+                            <input type="file" name="banner" class="form-control" accept="image/*" required />
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i></button>
+                        </div>
+                    </form>
+                    @if (!string.IsNullOrEmpty(Model.Seller.ShopBannerUrl))
+                    {
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#removeBannerModal">
+                            <i class="fas fa-trash me-1"></i>@Localizer["Remove"]
+                        </button>
+                    }
+                    <small class="text-muted ms-2">@Localizer["BannerRecommendedSize"]</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Form -->
+    <form method="post">
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-lg-8">
+                <!-- Basic Info -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-store me-2"></i>@Localizer["ShopInformation"]</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <div class="form-floating">
+                                    <input asp-for="Input.ShopName" class="form-control" placeholder="Shop Name" />
+                                    <label asp-for="Input.ShopName"></label>
+                                    <span asp-validation-for="Input.ShopName" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="form-floating">
+                                    <input asp-for="Input.ShopSlug" class="form-control" placeholder="shop-url" />
+                                    <label asp-for="Input.ShopSlug"></label>
+                                    <span asp-validation-for="Input.ShopSlug" class="text-danger"></span>
+                                </div>
+                                <small class="text-muted">@Localizer["LeaveEmptyToAutoGenerate"]</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-floating">
+                                <select asp-for="Input.BusinessCategory" class="form-select">
+                                    @foreach (var category in Enum.GetValues<Bangaliyana.Models.BusinessCategory>())
+                                    {
+                                        <option value="@category">@category.GetDisplayName()</option>
+                                    }
+                                </select>
+                                <label asp-for="Input.BusinessCategory"></label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.ShopDescription" class="form-label"></label>
+                            <textarea asp-for="Input.ShopDescription" class="form-control" rows="4" placeholder="@Localizer["TellAboutYourShop"].Value"></textarea>
+                            <span asp-validation-for="Input.ShopDescription" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Info -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-phone-alt me-2"></i>@Localizer["ContactInformation"]</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="form-floating">
+                                    <input asp-for="Input.BusinessPhone" class="form-control" placeholder="+880" />
+                                    <label asp-for="Input.BusinessPhone"></label>
+                                    <span asp-validation-for="Input.BusinessPhone" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-floating">
+                                    <input asp-for="Input.BusinessEmail" class="form-control" placeholder="email@example.com" />
+                                    <label asp-for="Input.BusinessEmail"></label>
+                                    <span asp-validation-for="Input.BusinessEmail" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-floating">
+                                <textarea asp-for="Input.BusinessAddress" class="form-control" style="height: 80px" placeholder="Address"></textarea>
+                                <label asp-for="Input.BusinessAddress"></label>
+                                <span asp-validation-for="Input.BusinessAddress" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-floating">
+                                <input asp-for="Input.OperatingHours" class="form-control" placeholder="e.g., Mon-Sat: 9AM-8PM" />
+                                <label asp-for="Input.OperatingHours"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Policies -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-file-contract me-2"></i>@Localizer["ShopPolicies"]</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label asp-for="Input.ShopPolicies" class="form-label"></label>
+                            <textarea asp-for="Input.ShopPolicies" class="form-control" rows="3" placeholder="@Localizer["GeneralShopPolicies"].Value"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.ReturnPolicy" class="form-label"></label>
+                            <textarea asp-for="Input.ReturnPolicy" class="form-control" rows="3" placeholder="@Localizer["YourReturnRefundPolicy"].Value"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.ShippingInfo" class="form-label"></label>
+                            <textarea asp-for="Input.ShippingInfo" class="form-control" rows="3" placeholder="@Localizer["ShippingInfoDeliveryTimes"].Value"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-lg-4">
+                <!-- Social Links -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-share-alt me-2"></i>@Localizer["SocialLinks"]</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fab fa-facebook text-primary"></i></span>
+                                <input asp-for="Input.FacebookUrl" class="form-control" placeholder="@Localizer["FacebookURL"].Value" />
+                            </div>
+                            <span asp-validation-for="Input.FacebookUrl" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fab fa-instagram text-danger"></i></span>
+                                <input asp-for="Input.InstagramUrl" class="form-control" placeholder="@Localizer["InstagramURL"].Value" />
+                            </div>
+                            <span asp-validation-for="Input.InstagramUrl" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fab fa-whatsapp text-success"></i></span>
+                                <input asp-for="Input.WhatsAppNumber" class="form-control" placeholder="@Localizer["WhatsAppNumber"].Value" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Business Documents -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-file-alt me-2"></i>@Localizer["BusinessDocuments"]</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="form-floating">
+                                <input asp-for="Input.TradeLicenseNumber" class="form-control" placeholder="Trade License" />
+                                <label asp-for="Input.TradeLicenseNumber"></label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-floating">
+                                <input asp-for="Input.NIDNumber" class="form-control" placeholder="NID" />
+                                <label asp-for="Input.NIDNumber"></label>
+                            </div>
+                        </div>
+
+                        @if (!Model.Seller.IsVerified)
+                        {
+                            <div class="alert alert-info small mb-0">
+                                <i class="fas fa-info-circle me-1"></i>
+                                @Localizer["CompleteBusinessDocuments"]
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Commission Info -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-percentage me-2"></i>@Localizer["Commission"]</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>@Localizer["YourCommissionRate"]:</span>
+                            <span class="badge bg-primary fs-6">@Model.Seller.CommissionRate%</span>
+                        </div>
+                        <small class="text-muted">@Localizer["CommissionRateSetByAdmin"]</small>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save me-2"></i>@Localizer["SaveChanges"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+}
+else
+{
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        @Localizer["NoShopFoundContactAdmin"]
+    </div>
+}
+
+<style>
+    .shop-status-card {
+        background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+        border: 1px solid #86efac;
+    }
+
+    .shop-logo-preview {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #10b981;
+    }
+
+    .shop-logo-placeholder {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+    }
+
+    .shop-logo-empty, .shop-banner-empty {
+        background: #f3f4f6;
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+    }
+
+    .shop-logo-empty {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        margin: 0 auto;
+    }
+
+    .shop-logo-empty i, .shop-banner-empty i {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-item {
+        padding: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #10b981;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-transform: uppercase;
+    }
+
+    /* Dark mode */
+    [data-theme="dark"] .shop-status-card {
+        background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+        border-color: #059669;
+    }
+
+    [data-theme="dark"] .shop-status-card h4,
+    [data-theme="dark"] .shop-status-card .stat-value {
+        color: #fff;
+    }
+
+    [data-theme="dark"] .shop-logo-empty,
+    [data-theme="dark"] .shop-banner-empty {
+        background: #374151;
+        border-color: #4b5563;
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .card-header {
+        background-color: #111827;
+        border-color: #374151;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .form-floating > label {
+        color: #9ca3af;
+    }
+
+    [data-theme="dark"] .input-group-text {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+</style>
+
+<!-- Remove Logo Confirmation Modal -->
+<div class="modal fade" id="removeLogoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-danger">
+                        <i class="fas fa-image" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">@Localizer["RemoveLogoQuestion"]</h4>
+                <p class="text-muted mb-1">@Localizer["RemoveLogoConfirmation"]</p>
+                <p class="text-muted small mb-0">@Localizer["CanUploadNewAnytime"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <form method="post" asp-page-handler="RemoveLogo" class="d-inline">
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="fas fa-check me-1"></i> @Localizer["YesRemove"]
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Remove Banner Confirmation Modal -->
+<div class="modal fade" id="removeBannerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-danger">
+                        <i class="fas fa-panorama" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2">@Localizer["RemoveBannerQuestion"]</h4>
+                <p class="text-muted mb-1">@Localizer["RemoveBannerConfirmation"]</p>
+                <p class="text-muted small mb-0">@Localizer["CanUploadNewAnytime"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <form method="post" asp-page-handler="RemoveBanner" class="d-inline">
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="fas fa-check me-1"></i> @Localizer["YesRemove"]
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

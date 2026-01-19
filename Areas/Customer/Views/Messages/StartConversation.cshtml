@@ -1,0 +1,388 @@
+@using Bangaliyana.Extensions
+@{
+    ViewData["Title"] = Localizer["ContactSeller"];
+    var seller = ViewBag.Seller as Bangaliyana.Models.Seller;
+    var product = ViewBag.Product as Bangaliyana.Models.Products;
+    var order = ViewBag.Order as Bangaliyana.Models.Order;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <!-- Main Message Area -->
+        <div class="col-lg-8">
+            <!-- Back Button and Header -->
+            <div class="chat-header d-flex align-items-center mb-3 p-3 rounded shadow-sm" style="background-color: var(--bg-color);">
+                <a asp-action="Index" class="btn btn-outline-secondary btn-sm me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="d-flex align-items-center flex-grow-1">
+                    @if (!string.IsNullOrEmpty(seller?.ShopLogoUrl))
+                    {
+                        <img src="@seller.ShopLogoUrl" alt="@seller.ShopName" class="avatar-circle me-3">
+                    }
+                    else
+                    {
+                        <div class="avatar-circle bg-primary text-white me-3">
+                            @(seller?.ShopName?.Substring(0, 1).ToUpper() ?? "S")
+                        </div>
+                    }
+                    <div>
+                        <h6 class="mb-0 fw-bold">@(seller?.ShopName ?? Localizer["Seller"])</h6>
+                        @if (seller?.IsVerified == true)
+                        {
+                            <small class="text-success"><i class="fas fa-check-circle me-1"></i>@Localizer["VerifiedSeller"]</small>
+                        }
+                        else
+                        {
+                            <small class="text-muted">@Localizer["Seller"]</small>
+                        }
+                    </div>
+                </div>
+                @if (seller != null && !string.IsNullOrEmpty(seller.ShopSlug))
+                {
+                    <a href="@Url.Action("Shop", "Home", new { area = "Customer", slug = seller.ShopSlug })" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-store me-1"></i>@Localizer["VisitShop"]
+                    </a>
+                }
+            </div>
+
+            @if (TempData["success"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>@TempData["success"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+            @if (TempData["error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>@TempData["error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            <!-- Context Info -->
+            @if (product != null || order != null)
+            {
+                <div class="context-card p-3 mb-3 rounded shadow-sm">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        @if (product != null)
+                        {
+                            <a asp-area="Customer" asp-controller="Home" asp-action="Details" asp-route-slug="@product.Slug"
+                               class="badge bg-secondary text-decoration-none">
+                                <i class="fas fa-box me-1"></i>@product.Name
+                            </a>
+                        }
+                        @if (order != null)
+                        {
+                            <a asp-area="Customer" asp-controller="Home" asp-action="OrderDetails" asp-route-id="@order.Id"
+                               class="badge bg-info-subtle text-info text-decoration-none">
+                                <i class="fas fa-shopping-bag me-1"></i>@Localizer["OrderNumber", order.Id]
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (seller == null)
+            {
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    @Localizer["SellerInfoNotAvailable"]
+                </div>
+            }
+            else
+            {
+                <!-- Unified Compose Box -->
+                <div class="card border-0 shadow-sm chatbox-unified">
+                    <!-- Header -->
+                    <div class="chatbox-search-bar">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h6 class="mb-0"><i class="fas fa-envelope me-2 text-primary"></i>@Localizer["NewMessage"]</h6>
+                            <small class="text-muted">@Localizer["StartConversationWithSeller"]</small>
+                        </div>
+                    </div>
+
+                    <!-- Compose Area -->
+                    <div class="chat-container p-4">
+                        <form method="post" id="messageForm">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="sellerId" value="@seller.Id" />
+                            <input type="hidden" name="productId" value="@product?.Id" />
+                            <input type="hidden" name="orderId" value="@order?.Id" />
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">@Localizer["Subject"] <span class="text-danger">*</span></label>
+                                <input type="text" name="subject" class="form-control" required maxlength="200"
+                                       placeholder="@Localizer["WhatWouldYouLikeToDiscuss"]"
+                                       value="@(product != null ? Localizer["InquiryAboutProduct", product.Name].Value : order != null ? Localizer["QuestionAboutOrder", order.Id].Value : "")" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">@Localizer["Message"] <span class="text-danger">*</span></label>
+                                <textarea name="message" class="form-control" rows="6" required minlength="10" maxlength="2000" id="messageInput"
+                                          placeholder="@Localizer["WriteYourMessageHere"]"></textarea>
+                                <div class="d-flex justify-content-between mt-1">
+                                    <small class="text-muted">@Localizer["BeSpecificAboutYourQuestion"]</small>
+                                    <small class="text-muted"><span id="charCount">0</span>/2000</small>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Input Area Footer -->
+                    <div class="chatbox-input-area">
+                        <div class="d-flex gap-2 justify-content-between align-items-center">
+                            <div class="d-flex gap-2">
+                                <!-- Quick Templates Dropdown -->
+                                <div class="btn-group dropup">
+                                    <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="@Localizer["QuickTemplates"]">
+                                        <i class="fas fa-bolt"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><h6 class="dropdown-header">@Localizer["QuickTemplates"]</h6></li>
+                                        @if (product != null)
+                                        {
+                                            <li><button type="button" class="dropdown-item quick-template" data-template="@Localizer["TemplateDeliveryAvailability"]"><i class="fas fa-truck me-2 text-info"></i>@Localizer["DeliveryAvailability"]</button></li>
+                                            <li><button type="button" class="dropdown-item quick-template" data-template="@Localizer["TemplateProductDetails"]"><i class="fas fa-info-circle me-2 text-primary"></i>@Localizer["ProductDetails"]</button></li>
+                                            <li><button type="button" class="dropdown-item quick-template" data-template="@Localizer["TemplateBulkDiscount"]"><i class="fas fa-tags me-2 text-success"></i>@Localizer["BulkDiscount"]</button></li>
+                                        }
+                                        else if (order != null)
+                                        {
+                                            <li><button type="button" class="dropdown-item quick-template" data-template="@Localizer["TemplateOrderStatus"]"><i class="fas fa-shipping-fast me-2 text-info"></i>@Localizer["OrderStatus"]</button></li>
+                                            <li><button type="button" class="dropdown-item quick-template" data-template="@Localizer["TemplateDeliveryTime"]"><i class="fas fa-clock me-2 text-warning"></i>@Localizer["DeliveryTime"]</button></li>
+                                        }
+                                        else
+                                        {
+                                            <li><button type="button" class="dropdown-item quick-template" data-template="@Localizer["TemplateGeneralInquiry"]"><i class="fas fa-question-circle me-2 text-primary"></i>@Localizer["GeneralInquiry"]</button></li>
+                                            <li><button type="button" class="dropdown-item quick-template" data-template="@Localizer["TemplatePromotions"]"><i class="fas fa-percentage me-2 text-success"></i>@Localizer["Promotions"]</button></li>
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <a asp-action="Index" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                                </a>
+                                <button type="submit" form="messageForm" class="btn btn-primary" id="submitBtn" title="@Localizer["SendMessage"]">
+                                    <i class="fas fa-paper-plane me-1"></i>@Localizer["SendMessage"]
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4 d-none d-lg-block">
+            <!-- Related Product Card -->
+            @if (product != null)
+            {
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header bg-transparent">
+                        <h6 class="mb-0"><i class="fas fa-box me-2 text-primary"></i>@Localizer["RelatedProduct"]</h6>
+                    </div>
+                    <div class="card-body">
+                        <a href="@Url.Action("Details", "Home", new { area = "Customer", slug = product.Slug })" class="text-decoration-none">
+                            <div class="d-flex align-items-center">
+                                <img src="~/@(product.ImageUrl ?? "images/products/noimage.jpg")"
+                                     alt="@product.Name" class="rounded me-3"
+                                     style="width: 70px; height: 70px; object-fit: cover;">
+                                <div>
+                                    <h6 class="mb-1 text-dark">@product.Name</h6>
+                                    @if (product.DiscountPrice.HasValue && product.DiscountPrice < product.Price)
+                                    {
+                                        <div>
+                                            <span class="text-primary fw-bold fs-5">৳@product.DiscountPrice.Value.ToString("N0")</span>
+                                            <span class="text-muted text-decoration-line-through small ms-1">৳@product.Price.ToString("N0")</span>
+                                        </div>
+                                        <span class="badge bg-danger-subtle text-danger">@(((product.Price - product.DiscountPrice.Value) / product.Price * 100).ToString("F0"))% @Localizer["OFF"]</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-primary fw-bold fs-5">৳@product.Price.ToString("N0")</span>
+                                    }
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            }
+
+            <!-- Related Order Card -->
+            @if (order != null)
+            {
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header bg-transparent">
+                        <h6 class="mb-0"><i class="fas fa-shopping-bag me-2 text-info"></i>@Localizer["RelatedOrder"]</h6>
+                    </div>
+                    <div class="card-body">
+                        <a href="@Url.Action("OrderDetails", "Home", new { area = "Customer", id = order.Id })" class="text-decoration-none">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1 text-dark">@Localizer["OrderNumber", order.Id]</h6>
+                                    <small class="text-muted">@order.OrderDate.ToBangladeshShortDateString()</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-@(order.Status == Bangaliyana.Models.OrderStatus.Delivered ? "success" : order.Status == Bangaliyana.Models.OrderStatus.Pending ? "warning" : "info") mb-1">@order.Status.GetDisplayName()</span>
+                                    <div class="text-primary fw-bold fs-5">৳@order.TotalAmount.ToString("N0")</div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            }
+
+            <!-- Tips Card -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent">
+                    <h6 class="mb-0"><i class="fas fa-lightbulb me-2 text-warning"></i>@Localizer["Tips"]</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="small mb-0 ps-3">
+                        <li class="mb-2">@Localizer["TipBeSpecific"]</li>
+                        <li class="mb-2">@Localizer["TipIncludeDetails"]</li>
+                        <li class="mb-2">@Localizer["TipSellerResponseTime"]</li>
+                        <li>@Localizer["TipViewConversations", Url.Action("Index", "Messages", new { area = "Customer" })]</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-circle {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+        object-fit: cover;
+    }
+
+    .chat-header {
+        border: 1px solid var(--border-color);
+    }
+
+    .context-card {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .chatbox-unified {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .chatbox-search-bar {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--bg-secondary);
+    }
+
+    .chat-container {
+        min-height: 250px;
+        background-color: var(--bg-color);
+    }
+
+    .chatbox-input-area {
+        padding: 12px 16px;
+        border-top: 1px solid var(--border-color);
+        background-color: var(--bg-secondary);
+    }
+
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .chat-header {
+        background-color: #1f2937 !important;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .context-card {
+        background-color: #252538;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .chatbox-search-bar {
+        background-color: #252538;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .chatbox-input-area {
+        background-color: #252538;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .chat-container {
+        background-color: #1f2937;
+    }
+
+    [data-theme="dark"] .form-control {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .form-control:focus {
+        background-color: #374151;
+        border-color: var(--primary-color);
+        color: #e5e7eb;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var messageTextarea = document.getElementById('messageInput');
+            var charCount = document.getElementById('charCount');
+            var form = document.getElementById('messageForm');
+            var submitBtn = document.getElementById('submitBtn');
+
+            // Character counter
+            if (messageTextarea && charCount) {
+                messageTextarea.addEventListener('input', function() {
+                    charCount.textContent = this.value.length;
+                    if (this.value.length > 1900) {
+                        charCount.classList.add('text-warning');
+                    } else {
+                        charCount.classList.remove('text-warning');
+                    }
+                    if (this.value.length >= 2000) {
+                        charCount.classList.add('text-danger');
+                    } else {
+                        charCount.classList.remove('text-danger');
+                    }
+                });
+            }
+
+            // Form submission with loading state
+            if (form && submitBtn) {
+                form.addEventListener('submit', function() {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>@Localizer["Sending"]';
+                });
+            }
+
+            // Quick templates
+            document.querySelectorAll('.quick-template').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var template = this.getAttribute('data-template');
+                    if (messageTextarea) {
+                        messageTextarea.value = template;
+                        messageTextarea.focus();
+                        messageTextarea.dispatchEvent(new Event('input'));
+                    }
+                });
+            });
+        });
+    </script>
+}

@@ -1,0 +1,226 @@
+@model Bangaliyana.Models.AuditLog
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+
+@{
+    ViewData["Title"] = "Audit Log Details";
+    var actionClass = Model.ActionType switch
+    {
+        AuditActionType.Create => "bg-success",
+        AuditActionType.Update => "bg-warning text-dark",
+        AuditActionType.Delete => "bg-danger",
+        AuditActionType.Login => "bg-info",
+        AuditActionType.Logout => "bg-secondary",
+        AuditActionType.Approve => "bg-success",
+        AuditActionType.Reject => "bg-danger",
+        _ => "bg-primary"
+    };
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Audit Logs</a></li>
+            <li class="breadcrumb-item active">Details</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-file-alt text-info me-2"></i>Audit Log #@Model.Id</h1>
+            <p class="text-muted mb-0">Detailed view of the logged action</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Logs
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Main Details -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Action Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small">Action Type</label>
+                            <div><span class="badge @actionClass fs-6">@Model.ActionType.GetDisplayName()</span></div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small">Module</label>
+                            <div><strong>@Model.Module.GetDisplayName()</strong></div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small">Status</label>
+                            <div>
+                                @if (Model.IsSuccess)
+                                {
+                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Success</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Failed</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Description</label>
+                        <p class="mb-0">@Model.Description</p>
+                    </div>
+
+                    @if (!Model.IsSuccess && !string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger mb-3">
+                            <strong>Error:</strong> @Model.ErrorMessage
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.EntityType))
+                    {
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small">Entity Type</label>
+                                <div><strong>@Model.EntityType</strong></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small">Entity ID</label>
+                                <div><code>@Model.EntityId</code></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small">Entity Name</label>
+                                <div>@(Model.EntityName ?? "-")</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Old/New Values -->
+            @if (!string.IsNullOrEmpty(Model.OldValues) || !string.IsNullOrEmpty(Model.NewValues))
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>Data Changes</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            @if (!string.IsNullOrEmpty(Model.OldValues))
+                            {
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small">Old Values</label>
+                                    <pre class="bg-light p-3 rounded small" style="max-height: 300px; overflow-y: auto;">@Model.OldValues</pre>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.NewValues))
+                            {
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small">New Values</label>
+                                    <pre class="bg-light p-3 rounded small" style="max-height: 300px; overflow-y: auto;">@Model.NewValues</pre>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-lg-4">
+            <!-- User Info -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-user me-2"></i>User Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Email</label>
+                        <div>
+                            <a asp-action="UserActivity" asp-route-id="@Model.UserId" class="text-decoration-none">
+                                @Model.UserEmail
+                            </a>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.UserName))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Name</label>
+                            <div>@Model.UserName</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.UserRole))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Role</label>
+                            <div><span class="badge bg-primary">@Model.UserRole</span></div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Request Info -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-globe me-2"></i>Request Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Timestamp</label>
+                        <div>@Model.CreatedAt.ToString("dd MMM yyyy HH:mm:ss")</div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.IpAddress))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">IP Address</label>
+                            <div><code>@Model.IpAddress</code></div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.HttpMethod))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">HTTP Method</label>
+                            <div><span class="badge bg-secondary">@Model.HttpMethod</span></div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.RequestUrl))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">URL</label>
+                            <div class="small text-break">@Model.RequestUrl</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.UserAgent))
+                    {
+                        <div>
+                            <label class="form-label text-muted small">User Agent</label>
+                            <div class="small text-muted text-break">@Model.UserAgent</div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- View Entity History -->
+            @if (!string.IsNullOrEmpty(Model.EntityType) && !string.IsNullOrEmpty(Model.EntityId))
+            {
+                <div class="card shadow-sm">
+                    <div class="card-body text-center">
+                        <a asp-action="EntityHistory" asp-route-entityType="@Model.EntityType" asp-route-entityId="@Model.EntityId"
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-history me-1"></i>View Entity History
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        [data-theme="dark"] .card { background-color: var(--bs-dark); border-color: var(--bs-gray-700); }
+        [data-theme="dark"] .card-header.bg-light { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+        [data-theme="dark"] pre.bg-light { background-color: var(--bs-gray-800) !important; color: var(--bs-light); }
+    </style>
+}

@@ -1,0 +1,283 @@
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = "Category Performance";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Reports</a></li>
+            <li class="breadcrumb-item active">Category Performance</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-tags text-danger me-2"></i>Category Performance</h1>
+            <p class="text-muted mb-0">Analyze sales distribution across categories</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="ExportCsv" asp-route-reportType="categories" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" class="btn btn-outline-success">
+                <i class="fas fa-file-csv me-1"></i>Export CSV
+            </a>
+            <a asp-action="ExportPdf" asp-route-reportType="categories" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" class="btn btn-outline-danger">
+                <i class="fas fa-file-pdf me-1"></i>Export PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">From Date</label>
+                    <input type="date" name="fromDate" class="form-control" value="@ViewBag.FromDate" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">To Date</label>
+                    <input type="date" name="toDate" class="form-control" value="@ViewBag.ToDate" />
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-1"></i>Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-danger bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-tags text-danger fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.TotalCategories</h5>
+                    <small class="text-muted">Total Categories</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-success bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-check-circle text-success fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.ActiveCategories</h5>
+                    <small class="text-muted">With Sales</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-primary bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-money-bill-wave text-primary fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">৳@(((decimal)ViewBag.TotalRevenue).ToString("N0"))</h5>
+                    <small class="text-muted">Total Revenue</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100 bg-info bg-opacity-10">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-box text-info fa-lg mb-2"></i>
+                    <h5 class="mb-0 fw-bold">@ViewBag.TotalItemsSold</h5>
+                    <small class="text-muted">Items Sold</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie text-danger me-2"></i>Revenue by Category</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="categoryPieChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar text-primary me-2"></i>Items Sold by Category</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="categorySalesChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Performance Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-table text-primary me-2"></i>Category Performance Details</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (ViewBag.CategoryData != null && ((IEnumerable<dynamic>)ViewBag.CategoryData).Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Category</th>
+                                <th class="text-center">Products</th>
+                                <th class="text-center">Items Sold</th>
+                                <th class="text-end">Revenue</th>
+                                <th class="text-center">% of Total</th>
+                                <th class="text-center">Avg. Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                int rank = 1;
+                                decimal totalRevenue = (decimal)ViewBag.TotalRevenue;
+                            }
+                            @foreach (var cat in (IEnumerable<dynamic>)ViewBag.CategoryData)
+                            {
+                                decimal catRevenue = (decimal)cat.Revenue;
+                                decimal percentage = totalRevenue > 0 ? (catRevenue / totalRevenue * 100) : 0;
+                                <tr>
+                                    <td>
+                                        @if (rank <= 3)
+                                        {
+                                            <span class="badge bg-@(rank == 1 ? "warning" : rank == 2 ? "secondary" : "danger")">
+                                                <i class="fas fa-trophy"></i> @rank
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@rank</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold">@cat.Name</span>
+                                        @if (cat.ParentName != null)
+                                        {
+                                            <br>
+                                            <small class="text-muted">Parent: @cat.ParentName</small>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary">@cat.ProductCount</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary">@cat.ItemsSold</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="text-success fw-bold">৳@catRevenue.ToString("N0")</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="progress" style="height: 20px; width: 100px; display: inline-block;">
+                                            <div class="progress-bar bg-danger" style="width: @percentage%">@percentage.ToString("N1")%</div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <small>৳@(((decimal)cat.AveragePrice).ToString("N0"))</small>
+                                    </td>
+                                </tr>
+                                rank++;
+                            }
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr class="fw-bold">
+                                <td colspan="3">Total</td>
+                                <td class="text-center">@ViewBag.TotalItemsSold</td>
+                                <td class="text-end text-success">৳@(((decimal)ViewBag.TotalRevenue).ToString("N0"))</td>
+                                <td class="text-center">100%</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4">
+                    <i class="fas fa-tags fa-2x text-muted mb-2"></i>
+                    <p class="text-muted mb-0">No category data available for the selected period</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fromDate = '@ViewBag.FromDate';
+            const toDate = '@ViewBag.ToDate';
+
+            fetch(`@Url.Action("GetChartData", "Reports", new { area = "Admin" })?reportType=categories&fromDate=${fromDate}&toDate=${toDate}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Colors for charts
+                    const colors = [
+                        'rgba(220, 53, 69, 0.8)',
+                        'rgba(13, 110, 253, 0.8)',
+                        'rgba(25, 135, 84, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(13, 202, 240, 0.8)',
+                        'rgba(111, 66, 193, 0.8)',
+                        'rgba(253, 126, 20, 0.8)',
+                        'rgba(108, 117, 125, 0.8)',
+                        'rgba(233, 30, 99, 0.8)',
+                        'rgba(0, 150, 136, 0.8)'
+                    ];
+
+                    // Revenue Pie Chart
+                    const pieCtx = document.getElementById('categoryPieChart').getContext('2d');
+                    new Chart(pieCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: data.categoryLabels || [],
+                            datasets: [{
+                                data: data.categoryRevenue || [],
+                                backgroundColor: colors
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return context.label + ': ৳' + context.raw.toLocaleString();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Sales Bar Chart
+                    const barCtx = document.getElementById('categorySalesChart').getContext('2d');
+                    new Chart(barCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.categoryLabels || [],
+                            datasets: [{
+                                label: 'Items Sold',
+                                data: data.categorySales || [],
+                                backgroundColor: colors
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true }
+                            }
+                        }
+                    });
+                })
+                .catch(err => console.log('Chart data error:', err));
+        });
+    </script>
+}

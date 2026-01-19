@@ -1,0 +1,679 @@
+@page
+@model SupportTicketsModel
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    ViewData["Title"] = Localizer["SupportTickets"].Value;
+    ViewData["ActivePage"] = ManageNavPages.SupportTickets;
+}
+
+<div class="support-tickets-page">
+    <partial name="_StatusMessage" for="StatusMessage" />
+
+    <!-- Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h4 class="mb-1">
+                    <i class="fas fa-ticket-alt text-primary me-2"></i>@Localizer["SupportTickets"]
+                </h4>
+                <p class="text-muted mb-0">@Localizer["SupportTicketsDescription"]</p>
+            </div>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTicketModal">
+                <i class="fas fa-plus me-1"></i>@Localizer["CreateNewTicket"]
+            </button>
+        </div>
+    </div>
+
+    <!-- Ticket Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-mini open">
+                <span class="stat-number">@Model.Tickets.Count(t => t.Status == TicketStatus.Open)</span>
+                <span class="stat-label">@Localizer["Open"]</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-mini in-progress">
+                <span class="stat-number">@Model.Tickets.Count(t => t.Status == TicketStatus.InProgress)</span>
+                <span class="stat-label">@Localizer["InProgress"]</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-mini resolved">
+                <span class="stat-number">@Model.Tickets.Count(t => t.Status == TicketStatus.Resolved)</span>
+                <span class="stat-label">@Localizer["Resolved"]</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-mini closed">
+                <span class="stat-number">@Model.Tickets.Count(t => t.Status == TicketStatus.Closed)</span>
+                <span class="stat-label">@Localizer["Closed"]</span>
+            </div>
+        </div>
+    </div>
+
+    @if (!Model.Tickets.Any())
+    {
+        <!-- Empty State -->
+        <div class="empty-state text-center py-5">
+            <div class="empty-icon mb-4">
+                <i class="fas fa-headset"></i>
+            </div>
+            <h5>@Localizer["NoSupportTickets"]</h5>
+            <p class="text-muted mb-4">@Localizer["NoSupportTicketsDescription"]</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTicketModal">
+                <i class="fas fa-plus me-2"></i>@Localizer["CreateYourFirstTicket"]
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Tickets List -->
+        <div class="tickets-list">
+            @foreach (var ticket in Model.Tickets)
+            {
+                <div class="ticket-card">
+                    <div class="ticket-header">
+                        <div class="ticket-info">
+                            <span class="ticket-number">@(string.IsNullOrEmpty(ticket.TicketNumber) ? $"Ticket #{ticket.Id}" : $"#{ticket.TicketNumber}")</span>
+                            <span class="ticket-status status-@ticket.Status.ToString().ToLower()">
+                                @FormatEnumName(ticket.Status.ToString())
+                            </span>
+                            <span class="ticket-priority priority-@ticket.Priority.ToString().ToLower()">
+                                @FormatEnumName(ticket.Priority.ToString())
+                            </span>
+                        </div>
+                        <div class="ticket-date">
+                            <i class="far fa-clock me-1"></i>@ticket.CreatedAt.ToBangladeshString()
+                        </div>
+                    </div>
+                    <div class="ticket-body">
+                        <h6 class="ticket-subject">@ticket.Subject</h6>
+                        <p class="ticket-description">@ticket.Description.Substring(0, Math.Min(150, ticket.Description.Length))@(ticket.Description.Length > 150 ? "..." : "")</p>
+                        <div class="ticket-meta">
+                            <span class="category-badge">
+                                <i class="fas fa-tag me-1"></i>@FormatEnumName(ticket.Category.ToString())
+                            </span>
+                            @if (ticket.Order != null)
+                            {
+                                <span class="order-badge">
+                                    <i class="fas fa-shopping-bag me-1"></i>Order #@ticket.Order.OrderNumber
+                                </span>
+                            }
+                            @if (ticket.Messages.Any())
+                            {
+                                <span class="messages-badge">
+                                    <i class="fas fa-comments me-1"></i>@ticket.Messages.Count @Localizer["replies"]
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    <div class="ticket-footer">
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#ticketDetail@(ticket.Id)">
+                            <i class="fas fa-eye me-1"></i>@Localizer["ViewDetails"]
+                        </button>
+                        @if (ticket.Status != TicketStatus.Closed)
+                        {
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#replyModal@(ticket.Id)">
+                                <i class="fas fa-reply me-1"></i>@Localizer["Reply"]
+                            </button>
+                            <form method="post" asp-page-handler="Close" class="d-inline close-ticket-form">
+                                <input type="hidden" name="ticketId" value="@ticket.Id" />
+                                <button type="button" class="btn btn-sm btn-outline-danger close-ticket-btn" data-ticket-number="@(string.IsNullOrEmpty(ticket.TicketNumber) ? ticket.Id.ToString() : ticket.TicketNumber)">
+                                    <i class="fas fa-times me-1"></i>@Localizer["Close"]
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+
+                <!-- Ticket Detail Modal -->
+                <div class="modal fade" id="ticketDetail@(ticket.Id)" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <span class="ticket-number">@(string.IsNullOrEmpty(ticket.TicketNumber) ? $"Ticket #{ticket.Id}" : $"#{ticket.TicketNumber}")</span>
+                                    <span class="ticket-status status-@ticket.Status.ToString().ToLower() ms-2">@FormatEnumName(ticket.Status.ToString())</span>
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                @if (ticket.Subject?.StartsWith("Escalation:") == true)
+                                {
+                                    <!-- Escalation ticket - show description only -->
+                                    <p class="mb-3">@ticket.Description</p>
+                                }
+                                else
+                                {
+                                    <!-- Regular ticket - show subject and description -->
+                                    <h6 class="text-primary mb-2"><i class="fas fa-heading me-1"></i>@Localizer["Subject"]</h6>
+                                    <p class="mb-3">@ticket.Subject</p>
+
+                                    @if (!string.IsNullOrWhiteSpace(ticket.Description))
+                                    {
+                                        <h6 class="text-primary mb-2"><i class="fas fa-align-left me-1"></i>@Localizer["Details"]</h6>
+                                        <p class="text-muted mb-3">@ticket.Description</p>
+                                    }
+                                }
+
+                                <hr />
+                                <h6 class="text-primary mb-3"><i class="fas fa-comments me-1"></i>@Localizer["Conversation"]</h6>
+                                <div class="conversation-list">
+                                    @if (ticket.Messages.Any())
+                                    {
+                                        @foreach (var msg in ticket.Messages.OrderBy(m => m.CreatedAt))
+                                        {
+                                            <div class="message-item @(msg.IsStaffReply ? "staff" : "customer")">
+                                                <div class="message-header">
+                                                    <strong>@(msg.IsStaffReply ? Localizer["SupportTeam"].Value : Localizer["You"].Value)</strong>
+                                                    <small>@msg.CreatedAt.ToBangladeshString()</small>
+                                                </div>
+                                                <div class="message-content">@msg.Message</div>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center text-muted py-3">
+                                            <i class="far fa-comment-dots fa-2x mb-2 d-block"></i>
+                                            <span>@Localizer["NoMessagesStartConversation"]</span>
+                                        </div>
+                                    }
+                                </div>
+
+                                @if (ticket.Status != TicketStatus.Closed)
+                                {
+                                    <hr />
+                                    <form method="post" asp-page-handler="Reply" class="reply-form-inline">
+                                        <input type="hidden" name="ticketId" value="@ticket.Id" />
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">
+                                                <i class="fas fa-reply me-1"></i>@Localizer["ReplyToThisTicket"]
+                                            </label>
+                                            <textarea name="message" class="form-control" rows="3" placeholder="@Localizer["TypeYourMessage"].Value" required></textarea>
+                                        </div>
+                                        <div class="d-flex justify-content-end">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-paper-plane me-1"></i>@Localizer["SendReply"]
+                                            </button>
+                                        </div>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-secondary mt-3 mb-0">
+                                        <i class="fas fa-lock me-2"></i>@Localizer["TicketClosedCannotReply"]
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reply Modal -->
+                <div class="modal fade" id="replyModal@(ticket.Id)" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="post" asp-page-handler="Reply">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">@Localizer["ReplyTo"] @(string.IsNullOrEmpty(ticket.TicketNumber) ? $"#{ticket.Id}" : $"#{ticket.TicketNumber}")</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <input type="hidden" name="ticketId" value="@ticket.Id" />
+                                    <div class="mb-3">
+                                        <label class="form-label">@Localizer["YourMessage"]</label>
+                                        <textarea name="message" class="form-control" rows="4" required></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-paper-plane me-1"></i>@Localizer["SendReply"]
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Create Ticket Modal -->
+<div class="modal fade" id="createTicketModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="Create">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-plus-circle me-2"></i>@Localizer["CreateSupportTicket"]
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Input.Category" class="form-label">@Localizer["Category"]</label>
+                            <select asp-for="Input.Category" class="form-select" asp-items="Html.GetEnumSelectList<TicketCategory>()"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Input.Priority" class="form-label">@Localizer["Priority"]</label>
+                            <select asp-for="Input.Priority" class="form-select" asp-items="Html.GetEnumSelectList<TicketPriority>()"></select>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Input.OrderId" class="form-label">@Localizer["RelatedOrderOptional"]</label>
+                            <select asp-for="Input.OrderId" class="form-select">
+                                <option value="">@Localizer["SelectOrderIfApplicable"]</option>
+                                @foreach (var order in Model.RecentOrders)
+                                {
+                                    <option value="@order.Id">@Localizer["Order"] #@order.OrderNumber - @order.OrderDate.ToBangladeshShortDateString()</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Input.Subject" class="form-label">@Localizer["Subject"] *</label>
+                            <input asp-for="Input.Subject" class="form-control" placeholder="@Localizer["BriefIssueSummary"].Value" />
+                            <span asp-validation-for="Input.Subject" class="text-danger"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Input.Description" class="form-label">@Localizer["Description"] *</label>
+                            <textarea asp-for="Input.Description" class="form-control" rows="5" placeholder="@Localizer["DescribeIssueInDetail"].Value"></textarea>
+                            <span asp-validation-for="Input.Description" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-1"></i>@Localizer["SubmitTicket"]
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Close Ticket Confirmation Modal -->
+<div class="modal fade" id="closeTicketModal" tabindex="-1" aria-labelledby="closeTicketModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content confirm-modal-content border-0 shadow-lg">
+            <button type="button" class="btn-close confirm-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-body text-center p-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle confirm-icon-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="closeTicketModalLabel">@Localizer["CloseTicketQuestion"]</h4>
+                <p class="text-muted mb-1">@Localizer["CloseTicketConfirmation"] <strong id="closeTicketNumber"></strong>?</p>
+                <p class="text-muted small mb-0">@Localizer["CantReplyAfterClosing"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmCloseTicketBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesClose"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Override Bootstrap validation icons when ASP.NET validation fails */
+    .form-control.input-validation-error {
+        background-image: none !important;
+        border-color: #dc3545 !important;
+    }
+    .form-control.input-validation-error:focus {
+        border-color: #dc3545 !important;
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
+    }
+
+    .support-tickets-page .page-header h4 {
+        font-weight: 600;
+    }
+
+    /* Stat Mini Cards */
+    .stat-mini {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        border-left: 4px solid;
+        height: 100%;
+    }
+
+    .stat-mini.open { border-color: #3b82f6; }
+    .stat-mini.in-progress { border-color: #f59e0b; }
+    .stat-mini.resolved { border-color: #10b981; }
+    .stat-mini.closed { border-color: #6b7280; }
+
+    .stat-number {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .stat-label {
+        display: block;
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+
+    /* Empty State */
+    .empty-state {
+        background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%);
+        border-radius: 16px;
+        padding: 3rem;
+    }
+
+    .empty-icon {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        font-size: 2.5rem;
+        color: white;
+    }
+
+    /* Ticket Card */
+    .ticket-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        margin-bottom: 1rem;
+        overflow: hidden;
+    }
+
+    .ticket-header {
+        padding: 1rem 1.5rem;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .ticket-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .ticket-number {
+        font-weight: 700;
+        color: #1f2937;
+        font-family: monospace;
+    }
+
+    .ticket-status {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .status-open { background: #dbeafe; color: #1d4ed8; }
+    .status-inprogress { background: #fef3c7; color: #b45309; }
+    .status-waitingforcustomer { background: #fce7f3; color: #be185d; }
+    .status-resolved { background: #d1fae5; color: #047857; }
+    .status-closed { background: #e5e7eb; color: #4b5563; }
+
+    .ticket-priority {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .priority-low { background: #d1fae5; color: #047857; }
+    .priority-medium { background: #fef3c7; color: #b45309; }
+    .priority-high { background: #fee2e2; color: #b91c1c; }
+    .priority-urgent { background: #ef4444; color: white; }
+
+    .ticket-date {
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+
+    .ticket-body {
+        padding: 1.5rem;
+    }
+
+    .ticket-subject {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+    }
+
+    .ticket-description {
+        color: #6b7280;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .ticket-meta {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .category-badge, .order-badge, .messages-badge {
+        background: #f3f4f6;
+        color: #6b7280;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+    }
+
+    .ticket-footer {
+        padding: 1rem 1.5rem;
+        background: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    /* Conversation */
+    .conversation-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .message-item {
+        padding: 1rem;
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+    }
+
+    .message-item.customer {
+        background: #eff6ff;
+        margin-left: 2rem;
+    }
+
+    .message-item.staff {
+        background: #f3f4f6;
+        margin-right: 2rem;
+    }
+
+    .message-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .message-content {
+        color: #374151;
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] .stat-mini,
+    [data-theme="dark"] .ticket-card {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .stat-number,
+    [data-theme="dark"] .ticket-number,
+    [data-theme="dark"] .ticket-subject {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .ticket-header,
+    [data-theme="dark"] .ticket-footer {
+        background: #111827;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .category-badge,
+    [data-theme="dark"] .order-badge,
+    [data-theme="dark"] .messages-badge {
+        background: #374151;
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .empty-state {
+        background: linear-gradient(135deg, #1e3a5f 0%, #1f2937 100%);
+    }
+
+    [data-theme="dark"] .empty-state h5,
+    [data-theme="dark"] .empty-state p {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .modal-content {
+        background: #1f2937;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .modal-header,
+    [data-theme="dark"] .modal-footer {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .message-item.customer {
+        background: #1e3a5f;
+    }
+
+    [data-theme="dark"] .message-item.staff {
+        background: #374151;
+    }
+
+    [data-theme="dark"] .message-content {
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .btn-close {
+        filter: invert(1);
+    }
+
+    /* Reply Form Inline */
+    .reply-form-inline {
+        background: #f8fafc;
+        padding: 1.25rem;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .reply-form-inline .form-label {
+        color: #475569;
+        margin-bottom: 0.75rem;
+    }
+
+    .reply-form-inline textarea {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        resize: none;
+    }
+
+    .reply-form-inline textarea:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    [data-theme="dark"] .reply-form-inline {
+        background: #111827;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .reply-form-inline .form-label {
+        color: #d1d5db;
+    }
+
+    [data-theme="dark"] .reply-form-inline textarea {
+        background: #1f2937;
+        border-color: #374151;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .reply-form-inline textarea:focus {
+        border-color: #3b82f6;
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .alert-secondary {
+        background: #374151;
+        color: #d1d5db;
+        border-color: #4b5563;
+    }
+</style>
+
+@functions {
+    private string FormatEnumName(string enumName)
+    {
+        return System.Text.RegularExpressions.Regex.Replace(enumName, "([a-z])([A-Z])", "$1 $2");
+    }
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Close Ticket Modal
+            const closeTicketModal = new bootstrap.Modal(document.getElementById('closeTicketModal'));
+            let currentCloseForm = null;
+
+            document.querySelectorAll('.close-ticket-btn').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    currentCloseForm = this.closest('.close-ticket-form');
+                    document.getElementById('closeTicketNumber').textContent = '#' + this.dataset.ticketNumber;
+                    closeTicketModal.show();
+                });
+            });
+
+            document.getElementById('confirmCloseTicketBtn').addEventListener('click', function () {
+                if (currentCloseForm) {
+                    closeTicketModal.hide();
+                    currentCloseForm.submit();
+                }
+            });
+
+            // Auto-open create ticket modal if pre-filled from Contact Support
+            @if (Model.AutoOpenCreateModal)
+            {
+                <text>
+                var createTicketModal = new bootstrap.Modal(document.getElementById('createTicketModal'));
+                createTicketModal.show();
+                </text>
+            }
+        });
+    </script>
+}

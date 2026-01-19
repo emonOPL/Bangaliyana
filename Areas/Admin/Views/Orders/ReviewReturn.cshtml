@@ -1,0 +1,1806 @@
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using System.Text.Json
+@model Order
+
+@{
+    ViewData["Title"] = $"Review Return - Order #{Model.OrderNumber ?? Model.Id.ToString()}";
+    var returnImages = GetReturnImages(Model);
+    var isRefunded = Model.PaymentStatus == PaymentStatus.Refunded || Model.PaymentStatus == PaymentStatus.PartiallyRefunded || Model.RefundStatus == RefundStatus.Completed;
+    var isApproved = Model.RefundStatus == RefundStatus.Approved;
+    var isRejected = Model.RefundStatus == RefundStatus.Rejected;
+    var isPending = Model.Status == OrderStatus.Returned && !isRefunded && !isRejected;
+    // Calculate SubTotal from OrderItems if it's 0 (for backward compatibility)
+    var subTotal = Model.SubTotal > 0 ? Model.SubTotal : Model.OrderItems.Sum(i => i.TotalPrice);
+    // Calculate total discounts (voucher/coupon + reward discount + premium discount)
+    var totalDiscounts = Model.DiscountAmount + Model.RewardDiscountAmount + Model.PremiumDiscountAmount;
+    // Refundable amount = SubTotal - all discounts (delivery charge is non-refundable, already excluded from subtotal)
+    var refundableAmount = (int)Math.Round(subTotal - totalDiscounts);
+    // Ensure refundable amount is not negative
+    if (refundableAmount < 0) refundableAmount = 0;
+}
+
+<div class="container">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="display-6 mb-1">
+                <i class="fas fa-undo-alt text-warning me-2"></i>Refund Action Center
+            </h2>
+            <p class="text-muted mb-0">Order #@(Model.OrderNumber ?? Model.Id.ToString())</p>
+        </div>
+        <div class="btn-group">
+            <a asp-action="Returns" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Returns
+            </a>
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+                <i class="fas fa-receipt me-1"></i> Order Details
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Banner -->
+    <div class="alert alert-permanent @GetStatusAlertClass(Model.RefundStatus) mb-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+                <h5 class="mb-1">
+                    <i class="@GetStatusIconClass(Model.RefundStatus) me-2"></i>Refund Status: @GetRefundStatusDisplay(Model.RefundStatus)
+                </h5>
+                @if (Model.RefundStatusChangedAt.HasValue)
+                {
+                    <small>Last updated: @Model.RefundStatusChangedAt.Value.ToBangladeshString()</small>
+                }
+            </div>
+            @if (Model.ReferredToAccounting)
+            {
+                <span class="badge bg-info fs-6">
+                    <i class="fas fa-user-tie me-1"></i>Referred to: @Model.ReferredToAccountingName
+                </span>
+            }
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column - Return Details -->
+        <div class="col-lg-8">
+            <!-- Return Information Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-warning bg-opacity-10 border-0">
+                    <h5 class="mb-0 text-warning">
+                        <i class="fas fa-exclamation-circle me-2"></i>Return Request Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="mb-0">
+                                <dt class="text-muted small">Return Reason</dt>
+                                <dd class="mb-3">
+                                    <span class="badge bg-secondary fs-6">
+                                        @FormatReturnReason(Model.ReturnReason)
+                                    </span>
+                                </dd>
+
+                                <dt class="text-muted small">Customer Preference</dt>
+                                <dd class="mb-3">
+                                    @if (Model.PrefersReplacement)
+                                    {
+                                        <span class="badge bg-info fs-6">
+                                            <i class="fas fa-exchange-alt me-1"></i> Replacement Preferred
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success fs-6">
+                                            <i class="fas fa-money-bill-wave me-1"></i> Refund Requested
+                                        </span>
+                                    }
+                                </dd>
+
+                                <dt class="text-muted small">Requested On</dt>
+                                <dd class="mb-3">
+                                    @if (Model.ReturnedAt.HasValue)
+                                    {
+                                        @Model.ReturnedAt.Value.ToBangladeshString()
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Not recorded</span>
+                                    }
+                                </dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="mb-0">
+                                <dt class="text-muted small">Order Status</dt>
+                                <dd class="mb-3">
+                                    <span class="badge @GetOrderStatusBadgeClass(Model.Status) fs-6">
+                                        @Model.Status.GetDisplayName()
+                                    </span>
+                                </dd>
+
+                                <dt class="text-muted small">Refund Status</dt>
+                                <dd class="mb-3">
+                                    <span class="badge @GetRefundStatusBadgeClass(Model.RefundStatus) fs-6">
+                                        @GetRefundStatusDisplay(Model.RefundStatus)
+                                    </span>
+                                </dd>
+
+                                @if (Model.ApprovedRefundAmount.HasValue)
+                                {
+                                    <dt class="text-muted small">Approved Refund Amount</dt>
+                                    <dd class="mb-3">
+                                        <span class="badge bg-success fs-5">৳@((int)Math.Round(Model.ApprovedRefundAmount.Value))</span>
+                                    </dd>
+                                }
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Refund Method & Account Details -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-primary bg-opacity-10 border-0">
+                    <h5 class="mb-0 text-primary">
+                        <i class="fas fa-credit-card me-2"></i>Refund Method & Account Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="mb-0">
+                                <dt class="text-muted small">Preferred Refund Method</dt>
+                                <dd class="mb-3">
+                                    @{
+                                        var refundLogoPath = Model.PreferredRefundMethod switch
+                                        {
+                                            RefundMethod.Bkash => "/images/logos/bkash-logo.png",
+                                            RefundMethod.Nagad => "/images/logos/nagad-logo.png",
+                                            RefundMethod.Rocket => "/images/logos/rocket-logo.png",
+                                            RefundMethod.Upay => "/images/logos/upay-logo.png",
+                                            _ => ""
+                                        };
+                                    }
+                                    <span class="badge bg-primary fs-6 d-inline-flex align-items-center">
+                                        @if (!string.IsNullOrEmpty(refundLogoPath))
+                                        {
+                                            <img src="@refundLogoPath" alt="@GetRefundMethodDisplay(Model.PreferredRefundMethod)" style="height: 18px; width: auto;" class="me-1" />
+                                        }
+                                        else
+                                        {
+                                            <i class="@GetRefundMethodIcon(Model.PreferredRefundMethod) me-1"></i>
+                                        }
+                                        @GetRefundMethodDisplay(Model.PreferredRefundMethod)
+                                    </span>
+                                </dd>
+
+                                <dt class="text-muted small">Refundable Amount</dt>
+                                <dd class="mb-2">
+                                    <span class="fs-5 fw-bold text-success">৳@refundableAmount</span>
+                                </dd>
+                                @if (Model.DeliveryCharge > 0)
+                                {
+                                    <dt class="text-muted small">Delivery Charge (Non-refundable)</dt>
+                                    <dd class="mb-3">
+                                        <span class="text-muted"><s>৳@((int)Math.Round(Model.DeliveryCharge))</s></span>
+                                    </dd>
+                                }
+                                @if (totalDiscounts > 0)
+                                {
+                                    <dt class="text-muted small">Discounts Applied (Non-refundable)</dt>
+                                    <dd class="mb-3">
+                                        <span class="text-muted"><s>৳@((int)Math.Round(totalDiscounts))</s></span>
+                                    </dd>
+                                }
+
+                                <dt class="text-muted small">Original Payment Method</dt>
+                                <dd class="mb-0">
+                                    <span class="badge bg-secondary">@GetPaymentMethodDisplay(Model.PaymentMethod)</span>
+                                </dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            @if (Model.PreferredRefundMethod == RefundMethod.WalletCredit)
+                            {
+                                <div class="alert alert-permanent alert-success py-2 mb-0">
+                                    <i class="fas fa-wallet me-2"></i>
+                                    <strong>Wallet Credit</strong>
+                                    <p class="mb-0 small mt-1">Refund will be credited instantly to customer's wallet when approved.</p>
+                                </div>
+                            }
+                            else if (Model.PreferredRefundMethod == RefundMethod.BankTransfer)
+                            {
+                                <div class="p-3 bg-light rounded">
+                                    <h6 class="mb-2"><i class="fas fa-university me-2"></i>Bank Account Details</h6>
+                                    @if (!string.IsNullOrEmpty(Model.RefundBankName))
+                                    {
+                                        <div><strong>Bank:</strong> @Model.RefundBankName</div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.RefundAccountHolderName))
+                                    {
+                                        <div><strong>Account Name:</strong> @Model.RefundAccountHolderName</div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.RefundAccountNumber))
+                                    {
+                                        <div><strong>Account Number:</strong> <code>@Model.RefundAccountNumber</code></div>
+                                    }
+                                </div>
+                            }
+                            else if (!string.IsNullOrEmpty(Model.RefundAccountNumber))
+                            {
+                                <div class="p-3 bg-light rounded">
+                                    @{
+                                        var logoPath = Model.PreferredRefundMethod switch
+                                        {
+                                            RefundMethod.Bkash => "/images/logos/bkash-logo.png",
+                                            RefundMethod.Nagad => "/images/logos/nagad-logo.png",
+                                            RefundMethod.Rocket => "/images/logos/rocket-logo.png",
+                                            RefundMethod.Upay => "/images/logos/upay-logo.png",
+                                            _ => ""
+                                        };
+                                        var methodName = GetRefundMethodDisplay(Model.PreferredRefundMethod);
+                                    }
+                                    <h6 class="mb-2 d-flex align-items-center">
+                                        @if (!string.IsNullOrEmpty(logoPath))
+                                        {
+                                            <img src="@logoPath" alt="@methodName" style="height: 24px; width: auto;" class="me-2" />
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-mobile-alt me-2"></i>
+                                        }
+                                        @methodName Account
+                                    </h6>
+                                    <div><strong>Number:</strong> <code>@Model.RefundAccountNumber</code></div>
+                                    @if (!string.IsNullOrEmpty(Model.RefundAccountHolderName))
+                                    {
+                                        <div><strong>Name:</strong> @Model.RefundAccountHolderName</div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-permanent alert-warning py-2 mb-0">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>No account details provided</strong>
+                                    <p class="mb-0 small mt-1">Customer did not provide refund account details.</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions Card (shown when order is returned and not yet refunded) -->
+            @if (!isRefunded && !isRejected && Model.Status == OrderStatus.Returned)
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header border-0 bg-success bg-opacity-10">
+                        <h5 class="mb-0 text-success">
+                            <i class="fas fa-bolt me-2"></i>Quick Actions
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#quickApproveModal">
+                                <i class="fas fa-check-circle me-2"></i>Quick Approve & Process Refund
+                            </button>
+                            @if (Model.PrefersReplacement)
+                            {
+                                <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#replacementModal">
+                                    <i class="fas fa-exchange-alt me-2"></i>Create Replacement Order
+                                </button>
+                            }
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                                <i class="fas fa-times-circle me-2"></i>Reject Request
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Admin Notes / Activity Log -->
+            @if (!string.IsNullOrEmpty(Model.RefundAdminNotes) || !string.IsNullOrEmpty(Model.AdminNotes))
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header border-0">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clipboard-list me-2"></i>Activity Log
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(Model.RefundAdminNotes))
+                        {
+                            <div class="mb-3">
+                                <h6 class="text-muted">Refund Notes</h6>
+                                <div class="p-3 bg-light rounded">
+                                    <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">@Model.RefundAdminNotes</pre>
+                                </div>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.AdminNotes))
+                        {
+                            <div>
+                                <h6 class="text-muted">Order Admin Notes</h6>
+                                <div class="p-3 bg-light rounded">
+                                    <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">@Model.AdminNotes</pre>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Return Images -->
+            @if (returnImages.Any())
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header border-0">
+                        <h5 class="mb-0">
+                            <i class="fas fa-images me-2"></i>Return Evidence Photos
+                            <span class="badge bg-secondary ms-2">@returnImages.Count</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            @foreach (var image in returnImages)
+                            {
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <a href="@image" target="_blank" class="return-image-link">
+                                        <div class="return-image-wrapper">
+                                            <img src="@image" alt="Return evidence" class="img-fluid rounded">
+                                            <div class="return-image-overlay">
+                                                <i class="fas fa-search-plus"></i>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Order Items -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header border-0">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shopping-cart me-2"></i>Order Items
+                        <span class="badge bg-info ms-2">@Model.OrderItems.Count items</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Product</th>
+                                    <th class="text-center">Quantity</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end pe-4">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.OrderItems)
+                                {
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="d-flex align-items-center">
+                                                @if (item.Product != null && !string.IsNullOrEmpty(item.Product.ImageUrl))
+                                                {
+                                                    <img src="/@item.Product.ImageUrl" alt="@item.ProductName"
+                                                         class="me-3 rounded" style="width: 50px; height: 50px; object-fit: cover;">
+                                                }
+                                                else
+                                                {
+                                                    <div class="me-3 bg-light d-flex align-items-center justify-content-center rounded"
+                                                         style="width: 50px; height: 50px;">
+                                                        <i class="fas fa-box text-muted"></i>
+                                                    </div>
+                                                }
+                                                <div>
+                                                    <strong>@item.ProductName</strong>
+                                                    @if (!string.IsNullOrEmpty(item.VariantInfo))
+                                                    {
+                                                        <br><small class="text-info"><i class="fas fa-tag me-1"></i>@item.VariantInfo</small>
+                                                    }
+                                                    <br><small class="text-muted">ID: @item.ProductId</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-secondary">@item.Quantity</span>
+                                        </td>
+                                        <td class="text-end">৳@((int)Math.Round(item.UnitPrice))</td>
+                                        <td class="text-end pe-4">
+                                            <strong>৳@((int)Math.Round(item.TotalPrice))</strong>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <th colspan="3" class="text-end">Products Subtotal:</th>
+                                    <th class="text-end pe-4">৳@((int)Math.Round(subTotal))</th>
+                                </tr>
+                                <tr>
+                                    <th colspan="3" class="text-end">
+                                        Delivery <span class="text-muted small">(Non-refundable)</span>:
+                                    </th>
+                                    <th class="text-end pe-4 text-muted"><s>৳@((int)Math.Round(Model.DeliveryCharge))</s></th>
+                                </tr>
+                                @if (totalDiscounts > 0)
+                                {
+                                    <tr>
+                                        <th colspan="3" class="text-end">
+                                            Discounts <span class="text-muted small">(Non-refundable)</span>:
+                                        </th>
+                                        <th class="text-end pe-4 text-muted"><s>-৳@((int)Math.Round(totalDiscounts))</s></th>
+                                    </tr>
+                                }
+                                <tr class="table-secondary">
+                                    <th colspan="3" class="text-end">Order Total:</th>
+                                    <th class="text-end pe-4">৳@((int)Math.Round(Model.TotalAmount))</th>
+                                </tr>
+                                <tr class="table-success">
+                                    <th colspan="3" class="text-end">Refundable Amount:</th>
+                                    <th class="text-end pe-4 text-success fw-bold">৳@refundableAmount</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Customer Info & Actions -->
+        <div class="col-lg-4">
+            <!-- Customer Info -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header border-0">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user me-2"></i>Customer Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="mb-0">
+                        <dt class="text-muted small">Name</dt>
+                        <dd class="mb-3">@Model.CustomerName</dd>
+
+                        <dt class="text-muted small">Phone</dt>
+                        <dd class="mb-3">
+                            <a href="tel:@Model.Phone" class="text-decoration-none">
+                                <i class="fas fa-phone me-1"></i>@Model.Phone
+                            </a>
+                        </dd>
+
+                        <dt class="text-muted small">Email</dt>
+                        <dd class="mb-3">
+                            <a href="mailto:@Model.Email" class="text-decoration-none">
+                                <i class="fas fa-envelope me-1"></i>@Model.Email
+                            </a>
+                        </dd>
+
+                        <dt class="text-muted small">Address</dt>
+                        <dd class="mb-0">
+                            <i class="fas fa-map-marker-alt me-1 text-muted"></i>@Model.Address
+                            @if (!string.IsNullOrEmpty(Model.City))
+                            {
+                                <br><small class="text-muted">@Model.City</small>
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Update Order Status Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header border-0 bg-success bg-opacity-10">
+                    <h5 class="mb-0 text-success">
+                        <i class="fas fa-shopping-bag me-2"></i>Update Order Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="orderStatusUpdateForm">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        @Html.AntiForgeryToken()
+
+                        <div class="mb-3">
+                            <label class="form-label">Current Order Status</label>
+                            @if (Model.Status == OrderStatus.Refunded)
+                            {
+                                <div class="form-control bg-success bg-opacity-10 text-success fw-bold" style="pointer-events: none;">
+                                    <i class="fas fa-check-circle me-1"></i>Refunded
+                                </div>
+                                <div class="form-text text-success">Order has been refunded. Status cannot be changed.</div>
+                            }
+                            else
+                            {
+                                <select class="form-select" name="status" id="orderStatusSelect" required>
+                                    @{
+                                        var orderStatuses = new[] {
+                                            (OrderStatus.Pending, "Pending"),
+                                            (OrderStatus.Confirmed, "Confirmed"),
+                                            (OrderStatus.Paid, "Paid"),
+                                            (OrderStatus.Processing, "Processing"),
+                                            (OrderStatus.Shipped, "Shipped"),
+                                            (OrderStatus.OutForDelivery, "Out For Delivery"),
+                                            (OrderStatus.Delivered, "Delivered"),
+                                            (OrderStatus.Cancelled, "Cancelled"),
+                                            (OrderStatus.Returned, "Returned")
+                                        };
+                                    }
+                                    @foreach (var (status, display) in orderStatuses)
+                                    {
+                                        if (Model.Status == status)
+                                        {
+                                            <option value="@status" selected>@display</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@status">@display</option>
+                                        }
+                                    }
+                                </select>
+                            }
+                        </div>
+
+                        @if (Model.Status != OrderStatus.Refunded)
+                        {
+                            <button type="button" class="btn btn-success w-100" id="updateOrderStatusBtn">
+                                <i class="fas fa-save me-1"></i> Update Order Status
+                            </button>
+                        }
+                    </form>
+                </div>
+            </div>
+
+            <!-- Refund Status Change Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header border-0 bg-warning bg-opacity-10">
+                    <h5 class="mb-0 text-warning">
+                        <i class="fas fa-sync-alt me-2"></i>Update Refund Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (isRefunded)
+                    {
+                        <div class="alert alert-permanent alert-success mb-0">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Refund Completed</strong>
+                            <p class="mb-0 mt-2 small">Payment status: @Model.PaymentStatus.GetDisplayName()</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <form id="statusUpdateForm">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            @Html.AntiForgeryToken()
+
+                            <div class="mb-3">
+                                <label class="form-label">Change Status</label>
+                                <select class="form-select" name="newStatus" id="newStatusSelect" required>
+                                    @{
+                                        // Completed status is only set via ProcessRefund, not manually
+                                        var statuses = new[] {
+                                            (RefundStatus.Pending, "Pending", "Pending"),
+                                            (RefundStatus.Reviewing, "Reviewing", "Reviewing"),
+                                            (RefundStatus.InProgress, "InProgress", "In Progress"),
+                                            (RefundStatus.Approved, "Approved", "Approved"),
+                                            (RefundStatus.Rejected, "Rejected", "Rejected")
+                                        };
+                                    }
+                                    @foreach (var (status, value, display) in statuses)
+                                    {
+                                        if (Model.RefundStatus == status)
+                                        {
+                                            <option value="@value" selected>@display</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@value">@display</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="mb-3" id="approvedAmountGroup" style="display: none;">
+                                <label class="form-label">Approved Refund Amount</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">৳</span>
+                                    <input type="number" class="form-control" name="approvedAmount"
+                                           value="@refundableAmount" step="1" min="0" max="@refundableAmount" />
+                                </div>
+                                <div class="form-text">Max refundable: ৳@refundableAmount</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Notes (Optional)</label>
+                                <textarea class="form-control" name="notes" rows="2"
+                                          placeholder="Add notes about this status change..."></textarea>
+                            </div>
+
+                            <button type="button" class="btn btn-warning w-100" id="updateStatusBtn">
+                                <i class="fas fa-save me-1"></i> Update Status
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+
+            <!-- Refund Payment Details Card (shown when refund is completed or payment is refunded) -->
+            @if ((Model.RefundStatus == RefundStatus.Completed || Model.PaymentStatus == PaymentStatus.Refunded || Model.PaymentStatus == PaymentStatus.PartiallyRefunded) && Model.RefundPaymentDate.HasValue)
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header border-0 bg-success bg-opacity-10 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 text-success">
+                            <i class="fas fa-check-double me-2"></i>Refund Payment Details
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editRefundDetailsModal">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0 align-items-center">
+                            <dt class="col-5 col-sm-4 text-muted mb-2">Payment Method</dt>
+                            <dd class="col-7 col-sm-8 mb-2">
+                                @{
+                                    var paymentMethodDisplay = Model.RefundPaymentMethod switch
+                                    {
+                                        RefundMethod.WalletCredit => "Wallet Credit",
+                                        RefundMethod.Bkash => "bKash",
+                                        RefundMethod.Nagad => "Nagad",
+                                        RefundMethod.Upay => "Upay",
+                                        RefundMethod.Rocket => "Rocket",
+                                        RefundMethod.BankTransfer => "Bank Transfer",
+                                        _ => Model.RefundPaymentMethod?.ToString() ?? "-"
+                                    };
+                                }
+                                <span class="badge bg-success">@paymentMethodDisplay</span>
+                            </dd>
+
+                            <dt class="col-5 col-sm-4 text-muted mb-2">Amount Paid</dt>
+                            <dd class="col-7 col-sm-8 mb-2">
+                                <strong class="text-success">৳@((int)Math.Round(Model.RefundPaidAmount ?? 0))</strong>
+                            </dd>
+
+                            @if (!string.IsNullOrEmpty(Model.RefundPaidFromAccount))
+                            {
+                                <dt class="col-5 col-sm-4 text-muted mb-2">Paid From</dt>
+                                <dd class="col-7 col-sm-8 mb-2">
+                                    <span class="refund-code">@Model.RefundPaidFromAccount</span>
+                                </dd>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Model.RefundReceiverNumber))
+                            {
+                                <dt class="col-5 col-sm-4 text-muted mb-2">Receiver Number</dt>
+                                <dd class="col-7 col-sm-8 mb-2">
+                                    <span class="refund-code">@Model.RefundReceiverNumber</span>
+                                </dd>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Model.RefundTransactionId))
+                            {
+                                <dt class="col-5 col-sm-4 text-muted mb-2">Transaction ID</dt>
+                                <dd class="col-7 col-sm-8 mb-2">
+                                    <span class="badge bg-primary">@Model.RefundTransactionId</span>
+                                </dd>
+                            }
+
+                            <dt class="col-5 col-sm-4 text-muted mb-2">Payment Date</dt>
+                            <dd class="col-7 col-sm-8 mb-2">@Model.RefundPaymentDate?.ToBangladeshString()</dd>
+
+                            @if (!string.IsNullOrEmpty(Model.RefundPaymentNotes))
+                            {
+                                <dt class="col-5 col-sm-4 text-muted mb-0">Notes</dt>
+                                <dd class="col-7 col-sm-8 mb-0">@Model.RefundPaymentNotes</dd>
+                            }
+                        </dl>
+                    </div>
+                </div>
+            }
+
+            <!-- Refer to Accounting Card -->
+            @if (!isRefunded)
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header border-0 bg-info bg-opacity-10">
+                        <h5 class="mb-0 text-info">
+                            <i class="fas fa-user-tie me-2"></i>Refer to Accounting
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.ReferredToAccounting)
+                        {
+                            <div class="alert alert-permanent alert-info mb-3">
+                                <i class="fas fa-check me-2"></i>
+                                <strong>Currently Referred</strong>
+                                <p class="mb-0 mt-2 small">
+                                    Referred to: <strong>@Model.ReferredToAccountingName</strong><br>
+                                    @if (Model.ReferredToAccountingAt.HasValue)
+                                    {
+                                        <text>On: @Model.ReferredToAccountingAt.Value.ToBangladeshShortString()</text>
+                                    }
+                                </p>
+                            </div>
+                        }
+                        <form id="referAccountingForm">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            @Html.AntiForgeryToken()
+
+                            <div class="mb-3">
+                                <label class="form-label">@(Model.ReferredToAccounting ? "Change Accounting Team Member" : "Accounting Team Member")</label>
+                                <select class="form-select" name="accountingPersonName" required>
+                                    <option value="">-- Select Person --</option>
+                                    @if (ViewBag.AccountingUsers != null)
+                                    {
+                                        foreach (var user in ViewBag.AccountingUsers)
+                                        {
+                                            if (Model.ReferredToAccountingName == user.Name)
+                                            {
+                                                <option value="@user.Name" selected>@user.Name (@user.Email)</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@user.Name">@user.Name (@user.Email)</option>
+                                            }
+                                        }
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Notes (Optional)</label>
+                                <textarea class="form-control" name="notes" rows="2"
+                                          placeholder="Additional notes for accounting..."></textarea>
+                            </div>
+
+                            <button type="button" class="btn btn-info w-100" id="referAccountingBtn">
+                                <i class="fas fa-paper-plane me-1"></i> @(Model.ReferredToAccounting ? "Update Referral" : "Refer to Accounting")
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            }
+
+            <!-- Order Timeline -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header border-0">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Order Timeline
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <span class="text-muted small">Order Placed</span>
+                                <p class="mb-0">@Model.OrderDate.ToBangladeshShortDateString()</p>
+                            </div>
+                        </div>
+                        @if (Model.DeliveredAt.HasValue)
+                        {
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-info"></div>
+                                <div class="timeline-content">
+                                    <span class="text-muted small">Delivered</span>
+                                    <p class="mb-0">@Model.DeliveredAt.Value.ToBangladeshShortDateString()</p>
+                                </div>
+                            </div>
+                        }
+                        @if (Model.ReturnedAt.HasValue)
+                        {
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-warning"></div>
+                                <div class="timeline-content">
+                                    <span class="text-muted small">Return Requested</span>
+                                    <p class="mb-0">@Model.ReturnedAt.Value.ToBangladeshShortDateString()</p>
+                                </div>
+                            </div>
+                        }
+                        @if (Model.RefundStatusChangedAt.HasValue && Model.RefundStatus != RefundStatus.Pending)
+                        {
+                            <div class="timeline-item">
+                                <div class="timeline-marker @GetRefundStatusTimelineColor(Model.RefundStatus)"></div>
+                                <div class="timeline-content">
+                                    <span class="text-muted small">Refund @Model.RefundStatus.GetDisplayName()</span>
+                                    <p class="mb-0">@Model.RefundStatusChangedAt.Value.ToBangladeshShortDateString()</p>
+                                </div>
+                            </div>
+                        }
+                        @if (isRefunded)
+                        {
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-success"></div>
+                                <div class="timeline-content">
+                                    <span class="text-muted small">Refunded</span>
+                                    <p class="mb-0">@Model.UpdatedAt.ToBangladeshShortDateString()</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Approve Modal -->
+<div class="modal fade" id="quickApproveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="max-height: 85vh;">
+            <div class="modal-header border-0 bg-light">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle text-success me-2"></i>Quick Approve & Process Refund
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="overflow-y: auto;">
+                <form id="quickApproveForm">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label class="form-label">Refund Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">৳</span>
+                            <input type="number" class="form-control" name="refundAmount"
+                                   value="@refundableAmount" step="1" min="0" max="@refundableAmount" required />
+                        </div>
+                        <div class="form-text">Max refundable: ৳@refundableAmount</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Refund Method</label>
+                        <select class="form-select" name="refundMethod" id="quickRefundMethodSelect" required>
+                            @if (Model.PreferredRefundMethod == RefundMethod.WalletCredit)
+                            {
+                                <option value="WalletCredit" selected>Wallet Credit (Instant)</option>
+                            }
+                            else
+                            {
+                                <option value="WalletCredit">Wallet Credit (Instant)</option>
+                            }
+                            @if (Model.PreferredRefundMethod == RefundMethod.Bkash)
+                            {
+                                <option value="Bkash" selected>bKash</option>
+                            }
+                            else
+                            {
+                                <option value="Bkash">bKash</option>
+                            }
+                            @if (Model.PreferredRefundMethod == RefundMethod.Nagad)
+                            {
+                                <option value="Nagad" selected>Nagad</option>
+                            }
+                            else
+                            {
+                                <option value="Nagad">Nagad</option>
+                            }
+                            @if (Model.PreferredRefundMethod == RefundMethod.Upay)
+                            {
+                                <option value="Upay" selected>Upay</option>
+                            }
+                            else
+                            {
+                                <option value="Upay">Upay</option>
+                            }
+                            @if (Model.PreferredRefundMethod == RefundMethod.Rocket)
+                            {
+                                <option value="Rocket" selected>Rocket</option>
+                            }
+                            else
+                            {
+                                <option value="Rocket">Rocket</option>
+                            }
+                            @if (Model.PreferredRefundMethod == RefundMethod.BankTransfer)
+                            {
+                                <option value="BankTransfer" selected>Bank Transfer</option>
+                            }
+                            else
+                            {
+                                <option value="BankTransfer">Bank Transfer</option>
+                            }
+                        </select>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.RefundAccountNumber))
+                    {
+                        <div class="alert alert-permanent alert-info py-2">
+                            <small>
+                                <strong>Customer's Account:</strong> @Model.RefundAccountNumber
+                                @if (!string.IsNullOrEmpty(Model.RefundAccountHolderName))
+                                {
+                                    <br><strong>Name:</strong> @Model.RefundAccountHolderName
+                                }
+                                @if (!string.IsNullOrEmpty(Model.RefundBankName))
+                                {
+                                    <br><strong>Bank:</strong> @Model.RefundBankName
+                                }
+                            </small>
+                        </div>
+                    }
+
+                    <div class="mb-3" id="quickPaidFromGroup" style="display: none;">
+                        <label class="form-label">Paid From Account <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="paidFromAccount" id="paidFromAccount"
+                               placeholder="Enter the account/number from which refund was sent" />
+                        <div class="form-text">যে account থেকে refund পাঠানো হয়েছে</div>
+                    </div>
+
+                    <div class="mb-3" id="quickReceiverGroup" style="display: none;">
+                        <label class="form-label">Receiver Number <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="receiverNumber" id="receiverNumber"
+                               value="@Model.RefundAccountNumber"
+                               placeholder="Enter customer's account/number where refund was sent" />
+                        <div class="form-text">Customer এর যে account/number এ refund পাঠানো হয়েছে</div>
+                    </div>
+
+                    <div class="mb-3" id="quickTransactionIdGroup" style="display: none;">
+                        <label class="form-label">Transaction ID <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="transactionId" id="transactionId"
+                               placeholder="Enter transaction ID after sending refund" />
+                        <div class="form-text">Payment এর Transaction ID</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" name="notes" rows="2"
+                                  placeholder="Add any notes about this refund..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-top bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="quickApproveBtn">
+                    <i class="fas fa-check me-1"></i> Approve & Process
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Replacement Modal -->
+<div class="modal fade" id="replacementModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="fas fa-exchange-alt text-info me-2"></i>Create Replacement Order
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-permanent alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    A new replacement order will be created with the same items and free delivery.
+                </div>
+                <form id="replacementForm">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" name="notes" rows="2"
+                                  placeholder="Add any notes about this replacement..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-info" id="processReplacementBtn">
+                    <i class="fas fa-check me-1"></i> Create Replacement
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="fas fa-times text-danger me-2"></i>Reject Return Request
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-permanent alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    This will reject the return request and keep the order as delivered.
+                </div>
+                <form id="rejectForm">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label class="form-label">Rejection Reason <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="rejectionReason" rows="3" required
+                                  placeholder="Enter the reason for rejecting this return request..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="rejectReturnBtn">
+                    <i class="fas fa-times me-1"></i> Reject Return
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Refund Details Modal -->
+<div class="modal fade" id="editRefundDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="max-height: 85vh;">
+            <div class="modal-header border-0 bg-light">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit text-primary me-2"></i>Edit Refund Payment Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="overflow-y: auto;">
+                <form id="editRefundDetailsForm">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label class="form-label">Payment Method</label>
+                        <select class="form-select" name="refundPaymentMethod" id="editRefundMethodSelect">
+                            @{
+                                var editMethods = new[] {
+                                    (RefundMethod.WalletCredit, "WalletCredit", "Wallet Credit"),
+                                    (RefundMethod.Bkash, "Bkash", "bKash"),
+                                    (RefundMethod.Nagad, "Nagad", "Nagad"),
+                                    (RefundMethod.Upay, "Upay", "Upay"),
+                                    (RefundMethod.Rocket, "Rocket", "Rocket"),
+                                    (RefundMethod.BankTransfer, "BankTransfer", "Bank Transfer")
+                                };
+                            }
+                            @foreach (var (method, value, display) in editMethods)
+                            {
+                                if (Model.RefundPaymentMethod == method)
+                                {
+                                    <option value="@value" selected>@display</option>
+                                }
+                                else
+                                {
+                                    <option value="@value">@display</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Refund Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">৳</span>
+                            <input type="number" class="form-control" name="refundPaidAmount"
+                                   value="@((int)Math.Round(Model.RefundPaidAmount ?? 0))" step="1" min="0" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="editPaidFromGroup">
+                        <label class="form-label">Paid From Account</label>
+                        <input type="text" class="form-control" name="paidFromAccount"
+                               value="@Model.RefundPaidFromAccount"
+                               placeholder="Account/number from which refund was sent" />
+                    </div>
+
+                    <div class="mb-3" id="editReceiverGroup">
+                        <label class="form-label">Receiver Number</label>
+                        <input type="text" class="form-control" name="receiverNumber"
+                               value="@Model.RefundReceiverNumber"
+                               placeholder="Customer's account/number where refund was sent" />
+                    </div>
+
+                    <div class="mb-3" id="editTransactionIdGroup">
+                        <label class="form-label">Transaction ID</label>
+                        <input type="text" class="form-control" name="transactionId"
+                               value="@Model.RefundTransactionId"
+                               placeholder="Transaction ID of the refund payment" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="2"
+                                  placeholder="Add any notes about this refund...">@Model.RefundPaymentNotes</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-top bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveRefundDetailsBtn">
+                    <i class="fas fa-save me-1"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    List<string> GetReturnImages(Order order)
+    {
+        if (string.IsNullOrEmpty(order.ReturnImages))
+            return new List<string>();
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(order.ReturnImages) ?? new List<string>();
+        }
+        catch
+        {
+            return new List<string>();
+        }
+    }
+
+    string FormatReturnReason(string? reason)
+    {
+        if (string.IsNullOrEmpty(reason))
+            return "No reason specified";
+
+        var mappings = new Dictionary<string, string>
+        {
+            { "Damaged", "Damaged Product" },
+            { "WrongItem", "Wrong Item Received" },
+            { "NotAsDescribed", "Product Not as Described" },
+            { "QualityIssue", "Quality Not Satisfactory" },
+            { "SizeIssue", "Size/Fit Issue" },
+            { "ChangedMind", "Changed Mind" },
+            { "Other", "Other" }
+        };
+
+        foreach (var m in mappings)
+        {
+            if (reason.StartsWith(m.Key + ":"))
+                return m.Value + reason.Substring(m.Key.Length);
+            if (reason == m.Key)
+                return m.Value;
+        }
+        return reason;
+    }
+
+    string GetRefundMethodDisplay(RefundMethod? method)
+    {
+        if (method == null) return "Not specified";
+        return method switch
+        {
+            RefundMethod.WalletCredit => "Wallet Credit",
+            RefundMethod.Bkash => "bKash",
+            RefundMethod.Nagad => "Nagad",
+            RefundMethod.Upay => "Upay",
+            RefundMethod.Rocket => "Rocket",
+            RefundMethod.BankTransfer => "Bank Transfer",
+            RefundMethod.OriginalMethod => "Original Payment Method",
+            _ => method.ToString() ?? "Unknown"
+        };
+    }
+
+    string GetRefundMethodIcon(RefundMethod? method)
+    {
+        return method switch
+        {
+            RefundMethod.WalletCredit => "fas fa-wallet",
+            RefundMethod.Bkash => "fas fa-mobile-alt",
+            RefundMethod.Nagad => "fas fa-mobile-alt",
+            RefundMethod.Upay => "fas fa-mobile-alt",
+            RefundMethod.Rocket => "fas fa-mobile-alt",
+            RefundMethod.BankTransfer => "fas fa-university",
+            _ => "fas fa-credit-card"
+        };
+    }
+
+    string GetRefundStatusDisplay(RefundStatus status)
+    {
+        return status switch
+        {
+            RefundStatus.Pending => "Pending",
+            RefundStatus.Reviewing => "Reviewing",
+            RefundStatus.InProgress => "In Progress",
+            RefundStatus.Approved => "Approved",
+            RefundStatus.Rejected => "Rejected",
+            RefundStatus.Completed => "Completed",
+            _ => status.ToString()
+        };
+    }
+
+    string GetPaymentMethodDisplay(PaymentMethod method)
+    {
+        return method switch
+        {
+            PaymentMethod.CashOnDelivery => "Cash On Delivery",
+            PaymentMethod.OnlinePayment => "Online Payment",
+            PaymentMethod.bKash => "bKash",
+            PaymentMethod.Nagad => "Nagad",
+            PaymentMethod.Rocket => "Rocket",
+            PaymentMethod.CreditDebitCard => "Credit/Debit Card",
+            PaymentMethod.Upay => "Upay",
+            _ => method.ToString()
+        };
+    }
+
+    string GetStatusAlertClass(RefundStatus status)
+    {
+        return status switch
+        {
+            RefundStatus.Pending => "alert-warning",
+            RefundStatus.Reviewing => "alert-info",
+            RefundStatus.InProgress => "alert-primary",
+            RefundStatus.Approved => "alert-success",
+            RefundStatus.Rejected => "alert-danger",
+            RefundStatus.Completed => "alert-success",
+            _ => "alert-secondary"
+        };
+    }
+
+    string GetStatusIconClass(RefundStatus status)
+    {
+        return status switch
+        {
+            RefundStatus.Pending => "fas fa-clock",
+            RefundStatus.Reviewing => "fas fa-search",
+            RefundStatus.InProgress => "fas fa-spinner",
+            RefundStatus.Approved => "fas fa-check-circle",
+            RefundStatus.Rejected => "fas fa-times-circle",
+            RefundStatus.Completed => "fas fa-check-double",
+            _ => "fas fa-question-circle"
+        };
+    }
+
+    string GetRefundStatusTimelineColor(RefundStatus status)
+    {
+        return status switch
+        {
+            RefundStatus.Pending => "bg-warning",
+            RefundStatus.Reviewing => "bg-info",
+            RefundStatus.InProgress => "bg-primary",
+            RefundStatus.Approved => "bg-success",
+            RefundStatus.Rejected => "bg-danger",
+            RefundStatus.Completed => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+
+    string GetOrderStatusBadgeClass(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Pending => "bg-warning text-dark",
+            OrderStatus.Confirmed => "bg-info",
+            OrderStatus.Delivered => "bg-success",
+            OrderStatus.Returned => "bg-warning text-dark",
+            OrderStatus.Refunded => "bg-success",
+            OrderStatus.Cancelled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    string GetPaymentStatusBadgeClass(PaymentStatus status)
+    {
+        return status switch
+        {
+            PaymentStatus.Pending => "bg-warning text-dark",
+            PaymentStatus.Processing => "bg-info",
+            PaymentStatus.Completed => "bg-success",
+            PaymentStatus.Failed => "bg-danger",
+            PaymentStatus.Refunded => "bg-success",
+            PaymentStatus.PartiallyRefunded => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    string GetRefundStatusBadgeClass(RefundStatus status)
+    {
+        return status switch
+        {
+            RefundStatus.Pending => "bg-warning text-dark",
+            RefundStatus.Reviewing => "bg-info",
+            RefundStatus.InProgress => "bg-primary",
+            RefundStatus.Approved => "bg-success",
+            RefundStatus.Rejected => "bg-danger",
+            RefundStatus.Completed => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+}
+
+@section Styles {
+    <style>
+        /* Prevent auto-hide and ensure persistent visibility for all cards and alerts */
+        .container .alert,
+        .container .card {
+            animation: none !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            display: block !important;
+            transition: none !important;
+        }
+
+        /* Keep text color consistent in both light and dark mode for status banner */
+        .alert-primary,
+        .alert-primary h5,
+        .alert-primary small,
+        .alert-primary .badge {
+            color: #084298 !important;
+        }
+        .alert-warning,
+        .alert-warning h5,
+        .alert-warning small {
+            color: #664d03 !important;
+        }
+        .alert-success,
+        .alert-success h5,
+        .alert-success small {
+            color: #0f5132 !important;
+        }
+        .alert-danger,
+        .alert-danger h5,
+        .alert-danger small {
+            color: #842029 !important;
+        }
+        .alert-info,
+        .alert-info h5,
+        .alert-info small {
+            color: #055160 !important;
+        }
+
+        /* Dark mode - keep same text colors */
+        [data-theme="dark"] .alert-primary,
+        [data-theme="dark"] .alert-primary h5,
+        [data-theme="dark"] .alert-primary small {
+            color: #084298 !important;
+        }
+        [data-theme="dark"] .alert-warning,
+        [data-theme="dark"] .alert-warning h5,
+        [data-theme="dark"] .alert-warning small {
+            color: #664d03 !important;
+        }
+        [data-theme="dark"] .alert-success,
+        [data-theme="dark"] .alert-success h5,
+        [data-theme="dark"] .alert-success small {
+            color: #0f5132 !important;
+        }
+        [data-theme="dark"] .alert-danger,
+        [data-theme="dark"] .alert-danger h5,
+        [data-theme="dark"] .alert-danger small {
+            color: #842029 !important;
+        }
+        [data-theme="dark"] .alert-info,
+        [data-theme="dark"] .alert-info h5,
+        [data-theme="dark"] .alert-info small {
+            color: #055160 !important;
+        }
+
+        /* Refund code styling - works in both light and dark mode */
+        .refund-code {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.875rem;
+            background-color: rgba(var(--bs-success-rgb), 0.15);
+            color: var(--bs-success);
+            border-radius: 0.375rem;
+            border: 1px solid rgba(var(--bs-success-rgb), 0.3);
+        }
+        [data-theme="dark"] .refund-code {
+            background-color: rgba(25, 135, 84, 0.2);
+            color: #75b798;
+            border-color: rgba(25, 135, 84, 0.4);
+        }
+
+        .return-image-wrapper {
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.5rem;
+            aspect-ratio: 1;
+        }
+        .return-image-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        .return-image-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .return-image-overlay i {
+            color: white;
+            font-size: 1.5rem;
+        }
+        .return-image-link:hover .return-image-wrapper img {
+            transform: scale(1.05);
+        }
+        .return-image-link:hover .return-image-overlay {
+            opacity: 1;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 5px;
+            bottom: 5px;
+            width: 2px;
+            background: #e5e7eb;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        .timeline-item:last-child {
+            margin-bottom: 0;
+        }
+        .timeline-marker {
+            position: absolute;
+            left: -26px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            top: 3px;
+        }
+        .timeline-content p {
+            font-size: 0.9rem;
+        }
+
+        /* Dark mode fixes */
+        [data-theme="dark"] .table-light,
+        [data-theme="dark"] .table-light th,
+        [data-theme="dark"] .table-light td {
+            background-color: #374151 !important;
+            color: #e5e7eb !important;
+        }
+        [data-theme="dark"] .table-primary,
+        [data-theme="dark"] .table-primary th,
+        [data-theme="dark"] .table-primary td {
+            background-color: #1e3a5f !important;
+            color: #e5e7eb !important;
+        }
+        [data-theme="dark"] .bg-light {
+            background-color: #374151 !important;
+        }
+        [data-theme="dark"] .card {
+            background-color: #1f2937;
+        }
+        [data-theme="dark"] .modal-content {
+            background-color: #1f2937;
+        }
+        [data-theme="dark"] .timeline::before {
+            background: #4b5563;
+        }
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background-color: #374151;
+            border-color: #4b5563;
+            color: #e5e7eb;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Show/hide approved amount field based on status
+            $('#newStatusSelect').on('change', function() {
+                var status = $(this).val();
+                if (status === 'Approved') {
+                    $('#approvedAmountGroup').slideDown();
+                } else {
+                    $('#approvedAmountGroup').slideUp();
+                }
+            }).trigger('change');
+
+            // Show/hide payment detail fields based on refund method
+            $('#quickRefundMethodSelect').on('change', function() {
+                var method = $(this).val();
+                if (method !== 'WalletCredit') {
+                    $('#quickPaidFromGroup').slideDown();
+                    $('#quickReceiverGroup').slideDown();
+                    $('#quickTransactionIdGroup').slideDown();
+                } else {
+                    $('#quickPaidFromGroup').slideUp();
+                    $('#quickReceiverGroup').slideUp();
+                    $('#quickTransactionIdGroup').slideUp();
+                }
+            }).trigger('change');
+
+            // Update Refund Status
+            $('#updateStatusBtn').on('click', function() {
+                var btn = $(this);
+                var form = $('#statusUpdateForm');
+                var formData = form.serialize();
+
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Updating...');
+
+                $.ajax({
+                    url: '@Url.Action("UpdateRefundStatus", "Orders", new { area = "Admin" })',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            alertify.error(response.message);
+                            btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Update Status');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred. Please try again.');
+                        btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Update Status');
+                    }
+                });
+            });
+
+            // Update Order Status
+            $('#updateOrderStatusBtn').on('click', function() {
+                var btn = $(this);
+                var form = $('#orderStatusUpdateForm');
+                var formData = form.serialize();
+
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Updating...');
+
+                $.ajax({
+                    url: '@Url.Action("UpdateStatus", "Orders", new { area = "Admin" })',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            alertify.error(response.message);
+                            btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Update Order Status');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred. Please try again.');
+                        btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Update Order Status');
+                    }
+                });
+            });
+
+            // Refer to Accounting
+            $('#referAccountingBtn').on('click', function() {
+                var btn = $(this);
+                var form = $('#referAccountingForm');
+                var personName = form.find('[name="accountingPersonName"]').val();
+
+                if (!personName || personName.trim() === '') {
+                    alertify.error('Please enter the accounting team member name.');
+                    return;
+                }
+
+                var formData = form.serialize();
+
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Referring...');
+
+                $.ajax({
+                    url: '@Url.Action("ReferToAccounting", "Orders", new { area = "Admin" })',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            alertify.error(response.message);
+                            btn.prop('disabled', false).html('<i class="fas fa-paper-plane me-1"></i> Refer to Accounting');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred. Please try again.');
+                        btn.prop('disabled', false).html('<i class="fas fa-paper-plane me-1"></i> Refer to Accounting');
+                    }
+                });
+            });
+
+            // Quick Approve & Process
+            $('#quickApproveBtn').on('click', function() {
+                var btn = $(this);
+                var form = $('#quickApproveForm');
+                var method = $('#quickRefundMethodSelect').val();
+
+                // Validate required fields for non-wallet methods
+                if (method !== 'WalletCredit') {
+                    var paidFrom = $('#paidFromAccount').val();
+                    var receiver = $('#receiverNumber').val();
+                    var transactionId = $('#transactionId').val();
+
+                    if (!paidFrom || paidFrom.trim() === '') {
+                        alertify.error('Please enter the account from which refund was sent.');
+                        $('#paidFromAccount').focus();
+                        return;
+                    }
+                    if (!receiver || receiver.trim() === '') {
+                        alertify.error('Please enter the receiver account/number.');
+                        $('#receiverNumber').focus();
+                        return;
+                    }
+                    if (!transactionId || transactionId.trim() === '') {
+                        alertify.error('Please enter the transaction ID.');
+                        $('#transactionId').focus();
+                        return;
+                    }
+                }
+
+                var formData = form.serialize();
+
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Processing...');
+
+                $.ajax({
+                    url: '@Url.Action("ProcessRefund", "Orders", new { area = "Admin" })',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            alertify.error(response.message);
+                            btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i> Approve & Process');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred. Please try again.');
+                        btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i> Approve & Process');
+                    }
+                });
+            });
+
+            // Process Replacement
+            $('#processReplacementBtn').on('click', function() {
+                var btn = $(this);
+                var form = $('#replacementForm');
+                var formData = form.serialize();
+
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Creating...');
+
+                $.ajax({
+                    url: '@Url.Action("ProcessReplacement", "Orders", new { area = "Admin" })',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            setTimeout(function() {
+                                if (response.replacementOrderId) {
+                                    window.location.href = '@Url.Action("Details")/' + response.replacementOrderId;
+                                } else {
+                                    location.reload();
+                                }
+                            }, 1500);
+                        } else {
+                            alertify.error(response.message);
+                            btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i> Create Replacement');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred. Please try again.');
+                        btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i> Create Replacement');
+                    }
+                });
+            });
+
+            // Reject Return
+            $('#rejectReturnBtn').on('click', function() {
+                var btn = $(this);
+                var form = $('#rejectForm');
+                var reason = form.find('[name="rejectionReason"]').val();
+
+                if (!reason || reason.trim() === '') {
+                    alertify.error('Please enter a rejection reason.');
+                    return;
+                }
+
+                var formData = form.serialize();
+
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Rejecting...');
+
+                $.ajax({
+                    url: '@Url.Action("RejectReturn", "Orders", new { area = "Admin" })',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            setTimeout(function() {
+                                window.location.href = '@Url.Action("Returns")';
+                            }, 1500);
+                        } else {
+                            alertify.error(response.message);
+                            btn.prop('disabled', false).html('<i class="fas fa-times me-1"></i> Reject Return');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred. Please try again.');
+                        btn.prop('disabled', false).html('<i class="fas fa-times me-1"></i> Reject Return');
+                    }
+                });
+            });
+
+            // Show/hide fields based on edit refund method
+            $('#editRefundMethodSelect').on('change', function() {
+                var method = $(this).val();
+                if (method !== 'WalletCredit') {
+                    $('#editPaidFromGroup').slideDown();
+                    $('#editReceiverGroup').slideDown();
+                    $('#editTransactionIdGroup').slideDown();
+                } else {
+                    $('#editPaidFromGroup').slideUp();
+                    $('#editReceiverGroup').slideUp();
+                    $('#editTransactionIdGroup').slideUp();
+                }
+            }).trigger('change');
+
+            // Save Refund Details
+            $('#saveRefundDetailsBtn').on('click', function() {
+                var btn = $(this);
+                var form = $('#editRefundDetailsForm');
+                var formData = form.serialize();
+
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+
+                $.ajax({
+                    url: '@Url.Action("UpdateRefundPaymentDetails", "Orders", new { area = "Admin" })',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            $('#editRefundDetailsModal').modal('hide');
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            alertify.error(response.message);
+                            btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Save Changes');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred. Please try again.');
+                        btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Save Changes');
+                    }
+                });
+            });
+
+            // Show TempData messages
+            @if (TempData["success"] != null)
+            {
+                <text>alertify.success('@Html.Raw(TempData["success"])');</text>
+            }
+            @if (TempData["error"] != null)
+            {
+                <text>alertify.error('@Html.Raw(TempData["error"])');</text>
+            }
+        });
+    </script>
+}

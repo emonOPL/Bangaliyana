@@ -1,0 +1,1814 @@
+@model Bangaliyana.Models.Products
+@using System.Globalization
+@using System.Text.Json
+@using Bangaliyana.Extensions
+@inject Bangaliyana.Services.ICompareService CompareService
+@{
+    ViewData["Title"] = Model.Name;
+    var currencySymbol = ViewBag.CurrencySymbol ?? "৳";
+    var averageRating = (double)(ViewBag.AverageRating ?? 0);
+    var reviewCount = (int)(ViewBag.ReviewCount ?? 0);
+    var questionCount = (int)(ViewBag.QuestionCount ?? 0);
+    var ratingDistribution = ViewBag.RatingDistribution as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var availableColors = ViewBag.AvailableColors as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var availableSizes = ViewBag.AvailableSizes as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var relatedProducts = ViewBag.RelatedProducts as List<Bangaliyana.Models.Products> ?? new List<Bangaliyana.Models.Products>();
+    var isInWishlist = (bool)(ViewBag.IsInWishlist ?? false);
+    var hasPurchased = (bool)(ViewBag.HasPurchased ?? false);
+    var isInCompare = CompareService.IsInCompare(Model.Id);
+    var compareCount = CompareService.GetCompareCount();
+    var allImages = Model.Images.Any() ? Model.Images.ToList() : new List<Bangaliyana.Models.ProductImage>();
+    var primaryImage = !string.IsNullOrEmpty(Model.ImageUrl) ? Model.ImageUrl : (allImages.FirstOrDefault()?.ImageUrl ?? "images/products/noimage.jpg");
+    var approvedReviews = Model.Reviews.Where(r => r.IsApproved).OrderByDescending(r => r.CreatedAt).ToList();
+
+    // Variants data for JavaScript (only include in-stock variants)
+    var productVariantsList = Model.Variants?.Where(v => v.IsAvailable && v.Stock > 0).Select(v => new {
+        id = v.Id,
+        size = v.Size ?? "",
+        color = v.Color ?? "",
+        colorCode = v.ColorCode ?? "",
+        stock = v.Stock,
+        additionalPrice = v.AdditionalPrice,
+        imageUrl = v.ImageUrl ?? ""
+    }).ToList();
+    var variantsJson = productVariantsList != null && productVariantsList.Any()
+        ? JsonSerializer.Serialize(productVariantsList)
+        : "[]";
+    var hasVariants = productVariantsList != null && productVariantsList.Any();
+}
+
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home", new { area = "Customer" })" class="text-decoration-none">@Localizer["Home"]</a></li>
+            @if (Model.Category != null)
+            {
+                <li class="breadcrumb-item"><a href="@Url.Action("Category", "Home", new { area = "Customer", id = Model.CategoryId })" class="text-decoration-none">@Model.Category.Name</a></li>
+            }
+            <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4">
+        <!-- Product Images Section -->
+        <div class="col-lg-6">
+            <div class="product-gallery sticky-top" style="top: 100px;">
+                <!-- Main Image with Zoom -->
+                <div class="main-image-container position-relative mb-3 border rounded overflow-hidden" style="height: 500px;">
+                    <img id="mainImage" src="~/@primaryImage" alt="@Model.Name" class="w-100 h-100" style="object-fit: contain; cursor: zoom-in;" data-bs-toggle="modal" data-bs-target="#imageZoomModal">
+
+                    @if (Model.HasDiscount)
+                    {
+                        <span class="position-absolute top-0 start-0 badge bg-danger m-2 fs-6">-@Model.DiscountPercentage%</span>
+                    }
+
+                    @if (Model.Has360View && !string.IsNullOrEmpty(Model.View360Url))
+                    {
+                        <button class="btn btn-light position-absolute bottom-0 end-0 m-2" onclick="show360View()">
+                            <i class="fas fa-sync-alt me-1"></i>360°
+                        </button>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.VideoUrl))
+                    {
+                        <button class="btn btn-light position-absolute bottom-0 start-0 m-2" data-bs-toggle="modal" data-bs-target="#videoModal">
+                            <i class="fas fa-play me-1"></i>@Localizer["Video"]
+                        </button>
+                    }
+                </div>
+
+                <!-- Thumbnail Gallery -->
+                @if (allImages.Any() || !string.IsNullOrEmpty(Model.ImageUrl))
+                {
+                    <div class="thumbnail-gallery-container d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle thumbnail-scroll-btn" onclick="scrollThumbnails(-1)" style="min-width: 32px; height: 32px; padding: 0;">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <div class="thumbnail-gallery d-flex gap-2 overflow-hidden pb-2" id="thumbnailGallery" style="scroll-behavior: smooth;">
+                            @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                            {
+                                <div class="thumbnail-item border rounded p-1 active flex-shrink-0" onclick="changeMainImage(this, '@Model.ImageUrl')" style="width: 70px; height: 70px; cursor: pointer;">
+                                    <img src="~/@Model.ImageUrl" alt="Main" class="w-100 h-100" style="object-fit: cover;">
+                                </div>
+                            }
+                            @foreach (var img in allImages.Where(i => i.ImageUrl != Model.ImageUrl))
+                            {
+                                <div class="thumbnail-item border rounded p-1 flex-shrink-0" onclick="changeMainImage(this, '@img.ImageUrl')" style="width: 70px; height: 70px; cursor: pointer;">
+                                    <img src="~/@img.ImageUrl" alt="@(img.AltText ?? Model.Name)" class="w-100 h-100" style="object-fit: cover;">
+                                </div>
+                            }
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle thumbnail-scroll-btn" onclick="scrollThumbnails(1)" style="min-width: 32px; height: 32px; padding: 0;">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Product Info Section -->
+        <div class="col-lg-6">
+            <div class="product-info">
+                <!-- Product Title & Rating -->
+                <div class="mb-3">
+                    @if (Model.Brand != null)
+                    {
+                        <span class="text-muted small">@Model.Brand</span>
+                    }
+                    <h1 class="h3 fw-bold mb-2">@Model.Name</h1>
+
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div class="rating-stars">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                if (i <= Math.Round(averageRating))
+                                {
+                                    <i class="fas fa-star text-warning"></i>
+                                }
+                                else if (i - 0.5 <= averageRating)
+                                {
+                                    <i class="fas fa-star-half-alt text-warning"></i>
+                                }
+                                else
+                                {
+                                    <i class="far fa-star text-warning"></i>
+                                }
+                            }
+                            <span class="ms-1 text-muted">(@averageRating.ToString("F1"))</span>
+                        </div>
+                        <a href="#reviews" class="text-decoration-none small" onclick="activateTabAndScroll('reviews-tab', 'productTabs')">@reviewCount @Localizer["Reviews"]</a>
+                        <span class="text-muted">|</span>
+                        <a href="#qa" class="text-decoration-none small" onclick="activateTabAndScroll('qa-tab', 'productTabs')">@questionCount Q&A</a>
+                        <span class="text-muted">|</span>
+                        <span class="small text-muted">@Model.SoldCount @Localizer["Sold"]</span>
+                    </div>
+                </div>
+
+                <!-- Price -->
+                <div class="price-section mb-4 p-3 bg-light rounded">
+                    @if (Model.HasDiscount)
+                    {
+                        <div class="d-flex align-items-baseline gap-2 flex-wrap">
+                            <span id="displayPrice" class="h2 fw-bold text-danger mb-0">@currencySymbol@Model.DiscountPrice?.ToString("N0")</span>
+                            <span id="originalPrice" class="text-muted text-decoration-line-through">@currencySymbol@Model.Price.ToString("N0")</span>
+                            <span class="badge bg-danger">@Localizer["SavePercent", Model.DiscountPercentage]</span>
+                            <span id="variantPriceAddition" class="text-success fw-semibold d-none"></span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-baseline gap-2 flex-wrap">
+                            <span id="displayPrice" class="h2 fw-bold text-success mb-0">@currencySymbol@Model.Price.ToString("N0")</span>
+                            <span id="variantPriceAddition" class="text-success fw-semibold d-none"></span>
+                        </div>
+                    }
+                </div>
+
+                <!-- Short Description -->
+                @if (!string.IsNullOrEmpty(Model.ShortDescription))
+                {
+                    <p class="text-muted mb-4">@Model.ShortDescription</p>
+                }
+
+                <!-- Highlights -->
+                @if (!string.IsNullOrEmpty(Model.Highlights))
+                {
+                    <div class="highlights mb-4">
+                        <h6 class="fw-semibold mb-2"><i class="fas fa-check-circle text-success me-2"></i>@Localizer["Highlights"]</h6>
+                        <ul class="list-unstyled ps-4">
+                            @foreach (var highlight in Model.Highlights.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <li class="mb-1"><i class="fas fa-check text-success me-2 small"></i>@highlight.Trim()</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                <!-- Color Selection -->
+                @if (availableColors.Any())
+                {
+                    <div class="color-selection mb-4">
+                        <h6 class="fw-semibold mb-2">@Localizer["Color"]: <span id="selectedColorName" class="fw-normal text-muted"></span></h6>
+                        <div class="d-flex gap-2 flex-wrap">
+                            @foreach (var color in availableColors)
+                            {
+                                <button type="button" class="btn color-option p-0 border-2 rounded-circle position-relative"
+                                        data-color="@color.Color"
+                                        data-color-code="@color.ColorCode"
+                                        data-image="@color.ImageUrl"
+                                        data-stock="@color.Stock"
+                                        style="width: 40px; height: 40px; background-color: @(color.ColorCode ?? "#ccc");"
+                                        onclick="selectColor(this)">
+                                    <span class="visually-hidden">@color.Color</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Size Selection -->
+                @if (availableSizes.Any())
+                {
+                    <div class="size-selection mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-semibold mb-0">@Localizer["Size"]: <span id="selectedSizeName" class="fw-normal text-muted"></span></h6>
+                            @if (Model.SizeGuide != null)
+                            {
+                                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" data-bs-toggle="modal" data-bs-target="#sizeGuideModal">
+                                    <i class="fas fa-ruler me-1"></i>@Localizer["SizeGuide"]
+                                </button>
+                            }
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            @foreach (var size in availableSizes)
+                            {
+                                <button type="button" class="btn btn-outline-secondary size-option px-3 py-2"
+                                        data-size="@size"
+                                        onclick="selectSize(this)">
+                                    @size
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Stock Status -->
+                <div class="stock-status mb-4">
+                    @if (Model.IsAvailable && Model.Stock > 0)
+                    {
+                        <span class="text-success"><i class="fas fa-check-circle me-1"></i>@Localizer["InStock"]</span>
+                        @if (Model.Stock <= 10)
+                        {
+                            <span class="text-warning ms-2 small">@Localizer["OnlyXLeft", Model.Stock]</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="text-danger"><i class="fas fa-times-circle me-1"></i>@Localizer["OutOfStock"]</span>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <button type="button" class="btn btn-outline-primary btn-sm ms-3 notify-restock-btn"
+                                    data-product-id="@Model.Id"
+                                    onclick="toggleRestockNotification(this)">
+                                <i class="fas fa-bell me-1"></i><span class="btn-text">@Localizer["NotifyMeWhenAvailable"]</span>
+                            </button>
+                        }
+                        else
+                        {
+                            <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-outline-primary btn-sm ms-3">
+                                <i class="fas fa-bell me-1"></i>@Localizer["LoginToGetNotified"]
+                            </a>
+                        }
+                    }
+                </div>
+
+                <!-- Quantity & Add to Cart -->
+                <div class="add-to-cart-section mb-4">
+                    <div class="d-flex gap-3 align-items-center flex-wrap">
+                        <div class="quantity-selector d-flex align-items-center border rounded">
+                            <button type="button" class="btn btn-light border-0 px-3" onclick="decrementQty()">-</button>
+                            <input type="number" id="quantity" value="1" min="1" max="@Model.Stock" class="form-control border-0 text-center" style="width: 60px;">
+                            <button type="button" class="btn btn-light border-0 px-3" onclick="incrementQty()">+</button>
+                        </div>
+
+                        <form asp-action="AddToCart" asp-controller="Home" asp-area="Customer" method="post" class="d-inline" id="addToCartForm">
+                            <input type="hidden" name="productId" value="@Model.Id">
+                            <input type="hidden" name="quantity" id="cartQuantity" value="1">
+                            <input type="hidden" name="variantId" id="selectedVariantId" value="">
+                            <button type="submit" class="btn btn-success btn-lg px-4 @(!Model.IsAvailable || Model.Stock <= 0 ? "disabled" : "")" id="addToCartBtn">
+                                <i class="fas fa-shopping-cart me-2"></i>@Localizer["AddToCart"]
+                            </button>
+                        </form>
+
+                        <button type="button" class="btn btn-outline-danger btn-lg wishlist-btn @(isInWishlist ? "active" : "")"
+                                onclick="toggleWishlist(@Model.Id, this)"
+                                data-in-wishlist="@isInWishlist.ToString().ToLower()"
+                                title="@(isInWishlist ? Localizer["RemoveFromWishlist"].Value : Localizer["AddToWishlist"].Value)">
+                            <i class="@(isInWishlist ? "fas" : "far") fa-heart"></i>
+                        </button>
+
+                        <button type="button" class="btn btn-outline-primary btn-lg compare-btn @(isInCompare ? "active" : "")"
+                                data-product-id="@Model.Id"
+                                data-in-compare="@isInCompare.ToString().ToLower()"
+                                title="@(isInCompare ? Localizer["RemoveFromCompare"].Value : Localizer["AddToCompare"].Value)">
+                            <i class="fas fa-balance-scale @(isInCompare ? "text-white" : "")"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Buy Now -->
+                <div class="mb-4">
+                    <form asp-action="BuyNow" asp-controller="Home" asp-area="Customer" method="post" class="d-inline" id="buyNowForm">
+                        <input type="hidden" name="productId" value="@Model.Id">
+                        <input type="hidden" name="quantity" id="buyNowQuantity" value="1">
+                        <input type="hidden" name="variantId" id="buyNowVariantId" value="">
+                        <button type="submit" class="btn btn-warning btn-lg w-100 @(!Model.IsAvailable || Model.Stock <= 0 ? "disabled" : "")" id="buyNowBtn">
+                            <i class="fas fa-bolt me-2"></i>@Localizer["BuyNow"]
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Delivery & Return Info -->
+                <div class="delivery-info-card mb-4">
+                    <div class="row g-0">
+                        <div class="col-6">
+                            <div class="delivery-info-item d-flex align-items-center gap-3">
+                                <div class="delivery-icon truck">
+                                    <i class="fas fa-truck"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block">@Localizer["Delivery"]</small>
+                                    <span class="fw-semibold">@(!string.IsNullOrEmpty(Model.EstimatedDeliveryDays) ? $"{Model.EstimatedDeliveryDays} {Localizer["Days"].Value}" : $"3-5 {Localizer["Days"].Value}")</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="delivery-info-item d-flex align-items-center gap-3">
+                                <div class="delivery-icon return">
+                                    <i class="fas fa-undo"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block">@Localizer["ReturnPolicy"]</small>
+                                    <span class="fw-semibold">@(Model.IsReturnable ? $"{Model.ReturnDays} {Localizer["DaysReturn"].Value}" : Localizer["NoReturn"].Value)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="delivery-info-item d-flex align-items-center gap-3">
+                                <div class="delivery-icon cod">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block">@Localizer["CashOnDelivery"]</small>
+                                    <span class="fw-semibold @(Model.IsCODAvailable ? "text-success" : "text-danger")">
+                                        @(Model.IsCODAvailable ? Localizer["Available"].Value : Localizer["NotAvailable"].Value)
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="delivery-info-item d-flex align-items-center gap-3">
+                                <div class="delivery-icon warranty">
+                                    <i class="fas fa-shield-alt"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block">@Localizer["Warranty"]</small>
+                                    <span class="fw-semibold">@(Model.WarrantyInfo ?? Localizer["StandardWarranty"].Value)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Share -->
+                <div class="share-section">
+                    <span class="text-muted me-2">@Localizer["Share"]:</span>
+                    <button class="btn btn-sm btn-outline-primary" onclick="shareOnFacebook()"><i class="fab fa-facebook-f"></i></button>
+                    <button class="btn btn-sm btn-outline-info" onclick="shareOnTwitter()"><i class="fab fa-twitter"></i></button>
+                    <button class="btn btn-sm btn-outline-success" onclick="shareOnWhatsApp()"><i class="fab fa-whatsapp"></i></button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyLink()"><i class="fas fa-link"></i></button>
+                </div>
+
+                <!-- Seller Info -->
+                @if (Model.Seller != null)
+                {
+                    <div class="seller-info-section mt-4 p-3 border rounded">
+                        <h6 class="fw-semibold mb-3"><i class="fas fa-store me-2"></i>@Localizer["SellerInformation"]</h6>
+                        <div class="d-flex align-items-center">
+                            @if (!string.IsNullOrEmpty(Model.Seller.ShopLogoUrl))
+                            {
+                                <img src="@Model.Seller.ShopLogoUrl" alt="@Model.Seller.ShopName" class="seller-logo me-3 rounded" style="width: 50px; height: 50px; object-fit: cover;">
+                            }
+                            else
+                            {
+                                <div class="seller-avatar me-3 rounded bg-primary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.25rem;">
+                                    @(Model.Seller.ShopName?.Substring(0, 1).ToUpper() ?? "S")
+                                </div>
+                            }
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0">@Model.Seller.ShopName</h6>
+                                <div class="seller-stats small text-muted">
+                                    @if (Model.Seller.Rating > 0)
+                                    {
+                                        <span class="me-2">
+                                            <i class="fas fa-star text-warning"></i> @Model.Seller.Rating.ToString("F1")
+                                            (@Model.Seller.ReviewCount @Localizer["ReviewsLower"])
+                                        </span>
+                                    }
+                                    @if (Model.Seller.TotalOrders > 0)
+                                    {
+                                        <span><i class="fas fa-shopping-bag"></i> @Model.Seller.TotalOrders @Localizer["OrdersLower"]</span>
+                                    }
+                                </div>
+                                @if (Model.Seller.IsVerified)
+                                {
+                                    <span class="badge bg-success-subtle text-success small mt-1">
+                                        <i class="fas fa-check-circle me-1"></i>@Localizer["VerifiedSeller"]
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex gap-2">
+                            @if (!string.IsNullOrEmpty(Model.Seller.ShopSlug))
+                            {
+                                <a href="/shop/@Model.Seller.ShopSlug" class="btn btn-outline-success btn-sm flex-fill">
+                                    <i class="fas fa-store me-1"></i>@Localizer["ViewShop"]
+                                </a>
+                            }
+                            @if (User.Identity?.IsAuthenticated == true)
+                            {
+                                <a href="@Url.Action("StartConversation", "Messages", new { area = "Customer", sellerId = Model.Seller.Id, productId = Model.Id })"
+                                   class="btn btn-outline-primary btn-sm flex-fill">
+                                    <i class="fas fa-comment-dots me-1"></i>@Localizer["Contact"]
+                                </a>
+                            }
+                            else
+                            {
+                                <a href="@Url.Page("/Account/Login", new { area = "Identity", returnUrl = Context.Request.Path })"
+                                   class="btn btn-outline-secondary btn-sm flex-fill">
+                                    <i class="fas fa-sign-in-alt me-1"></i>@Localizer["Login"]
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Details Tabs -->
+    <div class="product-details-tabs mt-5">
+        <ul class="nav nav-tabs" id="productTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="description-tab" data-bs-toggle="tab" data-bs-target="#description" type="button" role="tab">
+                    <i class="fas fa-info-circle me-1"></i>@Localizer["Description"]
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="specifications-tab" data-bs-toggle="tab" data-bs-target="#specifications" type="button" role="tab">
+                    <i class="fas fa-list-ul me-1"></i>@Localizer["Specifications"]
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">
+                    <i class="fas fa-star me-1"></i>@Localizer["Reviews"] (@reviewCount)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="qa-tab" data-bs-toggle="tab" data-bs-target="#qa" type="button" role="tab">
+                    <i class="fas fa-question-circle me-1"></i>@Localizer["QAndA"] (@questionCount)
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content border border-top-0 rounded-bottom p-4" id="productTabsContent">
+            <!-- Description Tab -->
+            <div class="tab-pane fade show active" id="description" role="tabpanel">
+                <div class="product-description">
+                    @Html.Raw(Model.Description)
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.DescriptionBengali))
+                {
+                    <div class="bengali-description mt-4 p-3 bg-light rounded">
+                        <h5 class="fw-semibold"><i class="fas fa-language me-2 text-info"></i>@Localizer["DescriptionInBengali"]</h5>
+                        <p class="mb-0" style="white-space: pre-line;">@Model.DescriptionBengali</p>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.DescriptionEnglish))
+                {
+                    <div class="english-description mt-4 p-3 bg-light rounded">
+                        <h5 class="fw-semibold"><i class="fas fa-language me-2 text-primary"></i>@Localizer["DescriptionInEnglish"]</h5>
+                        <p class="mb-0" style="white-space: pre-line;">@Model.DescriptionEnglish</p>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.CareInstructions))
+                {
+                    <div class="care-instructions mt-4">
+                        <h5 class="fw-semibold"><i class="fas fa-hand-sparkles me-2"></i>@Localizer["CareInstructions"]</h5>
+                        <p>@Model.CareInstructions</p>
+                    </div>
+                }
+            </div>
+
+            <!-- Specifications Tab -->
+            <div class="tab-pane fade" id="specifications" role="tabpanel">
+                <table class="table spec-table w-100">
+                    <tbody>
+                        @if (!string.IsNullOrEmpty(Model.Brand))
+                        {
+                            <tr><th>@Localizer["Brand"]</th><td>@Model.Brand</td></tr>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.SKU))
+                        {
+                            <tr><th>@Localizer["SKU"]</th><td>@Model.SKU</td></tr>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Fabric))
+                        {
+                            <tr><th>@Localizer["MaterialFabric"]</th><td>@Model.Fabric</td></tr>
+                        }
+                        @if (Model.Weight.HasValue)
+                        {
+                            <tr><th>@Localizer["Weight"]</th><td>@Model.Weight @Localizer["Gram"]</td></tr>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.CountryOfOrigin))
+                        {
+                            <tr><th>@Localizer["CountryOfOrigin"]</th><td>@Model.CountryOfOrigin</td></tr>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Manufacturer))
+                        {
+                            <tr><th>@Localizer["Manufacturer"]</th><td>@Model.Manufacturer</td></tr>
+                        }
+                        @if (Model.Category != null)
+                        {
+                            <tr><th>@Localizer["Category"]</th><td>@Model.Category.Name</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Reviews Tab -->
+            <div class="tab-pane fade" id="reviews" role="tabpanel">
+                <div class="row">
+                    <!-- Rating Summary -->
+                    <div class="col-md-4 mb-4">
+                        <div class="rating-summary text-center p-4 bg-light rounded">
+                            <div class="display-3 fw-bold text-warning">@averageRating.ToString("F1")</div>
+                            <div class="rating-stars mb-2">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    if (i <= Math.Round(averageRating))
+                                    {
+                                        <i class="fas fa-star text-warning"></i>
+                                    }
+                                    else if (i - 0.5 <= averageRating)
+                                    {
+                                        <i class="fas fa-star-half-alt text-warning"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="far fa-star text-warning"></i>
+                                    }
+                                }
+                            </div>
+                            <p class="text-muted mb-3">@Localizer["BasedOnReviews", reviewCount]</p>
+
+                            <!-- Rating Distribution -->
+                            @for (int i = 5; i >= 1; i--)
+                            {
+                                var count = ratingDistribution.ContainsKey(i) ? ratingDistribution[i] : 0;
+                                var percentage = reviewCount > 0 ? (count * 100 / reviewCount) : 0;
+                                <div class="d-flex align-items-center mb-1">
+                                    <span class="small me-2">@i<i class="fas fa-star text-warning ms-1 small"></i></span>
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar bg-warning" style="width: @percentage%"></div>
+                                    </div>
+                                    <span class="small ms-2 text-muted">@count</span>
+                                </div>
+                            }
+
+                            @if (hasPurchased)
+                            {
+                                <button class="btn btn-success mt-3" data-bs-toggle="modal" data-bs-target="#writeReviewModal">
+                                    <i class="fas fa-pen me-1"></i>@Localizer["WriteAReview"]
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Reviews List -->
+                    <div class="col-md-8">
+                        @if (approvedReviews.Any())
+                        {
+                            @foreach (var review in approvedReviews)
+                            {
+                                <div class="review-item border-bottom pb-3 mb-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <img src="@(review.User?.AvatarUrl ?? "/images/default-avatar.png")" alt="" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                                                <div>
+                                                    <strong>@(review.User?.FirstName ?? "Anonymous")</strong>
+                                                    @if (review.IsVerifiedPurchase)
+                                                    {
+                                                        <span class="badge bg-success ms-1"><i class="fas fa-check me-1"></i>@Localizer["Verified"]</span>
+                                                    }
+                                                    <div class="small text-muted">@review.CreatedAt.ToBangladeshShortDateString()</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="rating-stars">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                <i class="@(i <= review.Rating ? "fas" : "far") fa-star text-warning small"></i>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    @if (!string.IsNullOrEmpty(review.Title))
+                                    {
+                                        <h6 class="fw-semibold mb-2">@review.Title</h6>
+                                    }
+
+                                    <p class="mb-2">@review.Comment</p>
+
+                                    @if (!string.IsNullOrEmpty(review.Pros))
+                                    {
+                                        <p class="mb-1 small"><span class="text-success"><i class="fas fa-plus-circle me-1"></i>@Localizer["Pros"]:</span> @review.Pros</p>
+                                    }
+                                    @if (!string.IsNullOrEmpty(review.Cons))
+                                    {
+                                        <p class="mb-2 small"><span class="text-danger"><i class="fas fa-minus-circle me-1"></i>@Localizer["Cons"]:</span> @review.Cons</p>
+                                    }
+
+                                    @if (review.Images.Any())
+                                    {
+                                        <div class="review-images d-flex gap-2 mb-2">
+                                            @foreach (var img in review.Images)
+                                            {
+                                                <img src="~/@img.ImageUrl" alt="Review image" class="rounded" style="width: 60px; height: 60px; object-fit: cover; cursor: pointer;" onclick="showImageModal('@img.ImageUrl')">
+                                            }
+                                        </div>
+                                    }
+
+                                    <div class="review-actions">
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="markHelpful(@review.Id)">
+                                            <i class="far fa-thumbs-up me-1"></i>@Localizer["Helpful"] (@review.HelpfulCount)
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="text-center py-5">
+                                <i class="fas fa-comment-slash text-muted fs-1 mb-3"></i>
+                                <p class="text-muted">@Localizer["NoReviewsYet"]</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Q&A Tab -->
+            <div class="tab-pane fade" id="qa" role="tabpanel">
+                <div class="qa-section">
+                    <!-- Ask Question -->
+                    <div class="ask-question mb-4 p-3 bg-light rounded">
+                        <h6 class="fw-semibold mb-3">@Localizer["HaveAQuestion"]</h6>
+                        <form asp-action="AskQuestion" asp-controller="Home" asp-area="Customer" method="post">
+                            <input type="hidden" name="productId" value="@Model.Id">
+                            <div class="input-group">
+                                <input type="text" name="question" class="form-control" placeholder="@Localizer["TypeYourQuestionHere"]" required>
+                                <button type="submit" class="btn btn-success">@Localizer["Ask"]</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Questions List -->
+                    @if (Model.Questions.Any(q => q.IsApproved && q.IsAnswered))
+                    {
+                        @foreach (var question in Model.Questions.Where(q => q.IsApproved && q.IsAnswered).OrderByDescending(q => q.CreatedAt))
+                        {
+                            <div class="question-item border-bottom pb-3 mb-3">
+                                <div class="question mb-2">
+                                    <div class="d-flex align-items-start">
+                                        <span class="badge bg-primary me-2">Q</span>
+                                        <div>
+                                            <p class="mb-1 fw-semibold">@question.Question</p>
+                                            <small class="text-muted">@Localizer["AskedBy"] @(question.User?.FirstName ?? Localizer["Customer"].Value) @Localizer["On"].Value.ToLower() @question.CreatedAt.ToBangladeshShortDateString()</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="answer ms-4">
+                                    <div class="d-flex align-items-start">
+                                        <span class="badge bg-success me-2">A</span>
+                                        <div>
+                                            <p class="mb-1">@question.Answer</p>
+                                            <small class="text-muted">@Localizer["AnsweredOn"] @question.AnsweredAt?.ToBangladeshShortDateString()</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="markQuestionHelpful(@question.Id)">
+                                        <i class="far fa-thumbs-up me-1"></i>@Localizer["Helpful"] (@question.HelpfulCount)
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-question-circle text-muted fs-1 mb-3"></i>
+                            <p class="text-muted">@Localizer["NoQuestionsYet"]</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Related Products -->
+    @if (relatedProducts.Any())
+    {
+        <div class="related-products mt-5">
+            <h3 class="fw-bold mb-4"><i class="fas fa-tags me-2"></i>@Localizer["RelatedProducts"]</h3>
+            <div class="row g-4">
+                @foreach (var product in relatedProducts)
+                {
+                    var productRating = product.Reviews.Any() ? product.Reviews.Average(r => r.Rating) : 0;
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <div class="card h-100 product-card border-0 shadow-sm">
+                            <a href="@Url.Action("Details", "Home", new { area = "Customer", id = product.Id })" class="text-decoration-none">
+                                <div class="position-relative">
+                                    <img src="~/@(product.ImageUrl ?? "images/products/noimage.jpg")" class="card-img-top" alt="@product.Name" style="height: 200px; object-fit: cover;">
+                                    @if (product.HasDiscount)
+                                    {
+                                        <span class="position-absolute top-0 start-0 badge bg-danger m-2">-@product.DiscountPercentage%</span>
+                                    }
+                                </div>
+                                <div class="card-body">
+                                    <h6 class="card-title mb-1 text-truncate">@product.Name</h6>
+                                    <div class="rating-stars small mb-1">
+                                        @for (int i = 1; i <= 5; i++)
+                                        {
+                                            <i class="@(i <= Math.Round(productRating) ? "fas" : "far") fa-star text-warning"></i>
+                                        }
+                                        <span class="text-muted">(@product.Reviews.Count)</span>
+                                    </div>
+                                    <div class="price">
+                                        @if (product.HasDiscount)
+                                        {
+                                            <span class="fw-bold text-danger">@currencySymbol@product.DiscountPrice?.ToString("N0")</span>
+                                            <span class="text-muted text-decoration-line-through small">@currencySymbol@product.Price.ToString("N0")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="fw-bold text-success">@currencySymbol@product.Price.ToString("N0")</span>
+                                        }
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Floating Compare Bar -->
+<div class="floating-compare-bar @(compareCount > 0 ? "show" : "")" id="floatingCompareBar">
+    <div class="container">
+        <div class="compare-bar-content">
+            <div class="d-flex align-items-center gap-3">
+                <i class="fas fa-balance-scale fs-4"></i>
+                <div>
+                    <span class="fw-semibold">@Localizer["CompareProducts"]</span>
+                    <span class="compare-count-badge ms-2" id="compareCountBadge">@compareCount</span>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="@Url.Action("Index", "Compare", new { area = "Customer" })" class="btn btn-primary">
+                    <i class="fas fa-eye me-1"></i>@Localizer["ViewComparison"]
+                </a>
+                <button type="button" class="btn btn-outline-light btn-sm" onclick="clearCompare()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Zoom Modal -->
+<div class="modal fade" id="imageZoomModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content zoom-modal-content border-0">
+            <button type="button" class="zoom-close-btn" data-bs-dismiss="modal" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="modal-body p-0">
+                <div class="zoom-image-container" id="zoomImageContainer">
+                    <img id="zoomedImage" src="" alt="" class="img-fluid" style="max-height: 85vh;">
+                </div>
+                <div class="zoom-controls">
+                    <button type="button" class="zoom-btn" onclick="zoomOut()" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button type="button" class="zoom-btn" onclick="resetZoom()" title="Reset">
+                        <i class="fas fa-compress-arrows-alt"></i>
+                    </button>
+                    <button type="button" class="zoom-btn" onclick="zoomIn()" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Video Modal -->
+@if (!string.IsNullOrEmpty(Model.VideoUrl))
+{
+    <div class="modal fade" id="videoModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Localizer["ProductVideo"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="ratio ratio-16x9">
+                        <iframe src="@Model.VideoUrl" allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Size Guide Modal -->
+@if (Model.SizeGuide != null && Model.SizeGuide.Entries.Any())
+{
+    <div class="modal fade" id="sizeGuideModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-ruler me-2"></i>@Model.SizeGuide.Name</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(Model.SizeGuide.Description))
+                    {
+                        <p class="text-muted mb-3">@Model.SizeGuide.Description</p>
+                    }
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>@Localizer["Size"]</th>
+                                    @if (Model.SizeGuide.Entries.Any(e => !string.IsNullOrEmpty(e.Chest))) { <th>@Localizer["Chest"] (@Localizer["Inch"])</th> }
+                                    @if (Model.SizeGuide.Entries.Any(e => !string.IsNullOrEmpty(e.Waist))) { <th>@Localizer["Waist"] (@Localizer["Inch"])</th> }
+                                    @if (Model.SizeGuide.Entries.Any(e => !string.IsNullOrEmpty(e.Hip))) { <th>@Localizer["Hip"] (@Localizer["Inch"])</th> }
+                                    @if (Model.SizeGuide.Entries.Any(e => !string.IsNullOrEmpty(e.Length))) { <th>@Localizer["Length"] (@Localizer["Inch"])</th> }
+                                    @if (Model.SizeGuide.Entries.Any(e => !string.IsNullOrEmpty(e.Shoulder))) { <th>@Localizer["Shoulder"] (@Localizer["Inch"])</th> }
+                                    @if (Model.SizeGuide.Entries.Any(e => !string.IsNullOrEmpty(e.SleeveLength))) { <th>@Localizer["Sleeve"] (@Localizer["Inch"])</th> }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in Model.SizeGuide.Entries.OrderBy(e => e.DisplayOrder))
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@entry.Size</td>
+                                        @if (Model.SizeGuide.Entries.Any(e => !string.IsNullOrEmpty(e.Chest))) { <td>@entry.Chest</td> }
+                                        @if (Model.SizeGuide.Entries.Any(e => !string.IsNullOrEmpty(e.Waist))) { <td>@entry.Waist</td> }
+                                        @if (Model.SizeGuide.Entries.Any(e => !string.IsNullOrEmpty(e.Hip))) { <td>@entry.Hip</td> }
+                                        @if (Model.SizeGuide.Entries.Any(e => !string.IsNullOrEmpty(e.Length))) { <td>@entry.Length</td> }
+                                        @if (Model.SizeGuide.Entries.Any(e => !string.IsNullOrEmpty(e.Shoulder))) { <td>@entry.Shoulder</td> }
+                                        @if (Model.SizeGuide.Entries.Any(e => !string.IsNullOrEmpty(e.SleeveLength))) { <td>@entry.SleeveLength</td> }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Write Review Modal -->
+<div class="modal fade" id="writeReviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-star me-2"></i>@Localizer["WriteAReview"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="SubmitReview" asp-controller="Home" asp-area="Customer" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" name="productId" value="@Model.Id">
+
+                    <div class="mb-3 text-center">
+                        <label class="form-label d-block">@Localizer["YourRating"]</label>
+                        <div class="rating-input fs-2">
+                            @for (int i = 5; i >= 1; i--)
+                            {
+                                <input type="radio" name="rating" value="@i" id="star@i" required>
+                                <label for="star@i"><i class="far fa-star"></i></label>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["ReviewTitle"]</label>
+                        <input type="text" name="title" class="form-control" placeholder="@Localizer["SummarizeYourReview"]">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["YourReview"]</label>
+                        <textarea name="comment" class="form-control" rows="4" placeholder="@Localizer["ShareYourExperience"]" required></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">@Localizer["ProsOptional"]</label>
+                            <input type="text" name="pros" class="form-control" placeholder="@Localizer["WhatDidYouLike"]">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">@Localizer["ConsOptional"]</label>
+                            <input type="text" name="cons" class="form-control" placeholder="@Localizer["WhatCouldBeBetter"]">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["AddPhotosOptional"]</label>
+                        <input type="file" name="images" class="form-control" multiple accept="image/*">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Cancel"]</button>
+                    <button type="submit" class="btn btn-success">@Localizer["SubmitReview"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .thumbnail-item.active {
+            border-color: #198754 !important;
+            border-width: 2px !important;
+        }
+        .color-option.active {
+            outline: 3px solid #198754;
+            outline-offset: 2px;
+        }
+        .size-option.active {
+            background-color: #198754;
+            color: white;
+            border-color: #198754;
+        }
+        .wishlist-btn.active {
+            background-color: #dc3545;
+            border-color: #dc3545;
+            color: white;
+        }
+        .compare-btn.active {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: white;
+        }
+        .compare-btn:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+            color: white;
+        }
+
+        /* Floating Compare Bar */
+        .floating-compare-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            color: white;
+            padding: 12px 20px;
+            z-index: 1050;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        .floating-compare-bar.show {
+            transform: translateY(0);
+        }
+        .floating-compare-bar .compare-bar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .floating-compare-bar .compare-count-badge {
+            background-color: #0d6efd;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            transition: transform 0.3s ease;
+        }
+        .rating-input label {
+            cursor: pointer;
+            color: #ddd;
+        }
+        .rating-input input {
+            display: none;
+        }
+        .rating-input input:checked ~ label i,
+        .rating-input label:hover i,
+        .rating-input label:hover ~ label i {
+            color: #ffc107;
+        }
+        .rating-input {
+            display: flex;
+            flex-direction: row-reverse;
+            justify-content: center;
+        }
+
+        /* Quantity Selector Styling */
+        .quantity-selector {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px !important;
+            overflow: hidden;
+            border: 2px solid #dee2e6 !important;
+            transition: all 0.3s ease;
+        }
+        .quantity-selector:hover {
+            border-color: #198754 !important;
+            box-shadow: 0 4px 12px rgba(25, 135, 84, 0.15);
+        }
+        .quantity-selector button {
+            width: 44px;
+            height: 44px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #495057;
+            background: transparent;
+            transition: all 0.2s ease;
+        }
+        .quantity-selector button:hover {
+            background-color: #198754;
+            color: white;
+        }
+        .quantity-selector button:active {
+            transform: scale(0.95);
+        }
+        .quantity-selector input#quantity {
+            width: 60px !important;
+            height: 44px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #212529;
+            background: transparent;
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            -moz-appearance: textfield;
+        }
+        .quantity-selector input#quantity::-webkit-outer-spin-button,
+        .quantity-selector input#quantity::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .quantity-selector input#quantity:focus {
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }
+
+        /* Image Zoom Modal Styles */
+        .zoom-modal-content {
+            position: relative;
+            background: rgba(0, 0, 0, 0.95);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .zoom-close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 1060;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .zoom-close-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: rotate(90deg);
+        }
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1060;
+        }
+        .zoom-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .zoom-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        .zoom-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .zoom-image-container {
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+            cursor: grab;
+        }
+        .zoom-image-container:active {
+            cursor: grabbing;
+        }
+        .zoom-image-container img {
+            transition: transform 0.3s ease;
+            max-width: 100%;
+            max-height: 85vh;
+        }
+
+        /* Specification Table Styling */
+        .spec-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #dee2e6;
+        }
+        .spec-table th,
+        .spec-table td {
+            padding: 12px 16px;
+            border: 1px solid #dee2e6;
+            vertical-align: middle;
+        }
+        .spec-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            width: 200px;
+            color: #495057;
+        }
+        .spec-table td {
+            background-color: #fff;
+            color: #212529;
+        }
+        .spec-table tr:nth-child(even) th {
+            background-color: #f1f3f4;
+        }
+        .spec-table tr:nth-child(even) td {
+            background-color: #fafafa;
+        }
+
+        /* Delivery Info Card Styling */
+        .delivery-info-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .delivery-info-item {
+            padding: 16px;
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.2s ease;
+        }
+        .delivery-info-item:last-child {
+            border-bottom: none;
+        }
+        .delivery-info-item:hover {
+            background-color: rgba(25, 135, 84, 0.05);
+        }
+        .delivery-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        .delivery-icon.truck { background: linear-gradient(135deg, #e3f2fd, #bbdefb); color: #1976d2; }
+        .delivery-icon.return { background: linear-gradient(135deg, #fff3e0, #ffe0b2); color: #f57c00; }
+        .delivery-icon.cod { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); color: #388e3c; }
+        .delivery-icon.warranty { background: linear-gradient(135deg, #f3e5f5, #e1bee7); color: #7b1fa2; }
+
+        /* Dark mode styles */
+        [data-theme="dark"] .bg-light {
+            background-color: #2d3748 !important;
+        }
+        [data-theme="dark"] .nav-tabs .nav-link {
+            color: #a0aec0;
+        }
+        [data-theme="dark"] .nav-tabs .nav-link.active {
+            background-color: #2d3748;
+            border-color: #4a5568 #4a5568 #2d3748;
+            color: #f7fafc;
+        }
+        [data-theme="dark"] .tab-content {
+            background-color: #2d3748;
+            border-color: #4a5568;
+        }
+        [data-theme="dark"] .border {
+            border-color: #4a5568 !important;
+        }
+
+        /* Dark mode - Quantity Selector */
+        [data-theme="dark"] .quantity-selector {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            border-color: #4a5568 !important;
+        }
+        [data-theme="dark"] .quantity-selector button {
+            color: #e2e8f0;
+        }
+        [data-theme="dark"] .quantity-selector input#quantity {
+            color: #f7fafc;
+        }
+
+        /* Dark mode - Specification Table */
+        [data-theme="dark"] .spec-table {
+            border-color: #4a5568;
+        }
+        [data-theme="dark"] .spec-table th,
+        [data-theme="dark"] .spec-table td {
+            border-color: #4a5568;
+        }
+        [data-theme="dark"] .spec-table th {
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+        [data-theme="dark"] .spec-table td {
+            background-color: #1a202c;
+            color: #f7fafc;
+        }
+        [data-theme="dark"] .spec-table tr:nth-child(even) th {
+            background-color: #374151;
+        }
+        [data-theme="dark"] .spec-table tr:nth-child(even) td {
+            background-color: #252d3d;
+        }
+
+        /* Dark mode - Delivery Info Card */
+        [data-theme="dark"] .delivery-info-card {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            border-color: #4a5568;
+        }
+        [data-theme="dark"] .delivery-info-item {
+            border-color: #4a5568;
+        }
+        [data-theme="dark"] .delivery-info-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        [data-theme="dark"] .delivery-icon.truck { background: linear-gradient(135deg, #1e3a5f, #2d4a6f); }
+        [data-theme="dark"] .delivery-icon.return { background: linear-gradient(135deg, #4a3728, #5a4738); }
+        [data-theme="dark"] .delivery-icon.cod { background: linear-gradient(135deg, #1e3a2d, #2d4a3d); }
+        [data-theme="dark"] .delivery-icon.warranty { background: linear-gradient(135deg, #3a2d4a, #4a3d5a); }
+
+        /* Remove focus border/outline from all input fields (keep box-shadow) */
+        .form-control:focus,
+        .form-select:focus,
+        textarea.form-control:focus,
+        input.form-control:focus,
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="email"]:focus,
+        input[type="password"]:focus,
+        input[type="search"]:focus,
+        input[type="tel"]:focus,
+        input[type="url"]:focus {
+            outline: none !important;
+            border-color: #dee2e6 !important;
+        }
+
+        /* Dark mode input focus fix */
+        [data-theme="dark"] .form-control:focus,
+        [data-theme="dark"] .form-select:focus,
+        [data-theme="dark"] textarea.form-control:focus,
+        [data-theme="dark"] input.form-control:focus,
+        [data-theme="dark"] input[type="text"]:focus,
+        [data-theme="dark"] input[type="number"]:focus,
+        [data-theme="dark"] input[type="email"]:focus,
+        [data-theme="dark"] input[type="password"]:focus,
+        [data-theme="dark"] input[type="search"]:focus,
+        [data-theme="dark"] input[type="tel"]:focus,
+        [data-theme="dark"] input[type="url"]:focus {
+            background-color: #2d3748 !important;
+            color: #e2e8f0 !important;
+            border-color: #4a5568 !important;
+            outline: none !important;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        // Image Gallery
+        function changeMainImage(element, imageUrl) {
+            document.getElementById('mainImage').src = '/' + imageUrl;
+            document.querySelectorAll('.thumbnail-item').forEach(item => item.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        // Thumbnail Gallery Scroll
+        function scrollThumbnails(direction) {
+            const gallery = document.getElementById('thumbnailGallery');
+            const scrollAmount = 160; // Scroll 2 thumbnails at a time (70px + gap)
+            gallery.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+        }
+
+        // Activate Tab and Scroll to Section
+        function activateTabAndScroll(tabId, tabsContainerId) {
+            event.preventDefault();
+            const tabButton = document.getElementById(tabId);
+            if (tabButton) {
+                const tab = new bootstrap.Tab(tabButton);
+                tab.show();
+                setTimeout(() => {
+                    const tabsContainer = document.getElementById(tabsContainerId);
+                    if (tabsContainer) {
+                        tabsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+            }
+        }
+
+        // Image Zoom Modal with Zoom Controls
+        let currentZoom = 1;
+        const minZoom = 0.5;
+        const maxZoom = 3;
+        const zoomStep = 0.25;
+
+        document.getElementById('imageZoomModal').addEventListener('show.bs.modal', function () {
+            document.getElementById('zoomedImage').src = document.getElementById('mainImage').src;
+            resetZoom();
+        });
+
+        document.getElementById('imageZoomModal').addEventListener('hidden.bs.modal', function () {
+            resetZoom();
+        });
+
+        function zoomIn() {
+            if (currentZoom < maxZoom) {
+                currentZoom += zoomStep;
+                applyZoom();
+            }
+        }
+
+        function zoomOut() {
+            if (currentZoom > minZoom) {
+                currentZoom -= zoomStep;
+                applyZoom();
+            }
+        }
+
+        function resetZoom() {
+            currentZoom = 1;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            const img = document.getElementById('zoomedImage');
+            img.style.transform = `scale(${currentZoom})`;
+        }
+
+        // Mouse wheel zoom
+        document.getElementById('zoomImageContainer')?.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                zoomIn();
+            } else {
+                zoomOut();
+            }
+        });
+
+        // Product Variants Data
+        var productVariants = @Html.Raw(variantsJson);
+        var hasVariants = @hasVariants.ToString().ToLower();
+        var selectedColor = null;
+        var selectedSize = null;
+
+        // Price data for dynamic update
+        var basePrice = @Model.Price;
+        var hasDiscount = @Model.HasDiscount.ToString().ToLower();
+        var discountPrice = @(Model.DiscountPrice ?? Model.Price);
+        var currencySymbol = '@Html.Raw(currencySymbol)';
+
+        // Find matching variant based on selected color and size
+        function findMatchingVariant() {
+            if (!hasVariants || productVariants.length === 0) return null;
+
+            return productVariants.find(function(v) {
+                var colorMatch = !selectedColor || v.color === selectedColor;
+                var sizeMatch = !selectedSize || v.size === selectedSize;
+                // Match if both conditions are met, or if product only has one attribute type
+                if (selectedColor && selectedSize) {
+                    return v.color === selectedColor && v.size === selectedSize;
+                } else if (selectedColor) {
+                    return v.color === selectedColor && (!v.size || v.size === selectedSize);
+                } else if (selectedSize) {
+                    return v.size === selectedSize && (!v.color || v.color === selectedColor);
+                }
+                return false;
+            });
+        }
+
+        // Update variant ID in forms and button states
+        function updateVariantSelection() {
+            var variant = findMatchingVariant();
+            var variantId = variant ? variant.id : '';
+
+            document.getElementById('selectedVariantId').value = variantId;
+            document.getElementById('buyNowVariantId').value = variantId;
+
+            var addToCartBtn = document.getElementById('addToCartBtn');
+            var buyNowBtn = document.getElementById('buyNowBtn');
+
+            // Check if variant selection is required but not complete
+            var needsColorSelection = @(availableColors.Any().ToString().ToLower()) && !selectedColor;
+            var needsSizeSelection = @(availableSizes.Any().ToString().ToLower()) && !selectedSize;
+
+            if (hasVariants && (needsColorSelection || needsSizeSelection)) {
+                addToCartBtn.classList.add('disabled');
+                buyNowBtn.classList.add('disabled');
+                addToCartBtn.title = 'Please select ' + (needsColorSelection && needsSizeSelection ? 'color and size' : (needsColorSelection ? 'color' : 'size'));
+                buyNowBtn.title = addToCartBtn.title;
+            } else if (variant && variant.stock <= 0) {
+                addToCartBtn.classList.add('disabled');
+                buyNowBtn.classList.add('disabled');
+                addToCartBtn.title = 'This variant is out of stock';
+                buyNowBtn.title = 'This variant is out of stock';
+            } else {
+                addToCartBtn.classList.remove('disabled');
+                buyNowBtn.classList.remove('disabled');
+                addToCartBtn.title = '';
+                buyNowBtn.title = '';
+            }
+
+            // Update max quantity based on variant stock
+            if (variant) {
+                document.getElementById('quantity').max = variant.stock;
+                var currentQty = parseInt(document.getElementById('quantity').value);
+                if (currentQty > variant.stock) {
+                    document.getElementById('quantity').value = variant.stock;
+                    updateQuantityInputs();
+                }
+            }
+
+            // Update price display based on variant additional price
+            updatePriceDisplay(variant);
+        }
+
+        // Update price display when variant is selected
+        function updatePriceDisplay(variant) {
+            var displayPriceEl = document.getElementById('displayPrice');
+            var variantPriceAdditionEl = document.getElementById('variantPriceAddition');
+
+            if (!displayPriceEl) return;
+
+            var additionalPrice = variant ? variant.additionalPrice : 0;
+            var effectiveBasePrice = hasDiscount ? discountPrice : basePrice;
+            var totalPrice = effectiveBasePrice + additionalPrice;
+
+            // Format number with commas (Bangladesh style)
+            function formatPrice(num) {
+                return num.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+            }
+
+            // Update main price display
+            displayPriceEl.textContent = currencySymbol + formatPrice(totalPrice);
+
+            // Show/hide additional price indicator
+            if (variantPriceAdditionEl) {
+                if (additionalPrice > 0) {
+                    variantPriceAdditionEl.textContent = '(+' + currencySymbol + formatPrice(additionalPrice) + ')';
+                    variantPriceAdditionEl.classList.remove('d-none');
+                } else {
+                    variantPriceAdditionEl.classList.add('d-none');
+                }
+            }
+        }
+
+        // Color Selection
+        function selectColor(element) {
+            document.querySelectorAll('.color-option').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+            selectedColor = element.dataset.color;
+            document.getElementById('selectedColorName').textContent = selectedColor;
+
+            // Change main image if color has specific image
+            if (element.dataset.image) {
+                document.getElementById('mainImage').src = '/' + element.dataset.image;
+            }
+
+            updateVariantSelection();
+            updateAvailableSizes();
+        }
+
+        // Size Selection
+        function selectSize(element) {
+            document.querySelectorAll('.size-option').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+            selectedSize = element.dataset.size;
+            document.getElementById('selectedSizeName').textContent = selectedSize;
+
+            updateVariantSelection();
+        }
+
+        // Update available sizes based on selected color (disable out of stock combinations)
+        function updateAvailableSizes() {
+            if (!selectedColor) return;
+
+            document.querySelectorAll('.size-option').forEach(function(btn) {
+                var size = btn.dataset.size;
+                var hasStock = productVariants.some(function(v) {
+                    return v.color === selectedColor && v.size === size && v.stock > 0;
+                });
+
+                if (!hasStock) {
+                    btn.classList.add('opacity-50');
+                    btn.title = 'Out of stock for selected color';
+                } else {
+                    btn.classList.remove('opacity-50');
+                    btn.title = '';
+                }
+            });
+        }
+
+        // Form submission validation
+        document.getElementById('addToCartForm').addEventListener('submit', function(e) {
+            if (hasVariants && !document.getElementById('selectedVariantId').value) {
+                e.preventDefault();
+                if (typeof alertify !== 'undefined') {
+                    alertify.error('Please select a size and/or color before adding to cart.');
+                } else {
+                    alert('Please select a size and/or color before adding to cart.');
+                }
+                return false;
+            }
+        });
+
+        document.getElementById('buyNowForm').addEventListener('submit', function(e) {
+            if (hasVariants && !document.getElementById('buyNowVariantId').value) {
+                e.preventDefault();
+                if (typeof alertify !== 'undefined') {
+                    alertify.error('Please select a size and/or color before purchasing.');
+                } else {
+                    alert('Please select a size and/or color before purchasing.');
+                }
+                return false;
+            }
+        });
+
+        // Initialize variant selection state on page load
+        if (hasVariants) {
+            updateVariantSelection();
+        }
+
+        // Quantity Controls
+        function incrementQty() {
+            const input = document.getElementById('quantity');
+            const max = parseInt(input.max);
+            const current = parseInt(input.value);
+            if (current < max) {
+                input.value = current + 1;
+                updateQuantityInputs();
+            }
+        }
+
+        function decrementQty() {
+            const input = document.getElementById('quantity');
+            const current = parseInt(input.value);
+            if (current > 1) {
+                input.value = current - 1;
+                updateQuantityInputs();
+            }
+        }
+
+        function updateQuantityInputs() {
+            const qty = document.getElementById('quantity').value;
+            document.getElementById('cartQuantity').value = qty;
+            document.getElementById('buyNowQuantity').value = qty;
+        }
+
+        document.getElementById('quantity').addEventListener('change', updateQuantityInputs);
+
+        // Wishlist Toggle
+        function toggleWishlist(productId, button) {
+            console.log('toggleWishlist called with productId:', productId);
+            fetch('@Url.Action("Toggle", "Wishlist", new { area = "Customer" })', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'productId=' + productId
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    const icon = button.querySelector('i');
+                    if (data.isInWishlist) {
+                        button.classList.add('active');
+                        if (icon) {
+                            icon.classList.remove('far');
+                            icon.classList.add('fas');
+                        }
+                        showToast(data.message || 'Added to wishlist!', 'success');
+                    } else {
+                        button.classList.remove('active');
+                        if (icon) {
+                            icon.classList.remove('fas');
+                            icon.classList.add('far');
+                        }
+                        showToast(data.message || 'Removed from wishlist!', 'success');
+                    }
+                } else if (data.requireLogin) {
+                    showToast('Please login to add items to wishlist', 'warning');
+                    setTimeout(function() {
+                        window.location.href = '@Url.Action("Login", "Account", new { area = "Identity" })';
+                    }, 1500);
+                } else {
+                    showToast(data.message || 'An error occurred', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('An error occurred. Please try again.', 'error');
+            });
+        }
+
+        // Restock Notification Toggle
+        function toggleRestockNotification(button) {
+            const productId = button.dataset.productId;
+            const variantId = document.getElementById('selectedVariantId')?.value || null;
+            const isSubscribed = button.classList.contains('subscribed');
+            const action = isSubscribed ? 'UnsubscribeRestock' : 'SubscribeRestock';
+
+            button.disabled = true;
+            button.querySelector('.btn-text').textContent = 'Processing...';
+
+            fetch('@Url.Action("", "Home", new { area = "Customer" })'.replace('/Home', '/Home/' + action), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'productId=' + productId + (variantId ? '&variantId=' + variantId : '')
+            })
+            .then(response => response.json())
+            .then(data => {
+                button.disabled = false;
+                if (data.success) {
+                    if (isSubscribed) {
+                        button.classList.remove('subscribed', 'btn-primary');
+                        button.classList.add('btn-outline-primary');
+                        button.querySelector('i').classList.remove('fas');
+                        button.querySelector('i').classList.add('far');
+                        button.querySelector('.btn-text').textContent = 'Notify Me When Available';
+                    } else {
+                        button.classList.add('subscribed', 'btn-primary');
+                        button.classList.remove('btn-outline-primary');
+                        button.querySelector('i').classList.remove('far');
+                        button.querySelector('i').classList.add('fas');
+                        button.querySelector('.btn-text').textContent = 'Notification Enabled';
+                    }
+                    alertify.success(data.message);
+                } else {
+                    button.querySelector('.btn-text').textContent = isSubscribed ? 'Notification Enabled' : 'Notify Me When Available';
+                    alertify.warning(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                button.disabled = false;
+                button.querySelector('.btn-text').textContent = isSubscribed ? 'Notification Enabled' : 'Notify Me When Available';
+                alertify.error('An error occurred. Please try again.');
+            });
+        }
+
+        // Check initial restock subscription status
+        @if (User.Identity?.IsAuthenticated == true && (Model.Stock <= 0 || !Model.IsAvailable))
+        {
+            <text>
+            (function checkRestockStatus() {
+                const productId = @Model.Id;
+                fetch('@Url.Action("IsSubscribedRestock", "Home", new { area = "Customer" })?productId=' + productId)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.subscribed) {
+                            const btn = document.querySelector('.notify-restock-btn');
+                            if (btn) {
+                                btn.classList.add('subscribed', 'btn-primary');
+                                btn.classList.remove('btn-outline-primary');
+                                btn.querySelector('i').classList.remove('far');
+                                btn.querySelector('i').classList.add('fas');
+                                btn.querySelector('.btn-text').textContent = 'Notification Enabled';
+                            }
+                        }
+                    });
+            })();
+            </text>
+        }
+
+        // Share Functions
+        function shareOnFacebook() {
+            window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(window.location.href), '_blank');
+        }
+
+        function shareOnTwitter() {
+            window.open('https://twitter.com/intent/tweet?url=' + encodeURIComponent(window.location.href) + '&text=' + encodeURIComponent('@Model.Name'), '_blank');
+        }
+
+        function shareOnWhatsApp() {
+            window.open('https://wa.me/?text=' + encodeURIComponent('@Model.Name - ' + window.location.href), '_blank');
+        }
+
+        function copyLink() {
+            navigator.clipboard.writeText(window.location.href).then(function() {
+                alertify.success('Link copied to clipboard!');
+            });
+        }
+
+        // Mark Review Helpful
+        function markHelpful(reviewId) {
+            fetch('@Url.Action("MarkReviewHelpful", "Home", new { area = "Customer" })?reviewId=' + reviewId, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alertify.success('Thanks for your feedback!');
+                    location.reload();
+                }
+            });
+        }
+
+        // Mark Question Helpful
+        function markQuestionHelpful(questionId) {
+            fetch('@Url.Action("MarkQuestionHelpful", "Home", new { area = "Customer" })?questionId=' + questionId, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alertify.success('Thanks for your feedback!');
+                    location.reload();
+                }
+            });
+        }
+
+        // Show Image Modal
+        function showImageModal(imageUrl) {
+            document.getElementById('zoomedImage').src = '/' + imageUrl;
+            new bootstrap.Modal(document.getElementById('imageZoomModal')).show();
+        }
+
+        // Show success message if any
+        $(document).ready(function () {
+            var saveMessage = '@TempData["onAdd"]';
+            if (saveMessage != null && saveMessage != "") {
+                alertify.success(saveMessage);
+            }
+
+            // Handle shop conflict from form submission
+            var shopConflict = '@TempData["ShopConflict"]';
+            if (shopConflict === 'true') {
+                var existingShopName = '@TempData["ExistingShopName"]';
+                var conflictProductId = @(TempData["ConflictProductId"] ?? 0);
+                var conflictQuantity = @(TempData["ConflictQuantity"] ?? 1);
+
+                if (conflictProductId > 0) {
+                    // Update modal and show it
+                    document.getElementById('shopConflictShopName').textContent = existingShopName;
+
+                    // Store pending data
+                    pendingAddToCart.productId = conflictProductId;
+                    pendingAddToCart.quantity = conflictQuantity;
+
+                    var modal = new bootstrap.Modal(document.getElementById('shopConflictModal'));
+                    modal.show();
+                }
+            }
+        });
+    </script>
+}

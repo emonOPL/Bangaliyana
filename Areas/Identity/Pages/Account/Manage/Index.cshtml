@@ -1,0 +1,755 @@
+@page
+@model IndexModel
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@{
+    ViewData["Title"] = Localizer["Profile"].Value;
+    ViewData["ActivePage"] = ManageNavPages.Index;
+}
+
+<h3>@ViewData["Title"]</h3>
+<partial name="_StatusMessage" for="StatusMessage" />
+
+<div class="row">
+    <div class="col-md-12">
+        <!-- Profile Picture Section -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">@Localizer["ProfilePicture"]</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-4">
+                    <div class="profile-avatar-container position-relative">
+                        @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+                        {
+                            <img src="@Model.AvatarUrl" alt="Profile" class="profile-avatar" id="avatar-preview" />
+                        }
+                        else
+                        {
+                            <div class="profile-avatar-placeholder" id="avatar-placeholder">
+                                <i class="fas fa-user fa-3x"></i>
+                            </div>
+                            <img src="" alt="Profile" class="profile-avatar d-none" id="avatar-preview" />
+                        }
+                        <div class="avatar-upload-overlay" id="camera-trigger" title="@Localizer["TakePhoto"]">
+                            <i class="fas fa-camera"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <input type="file" id="avatar-input" accept="image/jpeg,image/png,image/gif,image/webp" class="d-none" />
+                        <input type="file" id="camera-input-mobile" accept="image/jpeg,image/png" capture="environment" class="d-none" />
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <button type="button" id="upload-avatar-btn" class="btn btn-primary btn-sm">
+                                <i class="fas fa-upload me-1"></i> @Localizer["UploadPhoto"]
+                            </button>
+                            @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+                            {
+                                <button type="button" id="remove-avatar-btn" class="btn btn-outline-danger btn-sm">
+                                    <i class="fas fa-trash me-1"></i> @Localizer["Remove"]
+                                </button>
+                            }
+                        </div>
+                        <small class="text-muted d-block">@Localizer["AllowedFormats"]</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form id="profile-form" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">@Localizer["AccountInformation"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-floating mb-3">
+                        <input class="form-control" value="@Model.Email" disabled />
+                        <label class="form-label">@Localizer["Email"]</label>
+                        <span class="text-muted small">
+                            @if (Model.IsEmailConfirmed)
+                            {
+                                <span class="text-success"><i class="fa fa-check-circle"></i> @Localizer["Verified"]</span>
+                            }
+                            else
+                            {
+                                <span class="text-warning"><i class="fa fa-exclamation-triangle"></i> @Localizer["NotVerified"]</span>
+                                <a asp-page="./Email" class="ms-2">@Localizer["ChangeEmailOrVerify"]</a>
+                            }
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">@Localizer["PersonalInformation"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <input asp-for="Input.FirstName" class="form-control" />
+                                <label asp-for="Input.FirstName">@Localizer["FirstName"]</label>
+                                <span asp-validation-for="Input.FirstName" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <input asp-for="Input.LastName" class="form-control" />
+                                <label asp-for="Input.LastName">@Localizer["LastName"]</label>
+                                <span asp-validation-for="Input.LastName" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <input asp-for="Input.PhoneNumber" class="form-control" />
+                                <label asp-for="Input.PhoneNumber">@Localizer["PhoneNumber"]</label>
+                                <span asp-validation-for="Input.PhoneNumber" class="text-danger"></span>
+                                @if (!string.IsNullOrEmpty(Model.PhoneNumber))
+                                {
+                                    <div class="mt-2">
+                                        @if (Model.IsPhoneConfirmed)
+                                        {
+                                            <span class="text-success"><i class="fa fa-check-circle"></i> @Localizer["Verified"]</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-warning"><i class="fa fa-exclamation-triangle"></i> @Localizer["NotVerified"]</span>
+                                            <button type="button" id="send-verification" class="btn btn-sm btn-outline-primary ms-2">
+                                                <i class="fa fa-paper-plane"></i> @Localizer["SendVerificationCode"]
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <select asp-for="Input.Gender" class="form-select">
+                                    <option value="">@Localizer["SelectGenderOptional"]</option>
+                                    <option value="Male">@Localizer["Male"]</option>
+                                    <option value="Female">@Localizer["Female"]</option>
+                                    <option value="Other">@Localizer["Other"]</option>
+                                    <option value="PreferNotToSay">@Localizer["PreferNotToSay"]</option>
+                                </select>
+                                <label asp-for="Input.Gender">@Localizer["Gender"]</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <input asp-for="Input.DateOfBirth" class="form-control" />
+                                <label asp-for="Input.DateOfBirth">@Localizer["DateOfBirth"]</label>
+                                <span asp-validation-for="Input.DateOfBirth" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (!Model.IsPhoneConfirmed && !string.IsNullOrEmpty(Model.PhoneNumber))
+                    {
+                        <div class="row" id="verification-section" style="display:none;">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="verification-code" class="form-label">@Localizer["VerificationCode"]</label>
+                                    <input id="verification-code" type="text" class="form-control" maxlength="6" placeholder="@Localizer["EnterVerificationCode"]" />
+                                    <button type="button" id="verify-phone" class="btn btn-sm btn-success mt-2">
+                                        <i class="fa fa-check"></i> @Localizer["VerifyPhone"]
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">@Localizer["AddressInformation"]</h5>
+                </div>
+                <div class="card-body">
+                    @{
+                        ViewData["DivisionField"] = "Input.DivisionId";
+                        ViewData["DistrictField"] = "Input.DistrictId";
+                        ViewData["UpazilaField"] = "Input.UpazilaId";
+                        ViewData["AddressField"] = "Input.Address";
+                        ViewData["PostalCodeField"] = "Input.PostalCode";
+
+                        ViewData["SelectedDivision"] = Model.Input.DivisionId?.ToString() ?? "";
+                        ViewData["SelectedDistrict"] = Model.Input.DistrictId?.ToString() ?? "";
+                        ViewData["SelectedUpazila"] = Model.Input.UpazilaId?.ToString() ?? "";
+                        ViewData["AddressValue"] = Model.Input.Address ?? "";
+                        ViewData["PostalCodeValue"] = Model.Input.PostalCode ?? "";
+                        ViewData["IsCheckout"] = "false";
+                    }
+                    @await Html.PartialAsync("_AddressFields")
+                </div>
+            </div>
+
+            <button id="update-profile-button" type="submit" class="w-100 btn btn-lg btn-primary">@Localizer["SaveChanges"]</button>
+        </form>
+    </div>
+</div>
+
+<!-- Remove Avatar Confirmation Modal -->
+<div class="modal fade" id="removeAvatarModal" tabindex="-1" aria-labelledby="removeAvatarModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="remove-avatar-icon-wrapper mb-3">
+                    <div class="remove-avatar-icon-circle">
+                        <i class="fas fa-trash-alt text-danger"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="removeAvatarModalLabel">@Localizer["RemoveProfilePicture"]</h4>
+                <p class="text-muted mb-0">@Localizer["RemoveProfilePictureConfirm"]</p>
+                <p class="text-muted small">@Localizer["ActionCannotBeUndone"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmRemoveAvatarBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesRemove"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Webcam Modal -->
+<div class="modal fade" id="webcamModal" tabindex="-1" aria-labelledby="webcamModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="webcamModalLabel"><i class="fas fa-camera me-2"></i>@Localizer["TakePhoto"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="webcam-container position-relative">
+                    <video id="webcam-video" autoplay playsinline class="w-100 rounded"></video>
+                    <canvas id="webcam-canvas" class="d-none"></canvas>
+                    <div id="webcam-loading" class="position-absolute top-50 start-50 translate-middle">
+                        <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                        <p class="mt-2 mb-0">@Localizer["StartingCamera"]</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["Cancel"]
+                </button>
+                <button type="button" id="capture-photo-btn" class="btn btn-primary" disabled>
+                    <i class="fas fa-camera me-1"></i> @Localizer["Capture"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .webcam-container {
+        background-color: #000;
+        border-radius: 8px;
+        overflow: hidden;
+        min-height: 300px;
+    }
+
+    #webcam-video {
+        max-height: 400px;
+        object-fit: cover;
+    }
+
+    [data-theme="dark"] .modal-content {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .modal-header {
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .modal-footer {
+        border-color: #374151;
+    }
+
+    .profile-avatar-container {
+        width: 120px;
+        height: 120px;
+        flex-shrink: 0;
+    }
+
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid var(--primary-color, #6366f1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .profile-avatar-placeholder {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background-color: var(--bg-secondary, #f1f5f9);
+        border: 4px solid var(--border-color, #e2e8f0);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted, #94a3b8);
+    }
+
+    [data-theme="dark"] .profile-avatar-placeholder {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #9ca3af;
+    }
+
+    .avatar-upload-overlay {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 36px;
+        height: 36px;
+        background-color: var(--primary-color, #6366f1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        cursor: pointer;
+        border: 3px solid var(--bg-color, #fff);
+        transition: all 0.2s ease;
+    }
+
+    .avatar-upload-overlay:hover {
+        background-color: var(--primary-hover, #4f46e5);
+        transform: scale(1.1);
+    }
+
+    [data-theme="dark"] .avatar-upload-overlay {
+        border-color: #1f2937;
+    }
+
+    @@media (max-width: 576px) {
+        .profile-avatar-container,
+        .profile-avatar,
+        .profile-avatar-placeholder {
+            width: 100px;
+            height: 100px;
+        }
+
+        .profile-avatar-placeholder i {
+            font-size: 2rem !important;
+        }
+    }
+
+    /* Remove Avatar Modal Styles */
+    .remove-avatar-icon-wrapper {
+        display: flex;
+        justify-content: center;
+    }
+    .remove-avatar-icon-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: pulse-danger 2s infinite;
+    }
+    .remove-avatar-icon-circle i {
+        font-size: 2.5rem;
+    }
+    @@keyframes pulse-danger {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+        70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+    #removeAvatarModal .modal-content {
+        border-radius: 1rem;
+    }
+    #removeAvatarModal .btn {
+        border-radius: 0.5rem;
+        font-weight: 500;
+    }
+    [data-theme="dark"] #removeAvatarModal .modal-content {
+        background-color: #252538;
+    }
+    [data-theme="dark"] #removeAvatarModal .modal-title {
+        color: #e0e0e0;
+    }
+    [data-theme="dark"] #removeAvatarModal .text-muted {
+        color: #a0a0a0 !important;
+    }
+    [data-theme="dark"] .remove-avatar-icon-circle {
+        background: linear-gradient(135deg, #3d2020 0%, #4a2525 100%);
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        $(document).ready(function() {
+            // Helper function for toast notifications
+            function showToast(message, type) {
+                if (typeof alertify !== 'undefined') {
+                    if (type === 'success') {
+                        alertify.success(message);
+                    } else if (type === 'error') {
+                        alertify.error(message);
+                    } else if (type === 'warning') {
+                        alertify.warning(message);
+                    } else {
+                        alertify.message(message);
+                    }
+                } else {
+                    alert(message);
+                }
+            }
+
+            // Avatar upload functionality
+            $('#upload-avatar-btn').on('click', function() {
+                $('#avatar-input').click();
+            });
+
+            // Common function to upload avatar
+            function uploadAvatar(file) {
+                // Validate file size (5MB max)
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast('File size must be less than 5MB', 'error');
+                    return;
+                }
+
+                // Validate file type
+                var allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                if (!allowedTypes.includes(file.type)) {
+                    showToast('Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.', 'error');
+                    return;
+                }
+
+                // Preview the image
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#avatar-preview').attr('src', e.target.result).removeClass('d-none');
+                    $('#avatar-placeholder').addClass('d-none');
+                };
+                reader.readAsDataURL(file);
+
+                // Upload the file
+                var formData = new FormData();
+                formData.append('avatar', file);
+
+                var uploadBtn = $('#upload-avatar-btn');
+                uploadBtn.prop('disabled', true);
+                uploadBtn.html('<i class="fas fa-spinner fa-spin me-1"></i> Uploading...');
+
+                $.ajax({
+                    url: '?handler=UploadAvatar',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    headers: {
+                        RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showToast('Profile picture updated successfully!', 'success');
+                            setTimeout(function() { location.reload(); }, 1000);
+                        } else {
+                            showToast('Error: ' + response.message, 'error');
+                            uploadBtn.prop('disabled', false);
+                            uploadBtn.html('<i class="fas fa-upload me-1"></i> Upload Photo');
+                        }
+                    },
+                    error: function() {
+                        showToast('Failed to upload profile picture. Please try again.', 'error');
+                        uploadBtn.prop('disabled', false);
+                        uploadBtn.html('<i class="fas fa-upload me-1"></i> Upload Photo');
+                    }
+                });
+            }
+
+            // Handle file selection from device
+            $('#avatar-input').on('change', function() {
+                var file = this.files[0];
+                if (!file) return;
+                uploadAvatar(file);
+            });
+
+            // Handle mobile camera capture
+            $('#camera-input-mobile').on('change', function() {
+                var file = this.files[0];
+                if (!file) return;
+                uploadAvatar(file);
+            });
+
+            // Webcam variables
+            var webcamStream = null;
+            var webcamModal = new bootstrap.Modal(document.getElementById('webcamModal'));
+
+            // Check if device is mobile
+            function isMobileDevice() {
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            }
+
+            // Check if camera is available
+            async function hasCameraAccess() {
+                try {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                        return false;
+                    }
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    return devices.some(device => device.kind === 'videoinput');
+                } catch (err) {
+                    console.log('Camera detection error:', err);
+                    return false;
+                }
+            }
+
+            // Camera trigger click handler
+            $('#camera-trigger').on('click', async function() {
+                if (isMobileDevice()) {
+                    // Mobile device - use native camera capture
+                    $('#camera-input-mobile').click();
+                } else {
+                    // Desktop/Laptop - check for camera
+                    var hasCamera = await hasCameraAccess();
+                    if (hasCamera) {
+                        // Open webcam modal
+                        openWebcamModal();
+                    } else {
+                        // No camera - fall back to file picker silently
+                        $('#avatar-input').click();
+                    }
+                }
+            });
+
+            // Open webcam modal and start camera
+            function openWebcamModal() {
+                $('#webcam-loading').show();
+                $('#capture-photo-btn').prop('disabled', true);
+                webcamModal.show();
+                startWebcam();
+            }
+
+            // Start webcam
+            async function startWebcam() {
+                try {
+                    webcamStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            width: { ideal: 640 },
+                            height: { ideal: 480 },
+                            facingMode: 'user'
+                        },
+                        audio: false
+                    });
+
+                    var video = document.getElementById('webcam-video');
+                    video.srcObject = webcamStream;
+
+                    video.onloadedmetadata = function() {
+                        $('#webcam-loading').hide();
+                        $('#capture-photo-btn').prop('disabled', false);
+                    };
+                } catch (err) {
+                    console.error('Webcam error:', err);
+                    $('#webcam-loading').html('<i class="fas fa-exclamation-triangle fa-2x text-danger"></i><p class="mt-2 mb-0">Camera access denied</p>');
+                    setTimeout(function() {
+                        webcamModal.hide();
+                        showToast('Could not access camera. Please check your browser permissions or select a file.', 'warning');
+                        $('#avatar-input').click();
+                    }, 1500);
+                }
+            }
+
+            // Stop webcam
+            function stopWebcam() {
+                if (webcamStream) {
+                    webcamStream.getTracks().forEach(track => track.stop());
+                    webcamStream = null;
+                }
+                var video = document.getElementById('webcam-video');
+                if (video) {
+                    video.srcObject = null;
+                }
+            }
+
+            // Capture photo from webcam
+            $('#capture-photo-btn').on('click', function() {
+                var video = document.getElementById('webcam-video');
+                var canvas = document.getElementById('webcam-canvas');
+                var context = canvas.getContext('2d');
+
+                // Set canvas size to video size
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                // Draw the video frame to canvas
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // Convert canvas to blob
+                canvas.toBlob(function(blob) {
+                    // Create a file from blob
+                    var file = new File([blob], 'webcam-photo.jpg', { type: 'image/jpeg' });
+
+                    // Close modal and stop webcam
+                    webcamModal.hide();
+
+                    // Upload the captured photo
+                    uploadAvatar(file);
+                }, 'image/jpeg', 0.9);
+            });
+
+            // Stop webcam when modal is closed
+            document.getElementById('webcamModal').addEventListener('hidden.bs.modal', function() {
+                stopWebcam();
+            });
+
+            // Remove avatar modal handling
+            var removeAvatarModal = new bootstrap.Modal(document.getElementById('removeAvatarModal'));
+
+            $('#remove-avatar-btn').on('click', function() {
+                removeAvatarModal.show();
+            });
+
+            $('#confirmRemoveAvatarBtn').on('click', function() {
+                removeAvatarModal.hide();
+
+                var removeBtn = $('#remove-avatar-btn');
+                removeBtn.prop('disabled', true);
+                removeBtn.html('<i class="fas fa-spinner fa-spin me-1"></i> Removing...');
+
+                $.ajax({
+                    url: '?handler=RemoveAvatar',
+                    method: 'POST',
+                    headers: {
+                        RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showToast('Profile picture removed successfully!', 'success');
+                            setTimeout(function() { location.reload(); }, 1000);
+                        } else {
+                            showToast('Error: ' + response.message, 'error');
+                            removeBtn.prop('disabled', false);
+                            removeBtn.html('<i class="fas fa-trash me-1"></i> Remove');
+                        }
+                    },
+                    error: function() {
+                        showToast('Failed to remove profile picture. Please try again.', 'error');
+                        removeBtn.prop('disabled', false);
+                        removeBtn.html('<i class="fas fa-trash me-1"></i> Remove');
+                    }
+                });
+            });
+        });
+    </script>
+
+    @if (!Model.IsPhoneConfirmed && !string.IsNullOrEmpty(Model.PhoneNumber))
+    {
+        <script>
+            $(document).ready(function() {
+                // Helper function for toast notifications
+                function showToast(message, type) {
+                    if (typeof alertify !== 'undefined') {
+                        if (type === 'success') {
+                            alertify.success(message);
+                        } else if (type === 'error') {
+                            alertify.error(message);
+                        } else if (type === 'warning') {
+                            alertify.warning(message);
+                        } else {
+                            alertify.message(message);
+                        }
+                    } else {
+                        // Fallback if alertify is not loaded
+                        alert(message);
+                    }
+                }
+
+                $('#send-verification').on('click', function() {
+                    var button = $(this);
+                    button.prop('disabled', true);
+                    button.html('<i class="fa fa-spinner fa-spin"></i> Sending...');
+
+                    $.ajax({
+                        url: '?handler=SendVerificationCode',
+                        method: 'POST',
+                        headers: {
+                            RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $('#verification-section').slideDown();
+                                button.html('<i class="fa fa-redo"></i> Resend Code');
+                                button.prop('disabled', false);
+                                showToast('Verification code sent to your phone number!', 'success');
+                            } else {
+                                showToast('Error: ' + response.message, 'error');
+                                button.html('<i class="fa fa-paper-plane"></i> Send Verification Code');
+                                button.prop('disabled', false);
+                            }
+                        },
+                        error: function() {
+                            showToast('Failed to send verification code. Please try again.', 'error');
+                            button.html('<i class="fa fa-paper-plane"></i> Send Verification Code');
+                            button.prop('disabled', false);
+                        }
+                    });
+                });
+
+                $('#verify-phone').on('click', function() {
+                    var code = $('#verification-code').val();
+                    if (!code) {
+                        showToast('Please enter the verification code', 'warning');
+                        return;
+                    }
+
+                    var button = $(this);
+                    button.prop('disabled', true);
+                    button.html('<i class="fa fa-spinner fa-spin"></i> Verifying...');
+
+                    $.ajax({
+                        url: '?handler=VerifyPhone',
+                        method: 'POST',
+                        headers: {
+                            RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                        },
+                        data: JSON.stringify({ code: code }),
+                        contentType: 'application/json',
+                        success: function(response) {
+                            if (response.success) {
+                                showToast('Phone number verified successfully!', 'success');
+                                setTimeout(function() {
+                                    location.reload();
+                                }, 1500);
+                            } else {
+                                showToast('Invalid verification code. Please try again.', 'error');
+                                button.html('<i class="fa fa-check"></i> Verify Phone');
+                                button.prop('disabled', false);
+                            }
+                        },
+                        error: function() {
+                            showToast('Verification failed. Please try again.', 'error');
+                            button.html('<i class="fa fa-check"></i> Verify Phone');
+                            button.prop('disabled', false);
+                        }
+                    });
+                });
+            });
+        </script>
+    }
+}

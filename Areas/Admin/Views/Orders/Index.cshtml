@@ -1,0 +1,768 @@
+@using Bangaliyana.Models
+@using Bangaliyana.Extensions
+@using X.PagedList.Mvc.Core
+@using X.PagedList
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Bangaliyana.SharedResources> Localizer
+@model IPagedList<Order>
+
+@{
+    ViewData["Title"] = Localizer["OrdersManagement"].Value;
+    // MFS payment methods that need verification
+    var mfsPaymentMethods = new[] { PaymentMethod.bKash, PaymentMethod.Nagad, PaymentMethod.Rocket, PaymentMethod.Upay };
+    // Get area and controller for dynamic URL generation
+    var currentArea = ViewBag.AreaName as string ?? "Admin";
+    var currentController = ViewBag.ControllerName as string ?? "Orders";
+}
+
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="display-5">@Localizer["OrdersManagement"]</h2>
+        </div>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">@Localizer["FilterOrders"]</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" asp-action="Index">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label for="status" class="form-label">@Localizer["Status"]</label>
+                        <select name="status" id="status" class="form-select">
+                            <option value="">@Localizer["AllStatuses"]</option>
+                            @foreach (var status in ViewBag.StatusList as List<string>)
+                            {
+                                <option value="@status" selected="@(ViewBag.CurrentStatus == status ? "selected" : null)">@status</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="orderId" class="form-label">@Localizer["OrderId"]</label>
+                        <input type="number" name="orderId" id="orderId" class="form-control" value="@ViewBag.CurrentOrderId" placeholder="@Localizer["EnterOrderId"]">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="orderDate" class="form-label">@Localizer["OrderDate"]</label>
+                        <input type="date" name="orderDate" id="orderDate" class="form-control" value="@ViewBag.CurrentOrderDate">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search"></i> @Localizer["Filter"]
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> @Localizer["Clear"]
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">@Localizer["AllOrders"]</h5>
+            <span class="badge bg-info">@Localizer["Total"]: @Model.TotalItemCount @Localizer["orders"]</span>
+        </div>
+        <div class="card-body">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>@Localizer["OrderId"]</th>
+                                <th>@Localizer["Customer"]</th>
+                                <th>@Localizer["Date"]</th>
+                                <th>@Localizer["Status"]</th>
+                                <th>@Localizer["Total"]</th>
+                                <th>@Localizer["Payment"]</th>
+                                <th>@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>#@order.Id</strong>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>@order.CustomerName</strong><br>
+                                            <small class="text-muted">@order.Email</small><br>
+                                            <small class="text-muted">@order.Phone</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span title="@order.OrderDate.ToBangladeshShortString()">
+                                            @order.OrderDate.ToBangladeshShortDateString()
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(order.Status)">
+                                            @order.Status.GetDisplayName()
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong>৳@((int)Math.Round(order.TotalAmount))</strong>
+                                        @if (order.DeliveryCharge > 0)
+                                        {
+                                            <br><small class="text-muted">@Localizer["Delivery"]: ৳@((int)Math.Round(order.DeliveryCharge))</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (order.IsPaymentReceived)
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check"></i> @Localizer["Paid"]
+                                            </span>
+                                            @if (order.IsPaymentVerified)
+                                            {
+                                                <br><span class="badge bg-info mt-1"><i class="fas fa-check-double"></i> @Localizer["Verified"]</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-clock"></i> @Localizer["Pending"]
+                                            </span>
+                                        }
+                                        <br><small class="text-muted">@order.PaymentMethod.GetDisplayName()</small>
+                                        @if (!string.IsNullOrEmpty(order.TransactionId))
+                                        {
+                                            <br><small class="text-muted">TXN: @order.TransactionId</small>
+                                        }
+                                        @if (!string.IsNullOrEmpty(order.SenderMobileNumber))
+                                        {
+                                            <br><small class="text-muted">@Localizer["From"]: @order.SenderMobileNumber</small>
+                                        }
+                                        @* Show verify button for MFS payments that are not yet verified *@
+                                        @if (mfsPaymentMethods.Contains(order.PaymentMethod) && !order.IsPaymentReceived)
+                                        {
+                                            <br>
+                                            <button type="button" class="btn btn-sm btn-success mt-1 verify-payment-btn"
+                                                    data-order-id="@order.Id"
+                                                    data-order-number="@(order.OrderNumber ?? order.Id.ToString())"
+                                                    data-payment-method="@order.PaymentMethod.GetDisplayName()"
+                                                    data-transaction-id="@order.TransactionId"
+                                                    data-sender-number="@order.SenderMobileNumber"
+                                                    data-amount="@((int)Math.Round(order.TotalAmount))"
+                                                    data-customer-name="@order.CustomerName"
+                                                    data-customer-phone="@order.Phone"
+                                                    title="@Localizer["VerifyPayment"]">
+                                                <i class="fas fa-check-circle"></i> @Localizer["Verify"]
+                                            </button>
+                                        }
+                                        @* Show COD buttons *@
+                                        @if (order.PaymentMethod == PaymentMethod.CashOnDelivery)
+                                        {
+                                            @* Confirm Cash button for delivered COD orders not yet paid *@
+                                            @if (order.Status == OrderStatus.Delivered && !order.IsPaymentReceived)
+                                            {
+                                                <br>
+                                                <button type="button" class="btn btn-sm btn-success mt-1 confirm-cod-btn"
+                                                        data-order-id="@order.Id"
+                                                        data-order-number="@(order.OrderNumber ?? order.Id.ToString())"
+                                                        data-amount="@((int)Math.Round(order.TotalAmount))"
+                                                        data-customer-name="@order.CustomerName"
+                                                        data-customer-phone="@order.Phone"
+                                                        title="@Localizer["ConfirmCashReceived"]">
+                                                    <i class="fas fa-money-bill-wave"></i> @Localizer["ConfirmCash"]
+                                                </button>
+                                            }
+                                            @* Refuse button for COD orders (delivered but customer refused to pay) *@
+                                            @if (order.Status == OrderStatus.Delivered && order.IsPaymentReceived && !order.CustomerRefusedDelivery)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-outline-danger mt-1 refuse-cod-btn"
+                                                        data-order-id="@order.Id"
+                                                        data-order-number="@(order.OrderNumber ?? order.Id.ToString())"
+                                                        data-amount="@((int)Math.Round(order.TotalAmount))"
+                                                        data-customer-name="@order.CustomerName"
+                                                        title="@Localizer["MarkAsRefusedUndoPayment"]">
+                                                    <i class="fas fa-undo"></i> @Localizer["Undo"]
+                                                </button>
+                                            }
+                                            @* Show refused badge *@
+                                            @if (order.CustomerRefusedDelivery)
+                                            {
+                                                <br><span class="badge bg-danger mt-1"><i class="fas fa-ban"></i> @Localizer["Refused"]</span>
+                                            }
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a asp-action="Details" asp-route-id="@order.Id" class="btn btn-sm btn-outline-info" title="@Localizer["ViewDetails"]">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            @if (ViewBag.IsAdmin == true)
+                                            {
+                                                <a asp-action="Edit" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary" title="@Localizer["EditOrder"]">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                        <div class="mt-1">
+                                            <select class="form-select form-select-sm status-select" data-order-id="@order.Id">
+                                                @{
+                                                    // Sellers can only change to specific statuses
+                                                    var allowedStatuses = ViewBag.IsAdmin == true
+                                                        ? Enum.GetValues<OrderStatus>().ToList()
+                                                        : new List<OrderStatus> { OrderStatus.Pending, OrderStatus.Confirmed, OrderStatus.Cancelled, OrderStatus.Processing, OrderStatus.Shipped, OrderStatus.Delivered };
+                                                }
+                                                @foreach (OrderStatus status in allowedStatuses)
+                                                {
+                                                    <option value="@status" selected="@(order.Status == status ? "selected" : null)">@GetOrderStatusDisplay(status)</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                    <h4>@Localizer["NoOrdersFound"]</h4>
+                    <p class="text-muted">@Localizer["NoOrdersMatchFilter"]</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.PageCount > 1)
+    {
+        <div class="mt-4 d-flex justify-content-center">
+            @Html.PagedListPager(
+            Model,
+            page => Url.Action("Index", new { 
+                page, 
+                status = ViewBag.CurrentStatus, 
+                orderId = ViewBag.CurrentOrderId, 
+                orderDate = ViewBag.CurrentOrderDate 
+            }),
+            new PagedListRenderOptions
+            {
+                UlElementClasses = new[] { "pagination", "justify-content-center" },
+                LiElementClasses = new[] { "page-item" },
+                PageClasses = new[] { "page-link" },
+                LinkToPreviousPageFormat = "<i class=\"fas fa-chevron-left\"></i>",
+                LinkToNextPageFormat = "<i class=\"fas fa-chevron-right\"></i>",
+                DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                DisplayLinkToFirstPage = PagedListDisplayMode.Never,
+                DisplayLinkToLastPage = PagedListDisplayMode.Never
+            })
+        </div>
+    }
+</div>
+
+@functions {
+    private string GetStatusBadgeClass(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Pending => "bg-warning text-dark",
+            OrderStatus.Confirmed => "bg-info text-white",
+            OrderStatus.Paid => "bg-success text-white",
+            OrderStatus.Shipped => "bg-primary text-white",
+            OrderStatus.Cancelled => "bg-danger text-white",
+            _ => "bg-secondary text-white"
+        };
+    }
+
+    private string GetOrderStatusDisplay(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Pending => "Pending",
+            OrderStatus.Confirmed => "Confirmed",
+            OrderStatus.Paid => "Paid",
+            OrderStatus.Processing => "Processing",
+            OrderStatus.Shipped => "Shipped",
+            OrderStatus.OutForDelivery => "Out For Delivery",
+            OrderStatus.Delivered => "Delivered",
+            OrderStatus.Cancelled => "Cancelled",
+            OrderStatus.Returned => "Returned",
+            OrderStatus.Refunded => "Refunded",
+            _ => status.ToString()
+        };
+    }
+}
+
+<!-- Payment Verification Modal -->
+<div class="modal fade" id="verifyPaymentModal" tabindex="-1" aria-labelledby="verifyPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="verifyPaymentModalLabel">
+                    <i class="fas fa-check-circle me-2"></i>@Localizer["VerifyPayment"]
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="@Localizer["Close"]"></button>
+            </div>
+            <form id="verifyPaymentForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="verifyOrderId" name="orderId" />
+                <div class="modal-body">
+                    <!-- Order & Customer Info -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light py-2">
+                            <strong><i class="fas fa-shopping-cart me-2"></i>@Localizer["OrderDetails"]</strong>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="row small">
+                                <div class="col-6">
+                                    <strong>@Localizer["OrderNumber"]:</strong> <span id="verifyOrderNumber"></span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>@Localizer["Amount"]:</strong> <span id="verifyAmount" class="text-success fw-bold"></span>
+                                </div>
+                            </div>
+                            <div class="row small mt-2">
+                                <div class="col-6">
+                                    <strong>@Localizer["Customer"]:</strong> <span id="verifyCustomerName"></span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>@Localizer["Phone"]:</strong> <span id="verifyCustomerPhone"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Info Card -->
+                    <div class="card mb-3 border-primary">
+                        <div class="card-header bg-primary text-white py-2">
+                            <strong><i class="fas fa-money-bill-wave me-2"></i>@Localizer["PaymentInformation"]</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-2">
+                                <div class="col-5"><strong>@Localizer["PaymentMethod"]:</strong></div>
+                                <div class="col-7"><span id="verifyPaymentMethod" class="badge bg-info"></span></div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-5"><strong>@Localizer["SenderNumber"]:</strong></div>
+                                <div class="col-7"><span id="verifySenderNumber" class="fw-bold text-primary"></span></div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-5"><strong>@Localizer["TransactionId"]:</strong></div>
+                                <div class="col-7"><code id="verifyTransactionId" class="text-danger"></code></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Verification Notes -->
+                    <div class="mb-3">
+                        <label for="verificationNotes" class="form-label">@Localizer["VerificationNotesOptional"]</label>
+                        <textarea class="form-control" id="verificationNotes" name="notes" rows="2"
+                                  placeholder="@Localizer["VerificationNotesPlaceholder"]"></textarea>
+                    </div>
+
+                    <div class="alert alert-info mb-0 small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>@Localizer["Important"]:</strong> @Localizer["VerifyTransactionBeforeConfirming"]
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                    </button>
+                    <button type="submit" class="btn btn-success" id="confirmVerifyBtn">
+                        <i class="fas fa-check-circle me-1"></i>@Localizer["VerifyAndMarkAsPaid"]
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- COD Confirmation Modal -->
+<div class="modal fade" id="confirmCODModal" tabindex="-1" aria-labelledby="confirmCODModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="confirmCODModalLabel">
+                    <i class="fas fa-money-bill-wave me-2"></i>@Localizer["ConfirmCashPayment"]
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="@Localizer["Close"]"></button>
+            </div>
+            <form id="confirmCODForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="codOrderId" name="orderId" />
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-hand-holding-usd text-success fa-4x mb-3"></i>
+                        <h5>@Localizer["ConfirmCashCollection"]</h5>
+                        <p class="mb-0">@Localizer["Order"] #<span id="codOrderNumber" class="fw-bold"></span></p>
+                    </div>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row mb-2">
+                                <div class="col-5"><strong>@Localizer["Amount"]:</strong></div>
+                                <div class="col-7"><span id="codAmount" class="text-success fw-bold fs-5"></span></div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-5"><strong>@Localizer["Customer"]:</strong></div>
+                                <div class="col-7"><span id="codCustomerName"></span></div>
+                            </div>
+                            <div class="row">
+                                <div class="col-5"><strong>@Localizer["Phone"]:</strong></div>
+                                <div class="col-7"><span id="codCustomerPhone"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="codCollectorName" class="form-label">@Localizer["CollectedByOptional"]</label>
+                        <input type="text" class="form-control" id="codCollectorName" name="collectorName"
+                               placeholder="@Localizer["DeliveryPersonCourierName"]">
+                    </div>
+                    <div class="mb-3">
+                        <label for="codNotes" class="form-label">@Localizer["NotesOptional"]</label>
+                        <textarea class="form-control" id="codNotes" name="notes" rows="2"
+                                  placeholder="@Localizer["CashCollectedByCourier"]"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                    </button>
+                    <button type="submit" class="btn btn-success" id="confirmCODBtn">
+                        <i class="fas fa-check me-1"></i>@Localizer["ConfirmCashReceived"]
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Refuse COD Payment Modal -->
+<div class="modal fade" id="refuseCODModal" tabindex="-1" aria-labelledby="refuseCODModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="refuseCODModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>@Localizer["UndoCODPayment"]
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="@Localizer["Close"]"></button>
+            </div>
+            <form id="refuseCODForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="refuseOrderId" name="orderId" />
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>@Localizer["Warning"]:</strong> @Localizer["UndoCODWarningMessage"]
+                        <ul class="mb-0 mt-2">
+                            <li>@Localizer["CustomerRefusedToPay"]</li>
+                            <li>@Localizer["PaymentMarkedByMistake"]</li>
+                            <li>@Localizer["CashNotActuallyCollected"]</li>
+                        </ul>
+                    </div>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row mb-2">
+                                <div class="col-5"><strong>@Localizer["OrderNumber"]:</strong></div>
+                                <div class="col-7"><span id="refuseOrderNumber" class="fw-bold"></span></div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-5"><strong>@Localizer["Amount"]:</strong></div>
+                                <div class="col-7"><span id="refuseAmount" class="text-danger fw-bold"></span></div>
+                            </div>
+                            <div class="row">
+                                <div class="col-5"><strong>@Localizer["Customer"]:</strong></div>
+                                <div class="col-7"><span id="refuseCustomerName"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="refuseReason" class="form-label">@Localizer["Reason"] <span class="text-danger">*</span></label>
+                        <select class="form-select" id="refuseReason" name="reason" required>
+                            <option value="">-- @Localizer["SelectReason"] --</option>
+                            <option value="Customer refused to pay">@Localizer["CustomerRefusedToPay"]</option>
+                            <option value="Marked by mistake">@Localizer["MarkedByMistake"]</option>
+                            <option value="Cash not collected">@Localizer["CashNotCollected"]</option>
+                            <option value="Other">@Localizer["Other"]</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="refuseNotes" class="form-label">@Localizer["AdditionalNotes"]</label>
+                        <textarea class="form-control" id="refuseNotes" name="notes" rows="2"
+                                  placeholder="@Localizer["AdditionalDetailsPlaceholder"]"></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="applyPenalty" name="applyPenalty">
+                        <label class="form-check-label" for="applyPenalty">
+                            @Localizer["ApplyCODRestrictionPenalty"]
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                    </button>
+                    <button type="submit" class="btn btn-danger" id="confirmRefuseBtn">
+                        <i class="fas fa-undo me-1"></i>@Localizer["UndoPayment"]
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Handle status change
+            $('.status-select').on('change', function () {
+                var orderId = $(this).data('order-id');
+                var newStatus = $(this).val();
+                var selectElement = $(this);
+
+                $.ajax({
+                    url: '@Url.Action("UpdateStatus")',
+                    type: 'POST',
+                    data: {
+                        id: orderId,
+                        status: newStatus,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            // Reload page to update UI
+                            setTimeout(function () {
+                                location.reload();
+                            }, 1000);
+                        } else {
+                            alertify.error(response.message);
+                            // Revert select to original value
+                            selectElement.val(selectElement.data('original-value'));
+                        }
+                    },
+                    error: function () {
+                        alertify.error('An error occurred while updating the status.');
+                        // Revert select to original value
+                        selectElement.val(selectElement.data('original-value'));
+                    }
+                });
+            });
+
+            // Store original values
+            $('.status-select').each(function() {
+                $(this).data('original-value', $(this).val());
+            });
+
+            // Handle verify payment button click
+            $('.verify-payment-btn').on('click', function() {
+                var btn = $(this);
+                $('#verifyOrderId').val(btn.data('order-id'));
+                $('#verifyOrderNumber').text(btn.data('order-number'));
+                $('#verifyPaymentMethod').text(btn.data('payment-method'));
+                $('#verifyTransactionId').text(btn.data('transaction-id') || 'Not provided');
+                $('#verifySenderNumber').text(btn.data('sender-number') || 'Not provided');
+                $('#verifyAmount').text('৳' + btn.data('amount'));
+                $('#verifyCustomerName').text(btn.data('customer-name'));
+                $('#verifyCustomerPhone').text(btn.data('customer-phone'));
+                $('#verificationNotes').val('');
+
+                var modal = new bootstrap.Modal(document.getElementById('verifyPaymentModal'));
+                modal.show();
+            });
+
+            // Handle verify payment form submission
+            $('#verifyPaymentForm').on('submit', function(e) {
+                e.preventDefault();
+
+                var btn = $('#confirmVerifyBtn');
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Verifying...');
+
+                $.ajax({
+                    url: '@Url.Action("VerifyPayment", currentController, new { area = currentArea })',
+                    type: 'POST',
+                    data: {
+                        orderId: $('#verifyOrderId').val(),
+                        notes: $('#verificationNotes').val(),
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            bootstrap.Modal.getInstance(document.getElementById('verifyPaymentModal')).hide();
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1000);
+                        } else {
+                            alertify.error(response.message);
+                            btn.prop('disabled', false).html('<i class="fas fa-check-circle me-1"></i>Verify & Mark as Paid');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred while verifying payment.');
+                        btn.prop('disabled', false).html('<i class="fas fa-check-circle me-1"></i>Verify & Mark as Paid');
+                    }
+                });
+            });
+
+            // Handle COD confirm button click
+            $('.confirm-cod-btn').on('click', function() {
+                var btn = $(this);
+                $('#codOrderId').val(btn.data('order-id'));
+                $('#codOrderNumber').text(btn.data('order-number'));
+                $('#codAmount').text('৳' + btn.data('amount'));
+                $('#codCustomerName').text(btn.data('customer-name'));
+                $('#codCustomerPhone').text(btn.data('customer-phone'));
+                $('#codCollectorName').val('');
+                $('#codNotes').val('');
+
+                var modal = new bootstrap.Modal(document.getElementById('confirmCODModal'));
+                modal.show();
+            });
+
+            // Handle COD confirm form submission
+            $('#confirmCODForm').on('submit', function(e) {
+                e.preventDefault();
+
+                var btn = $('#confirmCODBtn');
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Confirming...');
+
+                $.ajax({
+                    url: '@Url.Action("ConfirmCODPayment", currentController, new { area = currentArea })',
+                    type: 'POST',
+                    data: {
+                        orderId: $('#codOrderId').val(),
+                        collectorName: $('#codCollectorName').val(),
+                        notes: $('#codNotes').val(),
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            bootstrap.Modal.getInstance(document.getElementById('confirmCODModal')).hide();
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1000);
+                        } else {
+                            alertify.error(response.message);
+                            btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i>Confirm Cash Received');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred while confirming payment.');
+                        btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i>Confirm Cash Received');
+                    }
+                });
+            });
+
+            // Handle refuse COD button click
+            $('.refuse-cod-btn').on('click', function() {
+                var btn = $(this);
+                $('#refuseOrderId').val(btn.data('order-id'));
+                $('#refuseOrderNumber').text(btn.data('order-number'));
+                $('#refuseAmount').text('৳' + btn.data('amount'));
+                $('#refuseCustomerName').text(btn.data('customer-name'));
+                $('#refuseReason').val('');
+                $('#refuseNotes').val('');
+                $('#applyPenalty').prop('checked', false);
+
+                var modal = new bootstrap.Modal(document.getElementById('refuseCODModal'));
+                modal.show();
+            });
+
+            // Handle refuse COD form submission
+            $('#refuseCODForm').on('submit', function(e) {
+                e.preventDefault();
+
+                if (!$('#refuseReason').val()) {
+                    alertify.error('Please select a reason');
+                    return;
+                }
+
+                var btn = $('#confirmRefuseBtn');
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Processing...');
+
+                $.ajax({
+                    url: '@Url.Action("RefuseCODPayment", currentController, new { area = currentArea })',
+                    type: 'POST',
+                    data: {
+                        orderId: $('#refuseOrderId').val(),
+                        reason: $('#refuseReason').val(),
+                        notes: $('#refuseNotes').val(),
+                        applyPenalty: $('#applyPenalty').is(':checked'),
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            alertify.success(response.message);
+                            bootstrap.Modal.getInstance(document.getElementById('refuseCODModal')).hide();
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1000);
+                        } else {
+                            alertify.error(response.message);
+                            btn.prop('disabled', false).html('<i class="fas fa-undo me-1"></i>Undo Payment');
+                        }
+                    },
+                    error: function() {
+                        alertify.error('An error occurred while processing.');
+                        btn.prop('disabled', false).html('<i class="fas fa-undo me-1"></i>Undo Payment');
+                    }
+                });
+            });
+
+            // Add CSRF token to all AJAX requests
+            $.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+                        // Only send the token to relative URLs i.e. locally.
+                        xhr.setRequestHeader("RequestVerificationToken",
+                            $('input[name="__RequestVerificationToken"]').val());
+                    }
+                }
+            });
+
+            // Show success/error messages from TempData
+            @if (TempData["success"] != null)
+            {
+                <text>alertify.success('@Html.Raw(TempData["success"])');</text>
+            }
+            @if (TempData["error"] != null)
+            {
+                <text>alertify.error('@Html.Raw(TempData["error"])');</text>
+            }
+        });
+    </script>
+
+    <style>
+        /* Dark mode pagination fix */
+        [data-theme="dark"] .pagination .page-link {
+            background-color: var(--bg-secondary, #1f2937);
+            border-color: var(--border-color, #374151);
+            color: var(--text-color, #e5e7eb);
+        }
+
+        [data-theme="dark"] .pagination .page-item.active .page-link {
+            background-color: var(--primary-color, #3b82f6);
+            border-color: var(--primary-color, #3b82f6);
+            color: #fff;
+        }
+
+        [data-theme="dark"] .pagination .page-link:hover {
+            background-color: var(--bg-color, #111827);
+            border-color: var(--primary-color, #3b82f6);
+            color: var(--primary-color, #3b82f6);
+        }
+
+        [data-theme="dark"] .pagination .page-item.disabled .page-link {
+            background-color: var(--bg-secondary, #1f2937);
+            border-color: var(--border-color, #374151);
+            color: #6b7280;
+        }
+    </style>
+}

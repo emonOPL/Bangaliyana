@@ -1,0 +1,471 @@
+@model IEnumerable<Bangaliyana.Models.Category>
+
+@{
+    ViewData["Title"] = Localizer["CategoryManagement"];
+    var allCategories = ViewBag.AllCategories as List<Bangaliyana.Models.Category>;
+}
+
+<style>
+    .category-tree {
+        font-family: inherit;
+    }
+
+    .tree-item {
+        position: relative;
+        padding: 8px 0;
+    }
+
+    .tree-item::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -20px;
+        border-left: 1px dashed #dee2e6;
+        height: 100%;
+    }
+
+    .tree-item::after {
+        content: "";
+        position: absolute;
+        top: 16px;
+        left: -20px;
+        width: 15px;
+        border-top: 1px dashed #dee2e6;
+    }
+
+    .tree-children {
+        margin-left: 30px;
+        position: relative;
+    }
+
+    .tree-children .tree-item:last-child::before {
+        height: 16px;
+    }
+
+    .tree-root > .tree-item::before,
+    .tree-root > .tree-item::after {
+        display: none;
+    }
+
+    .category-card {
+        background: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .category-card:hover {
+        border-color: #17a2b8;
+        box-shadow: 0 2px 8px rgba(23, 162, 184, 0.15);
+    }
+
+    .category-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+    }
+
+    .category-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .category-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .category-icon i {
+        font-size: 1.2rem;
+        color: #6c757d;
+    }
+
+    .category-details h6 {
+        margin: 0;
+        font-weight: 600;
+        color: #212529;
+    }
+
+    .category-meta {
+        display: flex;
+        gap: 10px;
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 2px;
+    }
+
+    .category-badge {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 12px;
+    }
+
+    .category-actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    .category-actions .btn {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+    }
+
+    .toggle-children {
+        cursor: pointer;
+        margin-right: 8px;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        background: #e9ecef;
+        transition: all 0.2s ease;
+    }
+
+    .toggle-children:hover {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .level-indicator {
+        display: inline-block;
+        padding: 2px 6px;
+        font-size: 0.65rem;
+        border-radius: 4px;
+        background: #e9ecef;
+        color: #6c757d;
+    }
+
+    .level-0 { border-left: 4px solid #17a2b8; }
+    .level-1 { border-left: 4px solid #28a745; }
+    .level-2 { border-left: 4px solid #ffc107; }
+    .level-3 { border-left: 4px solid #fd7e14; }
+    .level-4 { border-left: 4px solid #dc3545; }
+
+    .stats-card {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .stats-card h5 {
+        margin: 0 0 15px 0;
+        font-weight: 600;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        opacity: 0.9;
+    }
+
+    .search-filter {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    [data-theme="dark"] .category-card {
+        background: #2a2a3d;
+        border-color: #444;
+    }
+
+    [data-theme="dark"] .category-card:hover {
+        border-color: #17a2b8;
+    }
+
+    [data-theme="dark"] .category-details h6 {
+        color: #e0e0e0;
+    }
+
+    [data-theme="dark"] .category-icon {
+        background: linear-gradient(135deg, #3a3a4d 0%, #2a2a3d 100%);
+    }
+
+    [data-theme="dark"] .toggle-children {
+        background: #3a3a4d;
+    }
+
+    [data-theme="dark"] .search-filter {
+        background: #2a2a3d;
+    }
+
+    [data-theme="dark"] .level-indicator {
+        background: #3a3a4d;
+        color: #aaa;
+    }
+</style>
+
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2 class="text-info mb-0"><i class="fas fa-folder-tree me-2"></i>@Localizer["CategoryManagement"]</h2>
+            <p class="text-muted">@Localizer["ManageProductCategoriesAndHierarchy"]</p>
+        </div>
+        <div class="col-md-6 text-end">
+            <a asp-action="Create" class="btn btn-info">
+                <i class="fas fa-plus me-1"></i> @Localizer["AddRootCategory"]
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-card">
+        <h5><i class="fas fa-chart-bar me-2"></i>@Localizer["CategoryStatistics"]</h5>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value">@(allCategories?.Count ?? 0)</div>
+                <div class="stat-label">@Localizer["TotalCategories"]</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">@(allCategories?.Count(c => c.ParentId == null) ?? 0)</div>
+                <div class="stat-label">@Localizer["RootCategories"]</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">@(allCategories?.Count(c => c.IsActive) ?? 0)</div>
+                <div class="stat-label">@Localizer["Active"]</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">@(allCategories?.Count(c => c.IsFeatured) ?? 0)</div>
+                <div class="stat-label">@Localizer["Featured"]</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search/Filter -->
+    <div class="search-filter">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" id="searchCategory" class="form-control" placeholder="@Localizer["SearchCategories"]">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select id="filterStatus" class="form-select">
+                    <option value="">@Localizer["AllStatus"]</option>
+                    <option value="active">@Localizer["ActiveOnly"]</option>
+                    <option value="inactive">@Localizer["InactiveOnly"]</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="filterLevel" class="form-select">
+                    <option value="">@Localizer["AllLevels"]</option>
+                    <option value="0">@Localizer["RootCategories"]</option>
+                    <option value="1">@Localizer["Level"] 1</option>
+                    <option value="2">@Localizer["Level"] 2</option>
+                    <option value="3">@Localizer["Level"] 3+</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-secondary w-100" id="expandAll">
+                    <i class="fas fa-expand-alt me-1"></i> @Localizer["ExpandAll"]
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Tree -->
+    <div class="card">
+        <div class="card-body">
+            @if (!Model.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">@Localizer["NoCategoriesYet"]</h5>
+                    <p class="text-muted">@Localizer["StartByAddingFirstCategory"]</p>
+                    <a asp-action="Create" class="btn btn-info">
+                        <i class="fas fa-plus me-1"></i> @Localizer["AddCategory"]
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="category-tree tree-root">
+                    @foreach (var category in Model.OrderBy(c => c.DisplayOrder).ThenBy(c => c.Name))
+                    {
+                        @await Html.PartialAsync("_CategoryTree", category)
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Alertify messages
+            var saveMessage = '@TempData["onSave"]';
+            if (saveMessage) alertify.success(saveMessage);
+
+            var editMessage = '@TempData["onEdit"]';
+            if (editMessage) alertify.message(editMessage);
+
+            var deleteMessage = '@TempData["onDelete"]';
+            if (deleteMessage) alertify.warning(deleteMessage);
+
+            var errorMessage = '@TempData["onError"]';
+            if (errorMessage) alertify.error(errorMessage);
+
+            // Toggle children visibility
+            $(document).on('click', '.toggle-children', function (e) {
+                e.preventDefault();
+                var $this = $(this);
+                var $children = $this.closest('.tree-item').find('> .tree-children');
+                $children.slideToggle(200);
+                $this.toggleClass('expanded');
+
+                // Toggle icon between right and down arrow
+                $this.find('.icon-right').toggle();
+                $this.find('.icon-down').toggle();
+            });
+
+            // Search filter
+            $('#searchCategory').on('keyup', function () {
+                var searchText = $(this).val().toLowerCase();
+                filterCategories();
+            });
+
+            // Status filter
+            $('#filterStatus').on('change', function () {
+                filterCategories();
+            });
+
+            // Level filter
+            $('#filterLevel').on('change', function () {
+                filterCategories();
+            });
+
+            function filterCategories() {
+                var searchText = $('#searchCategory').val().toLowerCase();
+                var status = $('#filterStatus').val();
+                var level = $('#filterLevel').val();
+
+                $('.tree-item').each(function () {
+                    var $item = $(this);
+                    var categoryName = $item.find('> .category-card .category-details h6').text().toLowerCase();
+                    var isActive = $item.find('> .category-card').data('active');
+                    var categoryLevel = $item.find('> .category-card').data('level');
+
+                    var showBySearch = !searchText || categoryName.includes(searchText);
+                    var showByStatus = !status ||
+                        (status === 'active' && isActive) ||
+                        (status === 'inactive' && !isActive);
+                    var showByLevel = !level ||
+                        (level === '3' && categoryLevel >= 3) ||
+                        categoryLevel == level;
+
+                    if (showBySearch && showByStatus && showByLevel) {
+                        $item.show();
+                        // Show parent chain
+                        $item.parents('.tree-item').show();
+                        $item.parents('.tree-children').show();
+                    } else {
+                        $item.hide();
+                    }
+                });
+            }
+
+            // Expand all
+            var expanded = false;
+            $('#expandAll').on('click', function () {
+                if (expanded) {
+                    $('.tree-children').slideUp(200);
+                    $('.toggle-children').removeClass('expanded');
+                    $('.toggle-children .icon-right').show();
+                    $('.toggle-children .icon-down').hide();
+                    $(this).html('<i class="fas fa-expand-alt me-1"></i> @Localizer["ExpandAll"]');
+                } else {
+                    $('.tree-children').slideDown(200);
+                    $('.toggle-children').addClass('expanded');
+                    $('.toggle-children .icon-right').hide();
+                    $('.toggle-children .icon-down').show();
+                    $(this).html('<i class="fas fa-compress-alt me-1"></i> @Localizer["CollapseAll"]');
+                }
+                expanded = !expanded;
+            });
+
+            // Toggle active status
+            $(document).on('click', '.toggle-active', function (e) {
+                e.preventDefault();
+                var $btn = $(this);
+                var id = $btn.data('id');
+
+                $.ajax({
+                    url: '@Url.Action("ToggleActive")',
+                    type: 'POST',
+                    data: { id: id },
+                    headers: { 'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val() },
+                    success: function (response) {
+                        if (response.success) {
+                            var $card = $btn.closest('.category-card');
+                            if (response.isActive) {
+                                $card.data('active', true);
+                                $btn.removeClass('btn-outline-success').addClass('btn-outline-danger')
+                                    .html('<i class="fas fa-toggle-on"></i>');
+                                $card.find('.inactive-badge').remove();
+                            } else {
+                                $card.data('active', false);
+                                $btn.removeClass('btn-outline-danger').addClass('btn-outline-success')
+                                    .html('<i class="fas fa-toggle-off"></i>');
+                                if (!$card.find('.inactive-badge').length) {
+                                    $card.find('.category-meta').append('<span class="badge bg-secondary inactive-badge">@Localizer["Inactive"]</span>');
+                                }
+                            }
+                            alertify.success('@Localizer["StatusUpdated"]');
+                        } else {
+                            alertify.error(response.message);
+                        }
+                    }
+                });
+            });
+
+            // Delete confirmation
+            $(document).on('click', '.delete-category', function (e) {
+                e.preventDefault();
+                var $form = $(this).closest('form');
+                var categoryName = $(this).data('name');
+
+                alertify.confirm('@Localizer["DeleteCategory"]',
+                    '@Localizer["ConfirmDeleteCategoryMessage"]'.replace('{0}', categoryName),
+                    function () { $form.submit(); },
+                    function () { }
+                ).set('labels', { ok: '@Localizer["Delete"]', cancel: '@Localizer["Cancel"]' });
+            });
+        });
+    </script>
+}

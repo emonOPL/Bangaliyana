@@ -1,0 +1,258 @@
+@model X.PagedList.IPagedList<Bangaliyana.Models.Order>
+@using Bangaliyana.Extensions
+
+@{
+    ViewData["Title"] = Localizer["MyOrders"].Value;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="text-primary">
+                    <i class="fas fa-shopping-bag me-2"></i>@Localizer["MyOrders"]
+                </h2>
+            </div>
+
+            @if (Model.Any())
+            {
+                <div class="row">
+                    @foreach (var order in Model)
+                    {
+                        <div class="col-lg-6 col-xl-4 mb-4">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-header bg-light border-0 d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0 text-primary fw-bold">Order #@order.Id</h6>
+                                    <span class="badge @GetStatusBadgeClass(order.Status) fs-6">
+                                        @order.Status.GetDisplayName()
+                                    </span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <small class="text-muted d-block">@Localizer["OrderDate"]</small>
+                                        <strong>@order.OrderDate.ToBangladeshString()</strong>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <small class="text-muted d-block">@Localizer["TotalAmount"]</small>
+                                        <h5 class="text-success mb-0">৳@((int)Math.Round(order.TotalAmount))</h5>
+                                    </div>
+
+                                    @if (order.OrderItems?.Any() == true)
+                                    {
+                                        <div class="mb-3">
+                                            <small class="text-muted d-block mb-2">@Localizer["Items"] (@order.OrderItems.Count)</small>
+                                            @foreach (var item in order.OrderItems.Take(3))
+                                            {
+                                                <div class="small mb-1">
+                                                    <div class="d-flex justify-content-between">
+                                                        <span class="text-truncate me-2" style="max-width: 200px;">
+                                                            @(item.Product?.Name ?? "Unknown Product")
+                                                        </span>
+                                                        <span class="text-muted">x@(item.Quantity)</span>
+                                                    </div>
+                                                    @if (!string.IsNullOrEmpty(item.VariantInfo))
+                                                    {
+                                                        <small class="text-info" style="font-size: 0.75rem;"><i class="fas fa-tag me-1"></i>@item.VariantInfo</small>
+                                                    }
+                                                </div>
+                                            }
+                                            @if (order.OrderItems.Count > 3)
+                                            {
+                                                <small class="text-muted">@Localizer["AndXMoreItems", order.OrderItems.Count - 3]</small>
+                                            }
+                                        </div>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(order.TransactionId))
+                                    {
+                                        <div class="mb-3">
+                                            <small class="text-muted d-block">@Localizer["TransactionID"]</small>
+                                            <code class="small">@order.TransactionId</code>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="card-footer bg-transparent border-0 pt-0">
+                                    <div class="d-flex gap-2">
+                                        <a asp-action="OrderDetails" asp-route-id="@order.Id"
+                                           class="btn btn-outline-primary btn-sm flex-fill">
+                                            <i class="fas fa-eye me-1"></i>@Localizer["ViewDetails"]
+                                        </a>
+
+                                        @if (order.Status == OrderStatus.Pending)
+                                        {
+                                            <form asp-action="CancelOrder" method="post" class="d-inline cancel-order-form">
+                                                <input type="hidden" name="id" value="@order.Id" />
+                                                <button type="button" class="btn btn-outline-danger btn-sm cancel-order-btn">
+                                                    <i class="fas fa-times me-1"></i>@Localizer["Cancel"]
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Pagination -->
+                @if (Model.PageCount > 1)
+                {
+                    <nav aria-label="Orders pagination" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            @if (Model.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-action="Orders" asp-route-page="@(Model.PageNumber - 1)">
+                                        <i class="fas fa-chevron-left"></i> @Localizer["Previous"]
+                                    </a>
+                                </li>
+                            }
+
+                            @for (int i = Math.Max(1, Model.PageNumber - 2); i <= Math.Min(Model.PageCount, Model.PageNumber + 2); i++)
+                            {
+                                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                                    <a class="page-link" asp-action="Orders" asp-route-page="@i">@i</a>
+                                </li>
+                            }
+
+                            @if (Model.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-action="Orders" asp-route-page="@(Model.PageNumber + 1)">
+                                        @Localizer["Next"] <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <div class="display-1 text-muted mb-4">
+                        <i class="fas fa-shopping-bag"></i>
+                    </div>
+                    <h4 class="text-muted mb-3">@Localizer["NoOrdersYet"]</h4>
+                    <p class="text-muted mb-4">@Localizer["NoOrdersMessage"]</p>
+                    <a asp-action="Index" class="btn btn-primary">
+                        <i class="fas fa-shopping-cart me-2"></i>@Localizer["StartShopping"]
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@functions {
+    private string GetStatusBadgeClass(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Pending => "bg-warning text-dark",
+            OrderStatus.Confirmed => "bg-info text-white",
+            OrderStatus.Paid => "bg-success text-white",
+            OrderStatus.Shipped => "bg-primary text-white",
+            OrderStatus.Cancelled => "bg-danger text-white",
+            _ => "bg-secondary text-white"
+        };
+    }
+}
+
+<!-- Cancel Order Confirmation Modal -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center px-4 pt-0 pb-4">
+                <div class="confirm-icon-wrapper mb-3">
+                    <div class="confirm-icon-circle">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                    </div>
+                </div>
+                <h4 class="modal-title fw-bold mb-2" id="cancelOrderModalLabel">@Localizer["CancelOrderQuestion"]</h4>
+                <p class="text-muted mb-0">@Localizer["CancelOrderConfirmMessage"]</p>
+                <p class="text-muted small">@Localizer["ActionCannotBeUndone"]</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> @Localizer["NoKeepIt"]
+                </button>
+                <button type="button" class="btn btn-danger px-4" id="confirmCancelBtn">
+                    <i class="fas fa-check me-1"></i> @Localizer["YesCancel"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .confirm-icon-wrapper {
+        display: flex;
+        justify-content: center;
+    }
+    .confirm-icon-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: pulse-warning 2s infinite;
+    }
+    .confirm-icon-circle i {
+        font-size: 2.5rem;
+    }
+    @@keyframes pulse-warning {
+        0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+        70% { box-shadow: 0 0 0 15px rgba(255, 193, 7, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+    }
+    #cancelOrderModal .modal-content {
+        border-radius: 1rem;
+    }
+    #cancelOrderModal .btn {
+        border-radius: 0.5rem;
+        font-weight: 500;
+    }
+    [data-theme="dark"] #cancelOrderModal .modal-content {
+        background-color: #252538;
+    }
+    [data-theme="dark"] #cancelOrderModal .modal-title {
+        color: #e0e0e0;
+    }
+    [data-theme="dark"] #cancelOrderModal .text-muted {
+        color: #a0a0a0 !important;
+    }
+    [data-theme="dark"] .confirm-icon-circle {
+        background: linear-gradient(135deg, #3d3a20 0%, #4a4520 100%);
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const cancelModal = new bootstrap.Modal(document.getElementById('cancelOrderModal'));
+            let currentForm = null;
+
+            document.querySelectorAll('.cancel-order-btn').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    currentForm = this.closest('.cancel-order-form');
+                    cancelModal.show();
+                });
+            });
+
+            document.getElementById('confirmCancelBtn').addEventListener('click', function () {
+                if (currentForm) {
+                    cancelModal.hide();
+                    currentForm.submit();
+                }
+            });
+        });
+    </script>
+}

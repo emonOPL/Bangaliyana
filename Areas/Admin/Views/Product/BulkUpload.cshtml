@@ -1,0 +1,313 @@
+@{
+    ViewData["Title"] = Localizer["BulkUploadProducts"];
+    var categories = ViewBag.Categories as List<Category> ?? new List<Category>();
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="fas fa-file-excel text-success me-2"></i>@Localizer["BulkUploadProducts"]</h1>
+            <p class="text-muted mb-0">@Localizer["UploadMultipleProductsUsingExcel"]</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>@Localizer["BackToProducts"]
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["ImportErrors"] != null)
+    {
+        var importErrors = TempData["ImportErrors"] as List<string>;
+        if (importErrors != null && importErrors.Any())
+        {
+            <div class="alert alert-warning alert-dismissible fade show">
+                <h6 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>@Localizer["ImportWarnings"]</h6>
+                <ul class="mb-0 small">
+                    @foreach (var error in importErrors.Take(10))
+                    {
+                        <li>@error</li>
+                    }
+                    @if (importErrors.Count > 10)
+                    {
+                        <li>@Localizer["AndXMore", importErrors.Count - 10]</li>
+                    }
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+    }
+
+    <div class="row">
+        <!-- Instructions Card -->
+        <div class="col-lg-5 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>@Localizer["Instructions"]</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-2">@Localizer["Step1DownloadTemplate"]</h6>
+                        <p class="text-muted small mb-2">@Localizer["DownloadTemplateDescription"]</p>
+                        <a asp-action="DownloadTemplate" class="btn btn-success">
+                            <i class="fas fa-download me-1"></i>@Localizer["DownloadTemplate"]
+                        </a>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-2">@Localizer["Step2FillProductData"]</h6>
+                        <p class="text-muted small mb-0">@Localizer["FillProductDataDescription"]</p>
+                        <ul class="small text-muted mt-2 mb-0">
+                            <li><strong>@Localizer["Name"]</strong> - @Localizer["RequiredMax200Chars"]</li>
+                            <li><strong>@Localizer["Description"]</strong> - @Localizer["Required"]</li>
+                            <li><strong>@Localizer["Price"]</strong> - @Localizer["RequiredNumeric"]</li>
+                            <li><strong>@Localizer["DiscountPrice"]</strong> - @Localizer["OptionalNumeric"]</li>
+                            <li><strong>@Localizer["Stock"]</strong> - @Localizer["RequiredNumeric"]</li>
+                            <li><strong>@Localizer["SKU"]</strong> - @Localizer["OptionalUniqueIdentifier"]</li>
+                            <li><strong>@Localizer["CategoryName"]</strong> - @Localizer["MustMatchExistingCategory"]</li>
+                            <li><strong>@Localizer["BrandFabricWeight"]</strong> - @Localizer["Optional"]</li>
+                            <li><strong>@Localizer["Status"]</strong> - @Localizer["ActiveDraftOrInactive"]</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-2">@Localizer["Step3UploadFile"]</h6>
+                        <p class="text-muted small mb-0">@Localizer["UploadFileDescription"]</p>
+                    </div>
+
+                    <div class="alert alert-info small mb-0">
+                        <i class="fas fa-lightbulb me-1"></i>
+                        <strong>@Localizer["Tip"]:</strong> @Localizer["CheckInstructionsSheetTip"]
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Card -->
+        <div class="col-lg-7 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-upload me-2"></i>@Localizer["UploadExcelFile"]</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="BulkUpload" method="post" enctype="multipart/form-data" id="uploadForm">
+                        @Html.AntiForgeryToken()
+
+                        <div class="upload-zone text-center p-5 border border-2 border-dashed rounded mb-4" id="dropZone">
+                            <i class="fas fa-cloud-upload-alt fa-4x text-muted mb-3"></i>
+                            <h5>@Localizer["DragDropExcelFileHere"]</h5>
+                            <p class="text-muted mb-3">@Localizer["OrClickToBrowse"]</p>
+                            <input type="file" name="excelFile" id="excelFile" class="d-none" accept=".xlsx,.xls" />
+                            <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('excelFile').click()">
+                                <i class="fas fa-folder-open me-1"></i>@Localizer["BrowseFiles"]
+                            </button>
+                            <p class="small text-muted mt-3 mb-0">@Localizer["SupportedFormatsExcel"]</p>
+                        </div>
+
+                        <div id="selectedFile" class="alert alert-secondary d-none">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <i class="fas fa-file-excel text-success me-2 fa-lg"></i>
+                                    <span id="fileName"></span>
+                                    <small class="text-muted ms-2" id="fileSize"></small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearFile()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="uploadBtn" disabled>
+                                <i class="fas fa-upload me-2"></i>@Localizer["UploadProducts"]
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Available Categories Reference -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-tags me-2"></i>@Localizer["AvailableCategories"]</h6>
+                </div>
+                <div class="card-body" style="max-height: 200px; overflow-y: auto;">
+                    @if (categories.Any())
+                    {
+                        <div class="row">
+                            @foreach (var category in categories)
+                            {
+                                <div class="col-md-6 col-lg-4 mb-1">
+                                    <small class="text-muted">
+                                        <i class="fas fa-tag me-1"></i>@category.Name
+                                    </small>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted small mb-0">@Localizer["NoCategoriesAvailable"]</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .upload-zone {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background-color: #f8f9fa;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.dragover {
+        border-color: #0d6efd !important;
+        background-color: #e7f1ff;
+    }
+
+    .upload-zone.dragover {
+        transform: scale(1.02);
+    }
+
+    .border-dashed {
+        border-style: dashed !important;
+    }
+
+    [data-theme="dark"] .upload-zone {
+        background-color: #1f2937;
+        border-color: #4b5563 !important;
+    }
+
+    [data-theme="dark"] .upload-zone:hover,
+    [data-theme="dark"] .upload-zone.dragover {
+        background-color: #374151;
+        border-color: #3b82f6 !important;
+    }
+
+    [data-theme="dark"] .card {
+        background-color: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .card-header {
+        background-color: #374151;
+        border-color: #4b5563;
+    }
+
+    [data-theme="dark"] .alert-secondary {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .alert-info {
+        background-color: rgba(59, 130, 246, 0.2);
+        border-color: #3b82f6;
+        color: #93c5fd;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('excelFile');
+        const selectedFileDiv = document.getElementById('selectedFile');
+        const fileNameSpan = document.getElementById('fileName');
+        const fileSizeSpan = document.getElementById('fileSize');
+        const uploadBtn = document.getElementById('uploadBtn');
+
+        // Click on drop zone to trigger file input
+        dropZone.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'BUTTON') {
+                fileInput.click();
+            }
+        });
+
+        // Drag and drop events
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (validateFile(file)) {
+                    fileInput.files = files;
+                    showSelectedFile(file);
+                }
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                if (validateFile(file)) {
+                    showSelectedFile(file);
+                }
+            }
+        });
+
+        function validateFile(file) {
+            const validExtensions = ['.xlsx', '.xls'];
+            const fileName = file.name.toLowerCase();
+            const isValid = validExtensions.some(ext => fileName.endsWith(ext));
+
+            if (!isValid) {
+                alert('Please select a valid Excel file (.xlsx or .xls)');
+                return false;
+            }
+            return true;
+        }
+
+        function showSelectedFile(file) {
+            fileNameSpan.textContent = file.name;
+            fileSizeSpan.textContent = formatFileSize(file.size);
+            selectedFileDiv.classList.remove('d-none');
+            uploadBtn.disabled = false;
+        }
+
+        function clearFile() {
+            fileInput.value = '';
+            selectedFileDiv.classList.add('d-none');
+            uploadBtn.disabled = true;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // Form submission with loading state
+        document.getElementById('uploadForm').addEventListener('submit', function() {
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+        });
+    </script>
+}

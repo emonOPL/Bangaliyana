@@ -1,0 +1,384 @@
+@using Bangaliyana.Models
+@{
+    ViewData["Title"] = Localizer["HelpCenter"].Value;
+    var faqs = ViewBag.FAQs as IEnumerable<FAQ>;
+    var categories = ViewBag.Categories as List<string>;
+    var siteSettings = ViewBag.SiteSettings as SiteSettings;
+}
+
+<div class="help-center-page">
+    <!-- Hero Section -->
+    <section class="help-hero text-center">
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="display-4 fw-bold mb-3">
+                    <i class="fas fa-headset text-primary me-3"></i>@Localizer["HowCanWeHelp"]
+                </h1>
+                <p class="lead text-muted mb-4">@Localizer["HelpCenterDescription"]</p>
+
+                <!-- Quick Search -->
+                <div class="row justify-content-center">
+                    <div class="col-lg-6 col-md-8">
+                        <form asp-action="FAQ" method="get" class="search-form">
+                            <div class="input-group input-group-lg shadow-sm">
+                                <span class="input-group-text bg-white border-end-0">
+                                    <i class="fas fa-search text-muted"></i>
+                                </span>
+                                <input type="text" name="search" class="form-control border-start-0"
+                                       placeholder="@Localizer["SearchFAQsPlaceholder"]">
+                                <button type="submit" class="btn btn-primary px-4">@Localizer["Search"]</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Support Options -->
+    <section class="support-options">
+        <div class="container">
+            <div class="row g-4">
+                <!-- FAQs Card -->
+                <div class="col-lg-4 col-md-6">
+                    <a asp-action="FAQ" class="text-decoration-none">
+                        <div class="support-card h-100">
+                            <div class="card-icon bg-primary-soft">
+                                <i class="fas fa-question-circle text-primary"></i>
+                            </div>
+                            <h4 class="card-title">@Localizer["FAQs"]</h4>
+                            <p class="card-text text-muted">@Localizer["FAQsCardDescription"]</p>
+                            <span class="card-link">@Localizer["BrowseFAQs"] <i class="fas fa-arrow-right ms-2"></i></span>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Contact Us Card -->
+                <div class="col-lg-4 col-md-6">
+                    <a asp-action="Contact" class="text-decoration-none">
+                        <div class="support-card h-100">
+                            <div class="card-icon bg-success-soft">
+                                <i class="fas fa-envelope text-success"></i>
+                            </div>
+                            <h4 class="card-title">@Localizer["ContactUs"]</h4>
+                            <p class="card-text text-muted">@Localizer["ContactUsCardDescription"]</p>
+                            <span class="card-link">@Localizer["SendMessage"] <i class="fas fa-arrow-right ms-2"></i></span>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Live Chat Card -->
+                <div class="col-lg-4 col-md-6">
+                    <a asp-action="LiveChat" class="text-decoration-none">
+                        <div class="support-card h-100">
+                            <div class="card-icon bg-info-soft">
+                                <i class="fas fa-comments text-info"></i>
+                            </div>
+                            <h4 class="card-title">@Localizer["LiveChat"]</h4>
+                            <p class="card-text text-muted">@Localizer["LiveChatCardDescription"]</p>
+                            <span class="card-link">@Localizer["StartChat"] <i class="fas fa-arrow-right ms-2"></i></span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Categories -->
+    @if (categories?.Any() == true)
+    {
+        <section class="faq-categories bg-light">
+            <div class="container">
+                <h2 class="section-title text-center mb-4">
+                    <i class="fas fa-folder-open text-primary me-2"></i>@Localizer["BrowseByTopic"]
+                </h2>
+                <div class="row g-3 justify-content-center">
+                    @foreach (var category in categories)
+                    {
+                        <div class="col-auto">
+                            <a asp-action="FAQ" asp-route-category="@category" class="category-badge">
+                                <i class="fas fa-tag me-2"></i>@category
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
+    }
+
+    <!-- Popular FAQs -->
+    @if (faqs?.Any() == true)
+    {
+        <section class="popular-faqs">
+            <div class="container">
+                <h2 class="section-title text-center mb-4">
+                    <i class="fas fa-star text-warning me-2"></i>@Localizer["PopularQuestions"]
+                </h2>
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="accordion faq-accordion" id="popularFaqAccordion">
+                            @{
+                                var index = 0;
+                            }
+                            @foreach (var faq in faqs)
+                            {
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="heading_@faq.Id">
+                                        <button class="accordion-button @(index > 0 ? "collapsed" : "")" type="button"
+                                                data-bs-toggle="collapse" data-bs-target="#collapse_@faq.Id"
+                                                aria-expanded="@(index == 0 ? "true" : "false")" aria-controls="collapse_@faq.Id">
+                                            <i class="fas fa-question-circle text-primary me-3"></i>
+                                            @faq.Question
+                                        </button>
+                                    </h2>
+                                    <div id="collapse_@faq.Id" class="accordion-collapse collapse @(index == 0 ? "show" : "")"
+                                         aria-labelledby="heading_@faq.Id" data-bs-parent="#popularFaqAccordion">
+                                        <div class="accordion-body">
+                                            @Html.Raw(faq.Answer)
+                                            @if (!string.IsNullOrEmpty(faq.Category))
+                                            {
+                                                <div class="mt-3">
+                                                    <span class="badge bg-secondary">
+                                                        <i class="fas fa-tag me-1"></i>@faq.Category
+                                                    </span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                index++;
+                            }
+                        </div>
+                        <div class="text-center mt-4">
+                            <a asp-action="FAQ" class="btn btn-outline-primary">
+                                @Localizer["ViewAllFAQs"] <i class="fas fa-arrow-right ms-2"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+
+    <!-- Contact Info -->
+    <section class="contact-info bg-light">
+        <div class="container">
+            <div class="row g-4 text-center">
+                <div class="col-md-4">
+                    <div class="info-card">
+                        <div class="info-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <h5>@Localizer["EmailSupport"]</h5>
+                        <p class="text-muted mb-0">@(siteSettings?.ContactEmail ?? "support@bangaliyana.com")</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-card">
+                        <div class="info-icon">
+                            <i class="fas fa-phone"></i>
+                        </div>
+                        <h5>@Localizer["PhoneSupport"]</h5>
+                        <p class="text-muted mb-0">@(siteSettings?.ContactPhone ?? "+880 1234-567890")</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-card">
+                        <div class="info-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h5>@Localizer["BusinessHours"]</h5>
+                        <p class="text-muted mb-0">@Localizer["BusinessHoursValue"]</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<style>
+    .help-hero {
+        background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+    }
+
+    .search-form .input-group {
+        border-radius: 50px;
+        overflow: hidden;
+    }
+
+    .search-form .form-control {
+        border-radius: 0;
+    }
+
+    .search-form .form-control:focus {
+        box-shadow: none;
+    }
+
+    .search-form .btn {
+        border-radius: 0 50px 50px 0;
+    }
+
+    .support-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .support-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+        border-color: var(--bs-primary);
+    }
+
+    .support-card .card-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 2rem;
+    }
+
+    .bg-primary-soft { background: rgba(99, 102, 241, 0.1); }
+    .bg-success-soft { background: rgba(16, 185, 129, 0.1); }
+    .bg-info-soft { background: rgba(6, 182, 212, 0.1); }
+
+    .support-card .card-title {
+        color: #1f2937;
+        margin-bottom: 0.75rem;
+    }
+
+    .support-card .card-link {
+        color: var(--bs-primary);
+        font-weight: 600;
+    }
+
+    .category-badge {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        background: #fff;
+        border-radius: 50px;
+        color: #374151;
+        text-decoration: none;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+
+    .category-badge:hover {
+        background: var(--bs-primary);
+        color: #fff;
+        border-color: var(--bs-primary);
+    }
+
+    .faq-accordion .accordion-item {
+        border: none;
+        border-radius: 12px !important;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .faq-accordion .accordion-button {
+        font-weight: 600;
+        color: #1f2937;
+        background: #fff;
+        padding: 1.25rem;
+    }
+
+    .faq-accordion .accordion-button:not(.collapsed) {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+    }
+
+    .faq-accordion .accordion-button:not(.collapsed) .text-primary {
+        color: #fff !important;
+    }
+
+    .faq-accordion .accordion-button:focus {
+        box-shadow: none;
+    }
+
+    .faq-accordion .accordion-body {
+        background: #fff;
+        padding: 1.5rem;
+        line-height: 1.8;
+    }
+
+    .info-card {
+        padding: 1.5rem;
+    }
+
+    .info-card .info-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 1.5rem;
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] .help-hero {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    }
+
+    [data-theme="dark"] .support-card {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    [data-theme="dark"] .support-card .card-title {
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .bg-light {
+        background: #111827 !important;
+    }
+
+    [data-theme="dark"] .category-badge {
+        background: #1f2937;
+        border-color: #374151;
+        color: #e5e7eb;
+    }
+
+    [data-theme="dark"] .faq-accordion .accordion-item {
+        background: #1f2937;
+    }
+
+    [data-theme="dark"] .faq-accordion .accordion-button {
+        background: #1f2937;
+        color: #f3f4f6;
+    }
+
+    [data-theme="dark"] .faq-accordion .accordion-body {
+        background: #1f2937;
+        color: #e5e7eb;
+    }
+
+    @@media (max-width: 768px) {
+        .help-hero h1 {
+            font-size: 1.75rem;
+        }
+
+        .support-card {
+            padding: 1.5rem;
+        }
+
+        .support-card .card-icon {
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+        }
+    }
+</style>
