@@ -2,7 +2,7 @@
 
 # 🛒 Bangaliyana
 
-### *Bangladesh's Premier Multi-Vendor E-Commerce Platform*
+### _Bangladesh's Premier Multi-Vendor E-Commerce Platform_
 
 [![.NET](https://img.shields.io/badge/.NET-7.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Entity Framework](https://img.shields.io/badge/Entity_Framework-Core_7-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://docs.microsoft.com/ef/core)
@@ -56,8 +56,8 @@
 
 </div>
 
-| 🎨 Modern UI | ⚡ Real-time | 🔒 Secure | 🇧🇩 Localized |
-|:---:|:---:|:---:|:---:|
+|                 🎨 Modern UI                  |           ⚡ Real-time            |                 🔒 Secure                  |              🇧🇩 Localized              |
+| :-------------------------------------------: | :-------------------------------: | :----------------------------------------: | :------------------------------------: |
 | Beautiful, responsive design with Bootstrap 5 | Instant notifications via SignalR | WebAuthn biometric auth & security headers | Full Bangladesh address system support |
 
 ---
@@ -70,10 +70,10 @@
 
 <br/>
 
-| 🔐 **Demo Credentials** | |
-|:---|:---|
-| **Admin Email** | `admin@bangaliyana.com` |
-| **Password** | `Admin@123` |
+| 🔐 **Demo Credentials** |                     |
+| :---------------------- | :------------------ |
+| **Admin Email**         | `emontwo@gmail.com` |
+| **Password**            | `Emon@123`          |
 
 </div>
 
@@ -87,11 +87,12 @@
 
 </div>
 
-<table>
+<table align="center">
 <tr>
 <td width="50%">
 
 #### 🔍 Shopping & Discovery
+
 - ✅ Advanced product search with filters
 - ✅ Category & subcategory browsing
 - ✅ Product comparison (side-by-side)
@@ -104,6 +105,7 @@
 <td width="50%">
 
 #### 🛒 Cart & Checkout
+
 - ✅ Hybrid cart (guest + logged-in)
 - ✅ Multiple payment gateways
 - ✅ bKash, Nagad, Upay integration
@@ -118,6 +120,7 @@
 <td width="50%">
 
 #### ⭐ Engagement
+
 - ✅ Product reviews & ratings
 - ✅ Q&A on products
 - ✅ Seller messaging
@@ -129,6 +132,7 @@
 <td width="50%">
 
 #### 🎁 Rewards & Benefits
+
 - ✅ Reward points system
 - ✅ Premium membership
 - ✅ Exclusive discounts
@@ -146,11 +150,12 @@
 
 </div>
 
-<table>
+<table align="center">
 <tr>
 <td width="50%">
 
 #### 📊 Dashboard & Analytics
+
 - ✅ Sales overview & statistics
 - ✅ Revenue analytics
 - ✅ Order management
@@ -162,6 +167,7 @@
 <td width="50%">
 
 #### 📦 Product & Inventory
+
 - ✅ Product listing management
 - ✅ Bulk product import (Excel)
 - ✅ Inventory tracking
@@ -175,6 +181,7 @@
 <td width="50%">
 
 #### 💬 Communication
+
 - ✅ Customer messaging
 - ✅ Review responses
 - ✅ Q&A management
@@ -184,6 +191,7 @@
 <td width="50%">
 
 #### 💰 Payments
+
 - ✅ Earnings dashboard
 - ✅ Payout management
 - ✅ Transaction history
@@ -200,11 +208,12 @@
 
 </div>
 
-<table>
+<table align="center">
 <tr>
 <td width="33%">
 
 #### 👥 User Management
+
 - ✅ User CRUD operations
 - ✅ Role management
 - ✅ Permission control
@@ -215,6 +224,7 @@
 <td width="33%">
 
 #### 🛍️ Store Management
+
 - ✅ Category management
 - ✅ Product moderation
 - ✅ Order oversight
@@ -225,6 +235,7 @@
 <td width="33%">
 
 #### 🎨 CMS & Settings
+
 - ✅ Banner management
 - ✅ Dynamic pages
 - ✅ Menu configuration
@@ -239,16 +250,18 @@
 
 ### 🔧 Technical Features
 
-</div>
+<br/>
 
-| Feature | Technology | Description |
-|:--------|:-----------|:------------|
-| 🔐 **Biometric Auth** | WebAuthn/Fido2 | Fingerprint & face recognition login |
-| ⚡ **Real-time Updates** | SignalR | Instant notifications, live chat |
-| 📋 **Background Jobs** | Hangfire | Scheduled tasks, payment processing |
-| 📄 **PDF Generation** | QuestPDF | Order receipts, reports |
-| 📊 **Excel Export** | ClosedXML | Data export functionality |
-| 🤖 **AI Chat** | Custom Service | AI-powered customer support |
+| Feature                  | Technology     | Description                          |
+| :----------------------- | :------------- | :----------------------------------- |
+| 🔐 **Biometric Auth**    | WebAuthn/Fido2 | Fingerprint & face recognition login |
+| ⚡ **Real-time Updates** | SignalR        | Instant notifications, live chat     |
+| 📋 **Background Jobs**   | Hangfire       | Scheduled tasks, payment processing  |
+| 📄 **PDF Generation**    | QuestPDF       | Order receipts, reports              |
+| 📊 **Excel Export**      | ClosedXML      | Data export functionality            |
+| 🤖 **AI Chat**           | Custom Service | AI-powered customer support          |
+
+</div>
 
 ---
 
@@ -337,19 +350,21 @@ Bangaliyana/
 <summary><b>🗃️ Database Schema Highlights</b> (Click to expand)</summary>
 
 #### 🇧🇩 Bangladesh Address Hierarchy
+
 ```
 Division → District → Upazila → Union
 ```
 
 #### 📊 Key Entities
-| Entity | Description |
-|:-------|:------------|
+
+| Entity            | Description                      |
+| :---------------- | :------------------------------- |
 | `ApplicationUser` | Extended identity with BD fields |
-| `Products` | Product catalog with variants |
-| `Orders` | Order management |
-| `Seller` | Seller profiles & shops |
-| `Category` | Product categorization |
-| `PersistentCart` | Database cart storage |
+| `Products`        | Product catalog with variants    |
+| `Orders`          | Order management                 |
+| `Seller`          | Seller profiles & shops          |
+| `Category`        | Product categorization           |
+| `PersistentCart`  | Database cart storage            |
 
 </details>
 
@@ -359,11 +374,11 @@ Division → District → Upazila → Union
 
 ### Prerequisites
 
-| Requirement | Version |
-|:------------|:--------|
-| [.NET SDK](https://dotnet.microsoft.com/download/dotnet/7.0) | 7.0+ |
-| [SQL Server](https://www.microsoft.com/sql-server) | 2019+ |
-| [Visual Studio](https://visualstudio.microsoft.com/) / [VS Code](https://code.visualstudio.com/) | Latest |
+| Requirement                                                                                      | Version |
+| :----------------------------------------------------------------------------------------------- | :------ |
+| [.NET SDK](https://dotnet.microsoft.com/download/dotnet/7.0)                                     | 7.0+    |
+| [SQL Server](https://www.microsoft.com/sql-server)                                               | 2019+   |
+| [Visual Studio](https://visualstudio.microsoft.com/) / [VS Code](https://code.visualstudio.com/) | Latest  |
 
 ### Installation Steps
 
@@ -384,10 +399,11 @@ dotnet build
 # 5️⃣ Run the application
 dotnet run
 
-# 🎉 Access at: https://localhost:5001
+# 🎉 Access at: https://localhost:5005
 ```
 
 ### 🐳 Docker (Coming Soon)
+
 ```bash
 docker-compose up -d
 ```
@@ -458,23 +474,23 @@ docker-compose up -d
 
 <div align="center">
 
-| Service | Purpose |
-|:--------|:--------|
-| 🛒 `ICartService` | Unified cart operations |
-| 📧 `IEmailService` | Email notifications |
-| 🔍 `ISearchService` | Product search + history |
-| 📱 `IOtpService` | OTP verification |
-| 📋 `IMenuService` | Dynamic menu management |
-| 📄 `PdfGeneratorService` | PDF receipts |
-| 🎁 `IRewardService` | Reward points system |
-| 🔔 `INotificationService` | User notifications |
-| 💰 `ISellerPaymentService` | Seller payouts |
-| 📢 `IPromotionalCampaignService` | Marketing campaigns |
-| ⭐ `IShopRatingService` | Shop ratings |
-| 📡 `IRealTimeNotificationService` | SignalR notifications |
-| 🤖 `IAIChatService` | AI chat support |
-| 📝 `IBlogService` | Blog management |
-| 📊 `IAuditService` | Activity logging |
+| Service                           | Purpose                  |
+| :-------------------------------- | :----------------------- |
+| 🛒 `ICartService`                 | Unified cart operations  |
+| 📧 `IEmailService`                | Email notifications      |
+| 🔍 `ISearchService`               | Product search + history |
+| 📱 `IOtpService`                  | OTP verification         |
+| 📋 `IMenuService`                 | Dynamic menu management  |
+| 📄 `PdfGeneratorService`          | PDF receipts             |
+| 🎁 `IRewardService`               | Reward points system     |
+| 🔔 `INotificationService`         | User notifications       |
+| 💰 `ISellerPaymentService`        | Seller payouts           |
+| 📢 `IPromotionalCampaignService`  | Marketing campaigns      |
+| ⭐ `IShopRatingService`           | Shop ratings             |
+| 📡 `IRealTimeNotificationService` | SignalR notifications    |
+| 🤖 `IAIChatService`               | AI chat support          |
+| 📝 `IBlogService`                 | Blog management          |
+| 📊 `IAuditService`                | Activity logging         |
 
 </div>
 
@@ -484,13 +500,13 @@ docker-compose up -d
 
 <div align="center">
 
-| Role | Icon | Access Level |
-|:-----|:----:|:-------------|
-| **SuperAdmin** | 👑 | Full system access, manage admins |
-| **Admin** | 👨‍💼 | Products, orders, users, content |
-| **Moderator** | 👮 | Content moderation, support |
-| **Seller** | 🏪 | Own shop & products |
-| **User** | 👤 | Shopping & account |
+| Role           | Icon | Access Level                      |
+| :------------- | :--: | :-------------------------------- |
+| **SuperAdmin** |  👑  | Full system access, manage admins |
+| **Admin**      |  👨‍💼  | Products, orders, users, content  |
+| **Moderator**  |  👮  | Content moderation, support       |
+| **Seller**     |  🏪  | Own shop & products               |
+| **User**       |  👤  | Shopping & account                |
 
 </div>
 
@@ -503,6 +519,7 @@ docker-compose up -d
 <td width="50%">
 
 #### 🛡️ Authentication
+
 - ✅ ASP.NET Core Identity
 - ✅ WebAuthn/Fido2 biometric
 - ✅ Two-factor authentication
@@ -513,6 +530,7 @@ docker-compose up -d
 <td width="50%">
 
 #### 🔐 Protection
+
 - ✅ CSRF tokens
 - ✅ XSS prevention
 - ✅ SQL injection protection
@@ -527,9 +545,9 @@ docker-compose up -d
 
 ## 📊 API Endpoints
 
-| Endpoint | Description |
-|:---------|:------------|
-| `GET /health` | System health check |
+| Endpoint        | Description                       |
+| :-------------- | :-------------------------------- |
+| `GET /health`   | System health check               |
 | `GET /hangfire` | Background jobs dashboard (Admin) |
 
 ---
@@ -552,8 +570,8 @@ We welcome contributions! Here's how you can help:
 
 **Developed with ❤️ by Emon**
 
-[![GitHub](https://img.shields.io/badge/GitHub-@emonOPL-181717?style=for-the-badge&logo=github)](https://github.com/emonOPL)
-[![Email](https://img.shields.io/badge/Email-emon.onnorokom@gmail.com-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:emon.onnorokom@gmail.com)
+[![GitHub](https://img.shields.io/badge/GitHub-@jfemon8-181717?style=for-the-badge&logo=github)](https://github.com/jfemon8)
+[![Email](https://img.shields.io/badge/Email-jfemon8@gmail.com-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:jfemon8@gmail.com)
 
 </div>
 
@@ -580,8 +598,6 @@ We welcome contributions! Here's how you can help:
 
 ### ⭐ Star this repo if you find it helpful!
 
-**Made with ❤️ in Bangladesh 🇧🇩**
-
-<sub>Copyright © 2024 Bangaliyana. All rights reserved.</sub>
+<sub>Copyright © 2026 Bangaliyana. All rights reserved.</sub>
 
 </div>
