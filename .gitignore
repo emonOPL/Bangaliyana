@@ -1,0 +1,89 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache/options
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# NuGet
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+# Build results of an ideNuGet package restore
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# macOS
+.DS_Store
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Other
+/nul
+*.log
+*.tmp
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Sensitive configuration files (contains passwords, API keys, connection strings)
+appsettings.Production.json
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+
+# User secrets
+secrets.json
+
+# Keys folder (Fido2/WebAuthn keys)
+Keys/
+
+# Deployment files (may contain sensitive configs)
+deployment/
+publish/
+publish-*/
+
+# Database backup files
+*.bak
+*.sql
+
+# Environment files
+.env
+.env.*
